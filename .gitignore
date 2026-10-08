@@ -1,4 +1,5 @@
 node_modules/
+dist/
 *.tgz
 # stitch2 output inside example projects
 design/renders/

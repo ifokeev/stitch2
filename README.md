@@ -40,7 +40,8 @@ agents skills that tell them how.
 1. Install it as a dev dependency (Node 24 or newer), then Chromium for Playwright, which renders the screens:
 
    ```bash
-   pnpm add -D github:ifokeev/stitch2     # or: npm install -D github:ifokeev/stitch2
+   pnpm add -D github:ifokeev/stitch2#release   # the latest release; #v0.1.0 to pin one
+   npm install -D github:ifokeev/stitch2#release
    npx playwright install chromium
    ```
 2. Create `DESIGN.md` in [Google's DESIGN.md format](https://github.com/google-labs-code/design.md) (tokens in
@@ -95,8 +96,9 @@ pnpm typecheck
 pnpm build                   # compiles to dist/, which the installed package runs
 ```
 
-`dist/` is committed, so installing from GitHub needs no build step: run `pnpm build` with every change to
-`src/` and commit both (`pnpm check-dist` fails when they differ).
+Releases: bump `version` in package.json, commit, then `pnpm release`. It builds, packs exactly what npm would
+publish, commits that to the `release` branch (built files only, so installs need no build step) and tags it
+`v<version>`. `main` holds sources only; `dist/` is ignored.
 
 Point it at a project with `STITCH2_CONFIG=/path/to/stitch2.config.json`, or run it from inside the project.
 
