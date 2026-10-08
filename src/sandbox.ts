@@ -57,7 +57,13 @@ if (sub === 'create') {
   const code = dirname(fileURLToPath(import.meta.url))
   const codeDir = basename(code)
   const ext = import.meta.url.endsWith('.ts') ? 'ts' : 'js'
-  const modules = fileURLToPath(import.meta.resolve('@playwright/test')).replace(/(.*\/node_modules)\/.*/, '$1')
+  // stitch2's own dependencies: its node_modules in a checkout or workspace, the folder it sits in when
+  // installed (npm puts dependencies next to it, pnpm in its store folder next to it).
+  let modules = ''
+  for (let d = join(code, '..'); !modules && dirname(d) !== d; d = dirname(d)) {
+    if (existsSync(join(d, 'node_modules', 'yaml'))) modules = join(d, 'node_modules')
+    else if (basename(d) === 'node_modules' && existsSync(join(d, 'yaml'))) modules = d
+  }
   // The design folder minus every screen, except the catalog and templates (files starting with _).
   const generated = new Set(['renders', 'checks.json', 'type-audit.json', 'consistency'])
   cpSync(ROOT, join(out, 'design'), {
