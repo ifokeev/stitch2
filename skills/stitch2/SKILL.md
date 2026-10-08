@@ -14,6 +14,9 @@ The project tunes all of this in `stitch2.config.json` (folders, the prefix of i
 CSS variables, screen order) and in a **project skill** with its specifics: brand, components, screen names,
 data. Read the project skill first when there is one; it wins over this one where they differ.
 
+No DESIGN.md yet, or a new look: build it first with the **stitch2-design-md** skill (`stitch2 init` or
+`stitch2 extract`).
+
 References, read before the first screen:
 
 - [principles.md](references/principles.md): what makes a screen read well, and the review rubric.
@@ -60,7 +63,8 @@ References, read before the first screen:
 | `tokens` | `tokens.css` (colours, `.type-*` classes) and `tailwind.tokens.js` from DESIGN.md |
 | `lint` | Google's DESIGN.md linter |
 | `localize [filter]` | Copies remote images a screen uses into its `assets/` folder |
-| `sandbox <dir> <brief.md>…` | An isolated folder for a blind trial |
+| `init`, `extract` | Build DESIGN.md from choices, or measure it from an existing site (stitch2-design-md) |
+| `sandbox <dir> <brief.md>…` | An isolated folder for a blind trial (evaluating skill changes) |
 
 ## Blind trial
 

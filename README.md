@@ -23,18 +23,22 @@ agents skills that tell them how.
   colour roles from a seed colour.
 - **Versions and approval**: every file is a version of a screen for a device, with its status (draft, review,
   approved, archived) and your note in meta tags, so agents can read what you decided (`stitch2 screens`).
-- **Blind trials** (`stitch2 sandbox`): an isolated folder with your design system and skills but no screens,
-  to compare approaches without leaking context.
+- **DESIGN.md builder**: `stitch2 init` writes a complete DESIGN.md from a few choices (brand colour, modes,
+  fonts, roundness, density), with colours checked for contrast; `stitch2 extract` measures one from an existing
+  site or screens.
+- **Blind trials** (`stitch2 sandbox`, for evaluating changes to the skills): a folder with your design system
+  and skills but no screens, so a fresh agent's output shows what the rules alone produce.
 - **Skills** for agents (`skills/`): `stitch2` (the design workflow, principles, typography, components,
-  versions), `stitch2-consistency` (verifying and fixing consistency) and `stitch2-google-stitch` (drafting in
-  Google Stitch through its MCP server).
+  versions), `stitch2-design-md` (building the design system), `stitch2-consistency` (verifying and fixing
+  consistency) and, optional, `stitch2-google-stitch` (drafting screens in Google Stitch through its MCP server).
 
 ## Setup
 
 1. Install it as a dev dependency (Node 24 or newer) and Chromium for Playwright: `npx playwright install chromium`.
-2. Write `DESIGN.md` in [Google's DESIGN.md format](https://github.com/google-labs-code/design.md): tokens in the
-   YAML front matter (colours with a `primary`, typography levels, rounded, spacing, components), rules in the
-   prose. `stitch2 lint` validates it.
+2. Create `DESIGN.md` in [Google's DESIGN.md format](https://github.com/google-labs-code/design.md) (tokens in
+   the YAML front matter, rules in the prose): `stitch2 init --name "My app" --primary "#2F6FEB"` from a few
+   choices, or `stitch2 extract https://my.app` from an existing product; then refine the prose.
+   `stitch2 lint` validates it.
 3. Add `stitch2.config.json` at the project root (all keys optional):
 
    ```json
@@ -60,6 +64,8 @@ agents skills that tell them how.
 
 | Command | What it does |
 |---|---|
+| `stitch2 init --name N --primary #hex [options]` | Writes a complete DESIGN.md from a few choices |
+| `stitch2 extract <url or file…>` | Writes a DESIGN.md measured from an existing site or screens |
 | `stitch2 canvas` | The canvas at http://127.0.0.1:4400 (`PORT` to change) |
 | `stitch2 check [filter] [--shots] [--strict]` | All checks; `--shots` saves renders to `<design>/renders/` |
 | `stitch2 consistency [kind…]` | The consistency report, `<design>/consistency/index.html` |
@@ -68,7 +74,7 @@ agents skills that tell them how.
 | `stitch2 tokens` | Tokens from DESIGN.md |
 | `stitch2 lint` | Google's DESIGN.md linter |
 | `stitch2 localize [filter]` | Copies a screen's remote images into its `assets/` folder |
-| `stitch2 sandbox <dir> <brief.md>…` | A blind-trial folder |
+| `stitch2 sandbox <dir> <brief.md>…` | A blind-trial folder, for evaluating skill changes |
 
 ## Status
 

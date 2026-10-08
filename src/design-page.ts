@@ -65,7 +65,18 @@ export function designPage(): string {
   const d = readDesign()
   const text = readFileSync(join(ROOT, 'DESIGN.md'), 'utf8')
   const prose = text.replace(/^---\n[\s\S]*?\n---\n/, '')
-  const colours = Object.entries(d.colors).filter(([n]) => n !== 'primary')
+  const colours = Object.entries(d.colors).filter(
+    ([n, v]) => n !== 'primary' || !Object.entries(d.colors).some(([k, w]) => k !== n && w === v),
+  )
+  // Load the families DESIGN.md names from Google Fonts, so the type samples render in them.
+  const families = [
+    ...new Set(
+      Object.values(d.typography)
+        .map((t) => t.fontFamily)
+        .filter(Boolean),
+    ),
+  ] as string[]
+  const fonts = `https://fonts.googleapis.com/css2?${families.map((f) => `family=${encodeURIComponent(f).replaceAll('%20', '+')}:wght@400;500;600;700`).join('&')}&display=swap`
   const swatch = ([name, value]: [string, string]) =>
     `<div class="sw"><span style="background:${esc(value)}"></span><b>${esc(name)}</b><code>${esc(value)}</code></div>`
   const type = Object.entries(d.typography)
@@ -96,7 +107,7 @@ export function designPage(): string {
     .join('')
   return `<!doctype html>
 <html lang="en" data-theme="dark"><head><meta charset="utf-8" /><title>DESIGN.md — ${esc(d.name)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="${esc(fonts)}" rel="stylesheet" />
 <link rel="stylesheet" href="/tokens.css" />
 <style>
   body { margin: 0; background: #0f0f11; color: #f4f4f5; font: 15px/1.55 Geist, system-ui, sans-serif; }

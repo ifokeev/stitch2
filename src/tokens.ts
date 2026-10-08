@@ -73,7 +73,9 @@ function roles(dark: boolean): Record<string, string> {
 const dark: Record<string, string> = {}
 const light: Record<string, string> = {}
 for (const [name, value] of Object.entries(design.colors)) {
-  if (name === 'primary') continue
+  // "primary" is often an alias ("{colors.ember}"); keep it only when it is a colour of its own.
+  if (name === 'primary' && Object.entries(design.colors).some(([k, v]) => k !== name && v === value))
+    continue
   if (name.startsWith('light-')) light[name.slice(6)] = value
   else dark[name] = value
 }

@@ -1,6 +1,6 @@
 ---
 name: stitch2-google-stitch
-description: Draft screens in Google Stitch through its MCP server and bring them into stitch2 as reviewable versions. Use when the user wants Stitch to generate a screen, design variants, or to push the project's DESIGN.md to a Stitch design system. (stitch2 is inspired by Google Stitch and is not affiliated with Google.)
+description: Optional, only for projects that use Google Stitch (Google's product) — draft screens there through its MCP server and bring them into stitch2 as reviewable versions. Use when the user wants Stitch to generate a screen, design variants, or to push the project's DESIGN.md to a Stitch design system. (stitch2 is inspired by Google Stitch and is not affiliated with Google.)
 ---
 
 # Drafting screens in Google Stitch

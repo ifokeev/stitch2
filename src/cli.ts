@@ -8,6 +8,14 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const COMMANDS: Record<string, [string, string]> = {
+  init: [
+    'init.ts',
+    '--name N --primary #hex [--modes dark,light --sans Inter --mono … --base 15 --roundness 16]  Write a complete DESIGN.md',
+  ],
+  extract: [
+    'extract.ts',
+    '<url or html file…> [--name N] [--out file]  Write a DESIGN.md measured from an existing site or screen',
+  ],
   canvas: [
     'serve.ts',
     'The canvas at http://127.0.0.1:4400 (PORT to change): screens, versions, DESIGN.md, approval',
@@ -19,7 +27,10 @@ const COMMANDS: Record<string, [string, string]> = {
   lint: ['', "Google's DESIGN.md linter on the project's DESIGN.md"],
   screens: ['list.ts', '[name] [--status s] [--json]  Screen versions, statuses and notes'],
   localize: ['assets.ts', '[filter]  Copy remote images a screen uses into its assets/ folder'],
-  sandbox: ['sandbox.ts', '<dir> <brief.md>…  An isolated folder for a blind design trial'],
+  sandbox: [
+    'sandbox.ts',
+    '<dir> <brief.md>…  (evaluation) A folder to test skill changes on fresh agents, without screens',
+  ],
 }
 
 const [command, ...rest] = process.argv.slice(2)
