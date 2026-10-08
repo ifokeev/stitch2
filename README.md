@@ -37,8 +37,7 @@ agents skills that tell them how.
 
 ## Setup
 
-1. Install it as a dev dependency (Node 24 or newer); it builds itself on install. Then install Chromium for
-   Playwright, which renders the screens:
+1. Install it as a dev dependency (Node 24 or newer), then Chromium for Playwright, which renders the screens:
 
    ```bash
    pnpm add -D github:ifokeev/stitch2     # or: npm install -D github:ifokeev/stitch2
@@ -95,6 +94,9 @@ node src/cli.ts <command>    # runs the TypeScript sources directly (Node 24 str
 pnpm typecheck
 pnpm build                   # compiles to dist/, which the installed package runs
 ```
+
+`dist/` is committed, so installing from GitHub needs no build step: run `pnpm build` with every change to
+`src/` and commit both (`pnpm check-dist` fails when they differ).
 
 Point it at a project with `STITCH2_CONFIG=/path/to/stitch2.config.json`, or run it from inside the project.
 

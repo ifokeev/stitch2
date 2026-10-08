@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+var __rewriteRelativeImportExtension = (this && this.__rewriteRelativeImportExtension) || function (path, preserveJsx) {
+    if (typeof path === "string" && /^\.\.?\//.test(path)) {
+        return path.replace(/\.(tsx)$|((?:\.d)?)((?:\.[^./]+?)?)\.([cm]?)ts$/i, function (m, tsx, d, ext, cm) {
+            return tsx ? preserveJsx ? ".jsx" : ".js" : d && (!ext || !cm) ? m : (d + ext + "." + cm.toLowerCase() + "js");
+        });
+    }
+    return path;
+};
+/**
+ * stitch2: a design canvas, checks and screen versioning for agent-built UI.
+ * Usage: stitch2 <command> [args]   (reads the nearest stitch2.config.json)
+ */
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const COMMANDS = {
+    init: [
+        'init.ts',
+        '--name N --primary #hex [--modes dark,light --sans Inter --mono … --base 15 --roundness 16]  Write a complete DESIGN.md',
+    ],
+    extract: [
+        'extract.ts',
+        '<url or html file…> [--name N] [--out file]  Write a DESIGN.md measured from an existing site or screen',
+    ],
+    canvas: [
+        'serve.ts',
+        'The canvas at http://127.0.0.1:4400 (PORT to change): screens, versions, DESIGN.md, approval',
+    ],
+    check: ['check.ts', '[filter] [--shots] [--strict]  Layout, type, reuse and consistency checks'],
+    consistency: ['report.ts', '[kind]  Every shared component cropped from every screen, side by side'],
+    type: ['type.ts', '[filter] [--json]  Every text style a screen uses, by type level'],
+    tokens: ['tokens.ts', 'Generate tokens.css and tailwind.tokens.js from DESIGN.md'],
+    lint: ['', "Google's DESIGN.md linter on the project's DESIGN.md"],
+    screens: ['list.ts', '[name] [--status s] [--json]  Screen versions, statuses and notes'],
+    localize: ['assets.ts', '[filter]  Copy remote images a screen uses into its assets/ folder'],
+    sandbox: [
+        'sandbox.ts',
+        'create <dir> <brief.md>… [--context <screen>…] | import <dir>  Fresh-eyes versions from agents that see no other versions',
+    ],
+};
+const [command, ...rest] = process.argv.slice(2);
+const entry = command ? COMMANDS[command] : undefined;
+if (!entry) {
+    console.log('stitch2 <command>\n');
+    for (const [name, [, help]] of Object.entries(COMMANDS))
+        console.log(`  ${name.padEnd(12)} ${help}`);
+    process.exit(command ? 1 : 0);
+}
+if (command === 'lint') {
+    const { ROOT } = await import('./config.js');
+    // The linter's main entry is also its command line (the package only exports for import).
+    const file = fileURLToPath(import.meta.resolve('@google/design.md'));
+    try {
+        execFileSync(process.execPath, [file, 'lint', join(ROOT, 'DESIGN.md'), ...rest], { stdio: 'inherit' });
+    }
+    catch {
+        process.exit(1);
+    }
+}
+else {
+    // Sources run as .ts (Node strips the types); the published build runs as .js.
+    const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
+    const script = fileURLToPath(new URL(entry[0].replace(/\.ts$/, ext), import.meta.url));
+    process.argv = [process.argv[0], script, ...rest];
+    await import(__rewriteRelativeImportExtension(script));
+}

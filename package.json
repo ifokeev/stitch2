@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "tsc -p . && node -e \"require('node:fs').copyFileSync('src/canvas.html','dist/canvas.html')\"",
-    "prepare": "npm run build",
+    "check-dist": "npm run build && git diff --exit-code -- dist",
     "typecheck": "tsc -p . --noEmit",
     "canvas": "node src/cli.ts canvas",
     "check": "node src/cli.ts check",
