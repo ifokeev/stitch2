@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en" class="lab">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>stitch2</title>
+<style>
+  :root { --accent: #e8662c; --bad: #e5484d; --bg: #0b0b0d; --edge: #2e2e33; --faint: #71717a; --good: #3fb27f; --muted: #a1a1aa; --panel: #141417; --panel2: #1c1c20; --side: 288px; --text: #f4f4f5; --warn: #e5b54a; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; height: 100%; margin: 0; overflow: hidden; }
+  button, input, textarea { color: inherit; font: inherit; }
+  .copy { background: none; border: 0; border-radius: 4px; color: var(--faint); cursor: pointer; flex: none; font-size: 11px; opacity: 0; padding: 1px 5px; }
+  .item:hover .copy, .item:focus-within .copy, .screen-name:hover .copy, .frame .label:hover .copy, #inspector .copy { opacity: 1; }
+  .copy:hover { background: var(--panel2); color: var(--text); }
+  .row-label { align-items: baseline; display: flex; gap: 12px; overflow: hidden; position: absolute; white-space: nowrap; }
+  .row-label b { color: var(--text); font-size: 24px; }
+  .row-label span { color: var(--muted); font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+  #doc { background: var(--bg); display: none; inset: 0 0 0 var(--side); position: fixed; z-index: 19; }
+  #doc.open { display: block; }
+  .doc-frame { border: 0; height: 100%; width: 100%; }
+  .doc-close { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; padding: 4px 10px; position: absolute; right: 16px; top: 12px; }
+  #side { background: var(--panel); border-right: 1px solid var(--edge); display: flex; flex-direction: column; inset: 0 auto 0 0; position: fixed; width: var(--side); z-index: 20; }
+  #side header { border-bottom: 1px solid var(--edge); display: grid; gap: 10px; padding: 14px 14px 10px; }
+  #side header b { font-size: 14px; }
+  #search { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; padding: 7px 10px; width: 100%; }
+  .seg { background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; display: flex; gap: 2px; padding: 2px; }
+  .seg button { background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; flex: 1; padding: 4px 6px; white-space: nowrap; }
+  .seg button.on { background: var(--panel2); color: var(--text); }
+  #tree { flex: 1; overflow: auto; padding: 6px 8px 16px; }
+  #tree h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 14px 6px 6px; text-transform: uppercase; }
+  .item { align-items: center; background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 6px 8px; text-align: left; width: 100%; }
+  .item:hover { background: var(--panel2); color: var(--text); }
+  .item.on { background: #2a1a12; color: var(--text); }
+  .item .meta { color: var(--faint); font-size: 11px; margin-left: auto; white-space: nowrap; }
+  .screen-name { align-items: center; border-radius: 6px; color: var(--text); cursor: pointer; display: flex; font-weight: 600; gap: 6px; padding: 8px 8px 2px; }
+  .screen-name:hover { background: var(--panel2); }
+  .screen-name .meta { color: var(--faint); font-size: 11px; font-weight: 400; margin-left: auto; }
+  .version { padding-left: 20px; }
+  .dot { background: var(--faint); border-radius: 50%; flex: none; height: 8px; width: 8px; }
+  .dot.approved { background: var(--good); } .dot.review { background: var(--warn); } .dot.draft { background: var(--muted); } .dot.archived { background: transparent; border: 1px solid var(--faint); }
+  #side footer { align-items: center; border-top: 1px solid var(--edge); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; }
+  #side footer button { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; padding: 4px 10px; }
+  #zoom { font-variant-numeric: tabular-nums; margin-left: auto; }
+  #summary { font-size: 12px; width: 100%; }
+  #viewport { cursor: grab; inset: 0 0 0 var(--side); overflow: hidden; position: fixed; touch-action: none; }
+  #viewport.panning { cursor: grabbing; }
+  #world { inset: 0 auto auto 0; position: absolute; transform-origin: 0 0; }
+  .frame { position: absolute; }
+  .frame .label { align-items: center; cursor: pointer; display: flex; gap: 8px; height: 30px; margin-bottom: 8px; white-space: nowrap; }
+  .frame .name { font-size: 15px; font-weight: 600; }
+  .frame .pill { border: 1px solid var(--edge); border-radius: 999px; color: var(--muted); font-size: 12px; padding: 1px 8px; }
+  .frame .pill.approved { border-color: #1f4d39; color: var(--good); } .frame .pill.review { border-color: #5a4a20; color: var(--warn); }
+  .frame .title { color: var(--faint); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .frame .badge { background: var(--panel); border: 1px solid var(--edge); border-radius: 999px; color: var(--muted); cursor: pointer; margin-left: auto; padding: 2px 10px; }
+  .frame .badge.ok { color: var(--good); } .frame .badge.warn { border-color: #5a4a20; color: var(--warn); } .frame .badge.bad { border-color: #5a2326; color: var(--bad); }
+  .device { background: #000; border-radius: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.45); outline: 1px solid var(--edge); overflow: hidden; position: relative; }
+  .frame.desktop .device { border-radius: 12px; }
+  .frame.selected .device { outline: 3px solid var(--accent); }
+  .frame.archived { opacity: .55; }
+  .device iframe { background: #fff; border: 0; display: block; }
+  .device .shield { cursor: pointer; inset: 0; position: absolute; }
+  .frame.live .shield { display: none; }
+  .frame.changed .device { animation: flash 900ms ease-out; }
+  @keyframes flash { from { outline: 3px solid var(--accent); } to { outline: 1px solid var(--edge); } }
+  #inspector { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; display: none; max-height: calc(100% - 24px); overflow: auto; padding: 14px; position: fixed; right: 12px; top: 12px; width: 360px; z-index: 21; }
+  #inspector.open { display: block; }
+  #inspector h3 { align-items: center; display: flex; font-size: 16px; gap: 8px; margin: 0; }
+  #inspector h3 .close { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 18px; }
+  #inspector h3 .copy { margin-left: auto; }
+  #inspector .facts { color: var(--muted); margin: 4px 0 12px; }
+  #inspector .facts a { color: var(--muted); }
+  #inspector .status { display: grid; gap: 6px; grid-template-columns: repeat(4, 1fr); margin-bottom: 10px; }
+  #inspector .status button { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 12px; padding: 6px 2px; white-space: nowrap; }
+  #inspector .status button.on { border-color: var(--accent); color: var(--text); }
+  #inspector textarea { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; min-height: 70px; padding: 8px; resize: vertical; width: 100%; }
+  #inspector .save { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; margin: 6px 0 14px; padding: 4px 10px; }
+  #inspector h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 10px 0 6px; text-transform: uppercase; }
+  #inspector ul { margin: 0; padding: 0; }
+  #inspector li { border: 1px solid transparent; border-radius: 8px; cursor: pointer; list-style: none; padding: 7px 8px; }
+  #inspector li:hover { background: var(--panel2); border-color: var(--edge); }
+  #inspector .sev { font-size: 10px; font-weight: 600; margin-right: 6px; text-transform: uppercase; }
+  #inspector .error .sev { color: var(--bad); } #inspector .warning .sev { color: var(--warn); }
+  #inspector code { color: var(--faint); display: block; font-size: 11px; margin-top: 2px; word-break: break-all; }
+  #toast { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; bottom: 16px; left: calc(var(--side) + 16px); opacity: 0; padding: 6px 12px; pointer-events: none; position: fixed; transition: opacity .2s; z-index: 30; }
+  #toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<aside id="side">
+  <header>
+    <b id="labName">stitch2</b>
+    <input id="search" placeholder="Search screens… ( / )" />
+    <div class="seg" id="statusFilter"><button type="button" data-v="active" class="on" title="Everything except archived versions">Active</button><button type="button" data-v="approved" title="The reference versions agents build on">Approved</button><button type="button" data-v="review" title="Finished by an agent, waiting for your decision">Needs review</button><button type="button" data-v="all" title="Including archived versions">All</button></div>
+    <div class="seg" id="deviceFilter"><button type="button" data-v="all" class="on">All devices</button><button type="button" data-v="mobile">Mobile</button><button type="button" data-v="desktop">Desktop</button></div>
+  </header>
+  <nav id="tree"></nav>
+  <footer>
+    <button type="button" id="fit" title="Fit all (F)">Fit</button>
+    <button type="button" id="reload" title="Reload every frame (R)">Reload</button>
+    <span id="zoom">100%</span>
+    <span id="summary"></span>
+  </footer>
+</aside>
+<div id="viewport"><div id="world"></div></div>
+<div id="inspector"></div>
+<div id="toast" role="status"></div>
+<div id="doc"><iframe class="doc-frame" title="DESIGN.md"></iframe><button type="button" class="doc-close">Close (Esc)</button></div>
+<script type="module">
+const viewport = document.getElementById('viewport')
+const world = document.getElementById('world')
+const SIDE = 288, GAP_X = 72, GAP_Y = 150, GROUP_GAP = 200, LINE_W = 3400, ROW_LABEL_H = 52, LABEL_H = 38
+let ORDER = [] // screen order, from the config
+const STATUS_RANK = { approved: 0, review: 1, draft: 2, archived: 3 }
+const STATUS_LABEL = { approved: 'approved', review: 'needs review', draft: 'draft', archived: 'archived' }
+const STATUS_HINT = {
+  approved: 'The reference: agents build on it and it gets implemented',
+  review: 'Finished by an agent, waiting for your decision',
+  draft: 'Still being worked on',
+  archived: 'Kept for history, hidden unless you show all',
+}
+/** What to paste to an agent: the screen, device and version, and the file. */
+const ref = (s) => (s.kind === 'components' ? 'component catalog (design/screens/components/catalog.html)' : `${s.screen} ${s.device} ${s.version} (design/${s.path})`)
+let toastTimer
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const t = document.createElement('textarea')
+    t.value = text
+    document.body.append(t)
+    t.select()
+    document.execCommand('copy')
+    t.remove()
+  }
+  const toast = document.getElementById('toast')
+  toast.textContent = `Copied: ${text}`
+  toast.classList.add('on')
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => toast.classList.remove('on'), 1800)
+}
+const copyButton = (text, title) => {
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'copy'
+  b.textContent = 'Copy'
+  b.title = title
+  b.onclick = (e) => { e.stopPropagation(); copy(text) }
+  return b
+}
+let view = JSON.parse(localStorage.getItem('stitch2-view') ?? 'null') ?? { x: 40, y: 60, z: 0.4 }
+const filters = JSON.parse(localStorage.getItem('stitch2-filters') ?? 'null') ?? { status: 'active', device: 'all' }
+let screens = []
+let checks = { screens: {} }
+let selected = null
+const frames = new Map() // path -> { el, iframe, screen, height }
+
+const apply = () => {
+  world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`
+  viewport.style.backgroundImage = 'radial-gradient(#26262b 1px, transparent 1px)'
+  const s = 24 * view.z
+  viewport.style.backgroundSize = `${s}px ${s}px`
+  viewport.style.backgroundPosition = `${view.x}px ${view.y}px`
+  document.getElementById('zoom').textContent = `${Math.round(view.z * 100)}%`
+  localStorage.setItem('stitch2-view', JSON.stringify(view))
+}
+const zoomAt = (cx, cy, z) => {
+  z = Math.min(4, Math.max(0.03, z))
+  view.x = cx - (cx - view.x) * (z / view.z)
+  view.y = cy - (cy - view.y) * (z / view.z)
+  view.z = z
+  apply()
+}
+
+// ---- grouping: rows are app screens (components first), frames are versions ----
+const rowKey = (s) => (s.kind === 'components' ? '~components' : s.screen)
+const rowRank = (k) => (k === '~components' ? -1 : ORDER.includes(k) ? ORDER.indexOf(k) : 100)
+const sortRows = (keys) => keys.sort((a, b) => rowRank(a) - rowRank(b) || a.localeCompare(b))
+const sortVersions = (list) =>
+  list.sort((a, b) => (a.device === b.device ? 0 : a.device === 'mobile' ? -1 : 1) || STATUS_RANK[a.status] - STATUS_RANK[b.status] || b.mtime - a.mtime)
+function shown(s) {
+  const q = document.getElementById('search').value.trim().toLowerCase()
+  if (q && !`${s.screen} ${s.title} ${s.path} ${s.version} ${s.source}`.toLowerCase().includes(q)) return false
+  if (filters.device !== 'all' && s.kind === 'screen' && s.device !== filters.device) return false
+  if (s.kind === 'components') return filters.status !== 'review' && filters.status !== 'approved'
+  if (filters.status === 'active') return s.status !== 'archived'
+  if (filters.status === 'all') return true
+  return s.status === filters.status
+}
+const rows = () => {
+  const by = new Map()
+  for (const s of screens) by.set(rowKey(s), [...(by.get(rowKey(s)) ?? []), s])
+  return sortRows([...by.keys()]).map((k) => ({ key: k, all: sortVersions(by.get(k)), visible: sortVersions(by.get(k).filter(shown)) }))
+}
+
+// Screens flow left to right and wrap, like a design canvas; each screen's versions stay together.
+function layout() {
+  for (const n of world.querySelectorAll('.row-label')) n.remove()
+  let x = 0, y = 0, lineH = 0
+  for (const row of rows()) {
+    for (const s of row.all) frames.get(s.path).el.style.display = row.visible.includes(s) ? '' : 'none'
+    if (!row.visible.length) continue
+    const groupW = row.visible.reduce((w, s) => w + s.width, 0) + GAP_X * (row.visible.length - 1)
+    if (x > 0 && x + groupW > LINE_W) { x = 0; y += lineH + GAP_Y; lineH = 0 }
+    const label = document.createElement('div')
+    label.className = 'row-label'
+    const approved = row.all.filter((s) => s.status === 'approved').map((s) => `${s.device} ${s.version}`)
+    label.innerHTML = '<b></b><span></span>'
+    label.querySelector('b').textContent = row.key === '~components' ? 'Components' : row.key
+    label.querySelector('span').textContent = row.key === '~components' ? 'the catalog every screen is built from' : approved.length ? `approved: ${approved.join(', ')}` : 'nothing approved yet'
+    label.style.transform = `translate(${x}px, ${y}px)`
+    label.style.maxWidth = `${groupW}px`
+    world.append(label)
+    let fx = x, tallest = 0
+    for (const s of row.visible) {
+      const f = frames.get(s.path)
+      f.el.style.left = `${fx}px`
+      f.el.style.top = `${y + ROW_LABEL_H}px`
+      fx += s.width + GAP_X
+      tallest = Math.max(tallest, f.height + LABEL_H)
+    }
+    lineH = Math.max(lineH, ROW_LABEL_H + tallest)
+    x += groupW + GROUP_GAP
+  }
+  tree()
+}
+
+function tree() {
+  const nav = document.getElementById('tree')
+  nav.innerHTML = ''
+  const head = (t) => { const h = document.createElement('h4'); h.textContent = t; nav.append(h) }
+  const item = (label, meta, on, click, dot, cls = '', copyText = '') => {
+    const b = document.createElement('div')
+    b.setAttribute('role', 'button')
+    b.tabIndex = 0
+    b.onkeydown = (e) => { if (e.key === 'Enter') click() }
+    b.className = `item ${cls}${on ? ' on' : ''}`
+    b.innerHTML = `${dot ? `<span class="dot ${dot}"></span>` : ''}<span class="t"></span><span class="meta"></span>`
+    b.querySelector('.t').textContent = label
+    b.querySelector('.meta').textContent = meta
+    b.onclick = click
+    if (copyText) b.append(copyButton(copyText, 'Copy a reference to paste to an agent'))
+    nav.append(b)
+    return b
+  }
+  head('Design system')
+  const docOpen = (url) => document.getElementById('doc').classList.contains('open') && docUrl === url
+  item('DESIGN.md', 'tokens · rules', docOpen('/design'), () => openDoc('/design'))
+  item('Consistency report', 'components × screens', docOpen('/consistency/index.html'), () => openDoc('/consistency/index.html'))
+  const all = rows()
+  const comp = all.find((r) => r.key === '~components')
+  if (comp?.visible.length) {
+    head('Components')
+    for (const s of comp.visible) item(s.title.replace(/^[^—]+ — /, ''), 'catalog', selected?.screen.path === s.path, () => select(frames.get(s.path), true), '', '', ref(s))
+  }
+  head('Screens')
+  for (const row of all) {
+    if (row.key === '~components' || !row.visible.length) continue
+    const name = document.createElement('div')
+    name.className = 'screen-name'
+    const approved = row.all.some((s) => s.status === 'approved')
+    name.innerHTML = `<span class="dot ${approved ? 'approved' : row.all.some((s) => s.status === 'review') ? 'review' : 'draft'}"></span><span></span><span class="meta"></span>`
+    name.children[1].textContent = row.key
+    name.querySelector('.meta').textContent = `${row.visible.length} version${row.visible.length > 1 ? 's' : ''}`
+    name.onclick = () => select(frames.get(row.visible[0].path), true)
+    name.append(copyButton(row.key, 'Copy the screen name'))
+    nav.append(name)
+    for (const s of row.visible) item(`${s.version} · ${s.device}`, STATUS_LABEL[s.status], selected?.screen.path === s.path, () => select(frames.get(s.path), true), s.status, 'version', ref(s))
+  }
+}
+
+function fit() {
+  let w = 0, h = 0
+  for (const f of frames.values()) {
+    if (f.el.style.display === 'none') continue
+    w = Math.max(w, parseFloat(f.el.style.left) + f.screen.width)
+    h = Math.max(h, parseFloat(f.el.style.top) + f.height + LABEL_H)
+  }
+  if (!w || !h) return
+  const z = Math.min((innerWidth - SIDE - 80) / w, (innerHeight - 100) / h, 1)
+  view = { z, x: 40, y: 50 }
+  apply()
+}
+
+/** Bring a frame into view: its width and the first screenful fit, top-aligned. */
+function zoomTo(f) {
+  const room = innerWidth - SIDE - (document.getElementById('inspector').classList.contains('open') ? 400 : 0) - 80
+  const z = Math.min(1, room / f.screen.width, (innerHeight - 100) / Math.min(f.height + LABEL_H, f.screen.width > 700 ? 900 : 900))
+  const fx = parseFloat(f.el.style.left), fy = parseFloat(f.el.style.top)
+  view = { z, x: 40 + (room - f.screen.width * z) / 2 - fx * z, y: 30 - (fy - ROW_LABEL_H) * z }
+  apply()
+}
+
+function measure(f) {
+  try {
+    const doc = f.iframe.contentDocument
+    const min = f.screen.width > 700 ? 800 : 844
+    const h = Math.min(6000, Math.max(min, doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0))
+    if (Math.abs(h - f.height) > 2) {
+      f.height = h
+      f.iframe.style.height = `${h}px`
+      layout()
+    }
+  } catch {}
+}
+
+function badge(f) {
+  const b = f.el.querySelector('.badge')
+  const issues = checks.screens?.[f.screen.path]
+  if (!issues) { b.className = 'badge'; b.textContent = 'not checked'; return }
+  const errors = issues.filter((i) => i.severity === 'error').length
+  const warnings = issues.length - errors
+  b.className = `badge ${errors ? 'bad' : warnings ? 'warn' : 'ok'}`
+  b.textContent = errors ? `${errors} error${errors > 1 ? 's' : ''}${warnings ? ` · ${warnings}` : ''}` : warnings ? `${warnings} warning${warnings > 1 ? 's' : ''}` : '✓ clean'
+}
+
+function paintLabel(f) {
+  const s = f.screen
+  f.el.className = `frame ${s.device} ${s.status}${selected === f ? ' selected' : ''}`
+  f.el.querySelector('.name').textContent = s.kind === 'components' ? 'Catalog' : `${s.version}`
+  const pill = f.el.querySelector('.pill')
+  pill.className = `pill ${s.status}`
+  pill.textContent = s.kind === 'components' ? 'components' : `${STATUS_LABEL[s.status]} · ${s.source}`
+  pill.title = STATUS_HINT[s.status] ?? ''
+  f.el.querySelector('.title').textContent = s.title
+  f.el.querySelector('.title').title = s.path
+}
+
+function summary() {
+  const versions = screens.filter((s) => s.kind === 'screen')
+  const review = versions.filter((s) => s.status === 'review').length
+  const approved = new Set(versions.filter((s) => s.status === 'approved').map((s) => s.screen)).size
+  const names = new Set(versions.map((s) => s.screen)).size
+  const bad = versions.filter((s) => checks.screens?.[s.path]?.some((i) => i.severity === 'error')).length
+  document.getElementById('summary').textContent = `${names} screens · ${approved} approved · ${review} need review${bad ? ` · ${bad} with errors` : ''}`
+}
+
+function frameFor(s) {
+  const el = document.createElement('div')
+  // The frame is exactly as wide as its device; a long title is cut, never widens it.
+  el.style.width = `${s.width}px`
+  el.innerHTML = `<div class="label"><span class="name"></span><span class="pill"></span><span class="title"></span><button class="copy" type="button" title="Copy a reference to paste to an agent">Copy</button><button class="badge" type="button"></button></div><div class="device"><iframe loading="lazy" scrolling="no"></iframe><div class="shield"></div></div>`
+  const iframe = el.querySelector('iframe')
+  iframe.style.width = `${s.width}px`
+  iframe.style.height = `${s.width > 700 ? 800 : 844}px`
+  iframe.src = `/${s.path}`
+  const f = { el, iframe, screen: s, height: s.width > 700 ? 800 : 844 }
+  iframe.addEventListener('load', () => { measure(f); setTimeout(() => measure(f), 800); setTimeout(() => measure(f), 2500) })
+  el.querySelector('.shield').addEventListener('click', () => select(f, false))
+  el.querySelector('.shield').addEventListener('dblclick', () => { select(f, false); f.el.classList.add('live') })
+  el.querySelector('.label').addEventListener('click', () => select(f, true))
+  el.querySelector('.label .copy').addEventListener('click', (e) => { e.stopPropagation(); copy(ref(f.screen)) })
+  world.append(el)
+  frames.set(s.path, f)
+  paintLabel(f)
+  badge(f)
+  return f
+}
+
+// ---- selection and the inspector ----
+function select(f, zoom) {
+  for (const g of frames.values()) g.el.classList.remove('live')
+  const prev = selected
+  selected = f
+  if (prev) paintLabel(prev)
+  if (f) { paintLabel(f); inspector(f); if (zoom) zoomTo(f) }
+  else document.getElementById('inspector').classList.remove('open')
+  closeDoc()
+  tree()
+}
+
+function inspector(f) {
+  const box = document.getElementById('inspector')
+  const s = f.screen
+  const issues = checks.screens?.[s.path] ?? []
+  box.innerHTML = `<h3><span class="dot ${s.status}"></span><span class="h"></span><button type="button" class="copy" title="Copy a reference to paste to an agent">Copy</button><button type="button" class="close" title="Close (Esc)">×</button></h3>
+    <div class="facts"><span class="f"></span> · <a target="_blank"></a></div>
+    ${s.kind === 'screen' ? `<div class="status">${['approved', 'review', 'draft', 'archived'].map((st) => `<button type="button" data-st="${st}" title="${STATUS_HINT[st]}" class="${s.status === st ? 'on' : ''}">${st === 'approved' ? 'Approve' : st === 'review' ? 'Needs review' : st === 'draft' ? 'Draft' : 'Archive'}</button>`).join('')}</div>
+    <textarea placeholder="Note for the agent: what to keep, what to change"></textarea><button type="button" class="save">Save note</button>` : ''}
+    <h4>Checks</h4><ul></ul>`
+  box.querySelector('.h').textContent = s.kind === 'components' ? 'Component catalog' : `${s.screen} · ${s.version}`
+  box.querySelector('.f').textContent = `${s.device} · ${s.source}`
+  const a = box.querySelector('.facts a')
+  a.href = `/${s.path}`
+  a.textContent = s.path
+  box.querySelector('h3 .close').onclick = () => select(null)
+  box.querySelector('h3 .copy').onclick = () => copy(ref(s))
+  for (const b of box.querySelectorAll('.status button')) b.onclick = () => setMeta(s.path, { status: b.dataset.st })
+  const note = box.querySelector('textarea')
+  if (note) {
+    note.value = s.note
+    box.querySelector('.save').onclick = () => setMeta(s.path, { note: note.value })
+  }
+  const ul = box.querySelector('ul')
+  if (!checks.screens?.[s.path]) ul.innerHTML = '<li>Not checked yet: run the check command.</li>'
+  else if (!issues.length) ul.innerHTML = '<li>No issues.</li>'
+  for (const i of issues) {
+    const li = document.createElement('li')
+    li.className = i.severity
+    li.innerHTML = '<span class="sev"></span><span class="msg"></span><code></code>'
+    li.querySelector('.sev').textContent = i.severity
+    li.querySelector('.msg').textContent = i.message + (i.text ? ` — “${i.text}”` : '')
+    li.querySelector('code').textContent = i.selector
+    li.onclick = () => locate(f, i.selector)
+    ul.append(li)
+  }
+  box.classList.add('open')
+}
+
+async function setMeta(path, body) {
+  const res = await fetch('/api/screens/meta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, ...body }) })
+  if (!res.ok) return alert(await res.text())
+  await load(false, await res.json())
+}
+
+/** Outline the element in its frame and bring it to the middle of the canvas. */
+function locate(f, selector) {
+  let el
+  try { el = f.iframe.contentDocument.querySelector(selector) } catch {}
+  if (!el) return
+  f.iframe.contentDocument.querySelectorAll('[data-stitch2-hit]').forEach((n) => { n.style.outline = n.dataset.stitch2Hit; n.removeAttribute('data-stitch2-hit') })
+  el.dataset.stitch2Hit = el.style.outline
+  el.style.outline = '3px solid #e5484d'
+  el.style.outlineOffset = '2px'
+  const r = el.getBoundingClientRect()
+  const fx = parseFloat(f.el.style.left), fy = parseFloat(f.el.style.top) + LABEL_H
+  const z = Math.max(view.z, 0.9)
+  const cx = (innerWidth - SIDE - 400) / 2
+  view = { z, x: cx - (fx + r.left + r.width / 2) * z, y: innerHeight / 2 - (fy + r.top + r.height / 2) * z }
+  apply()
+}
+
+let docUrl = ''
+function openDoc(url = '/design') {
+  docUrl = url
+  selected = null
+  for (const f of frames.values()) paintLabel(f)
+  document.getElementById('inspector').classList.remove('open')
+  const doc = document.getElementById('doc')
+  doc.querySelector('iframe').src = url
+  doc.classList.add('open')
+  tree()
+}
+function closeDoc() { document.getElementById('doc').classList.remove('open') }
+document.querySelector('#doc button').onclick = () => { closeDoc(); tree() }
+
+async function loadChecks() {
+  checks = await fetch('/api/checks').then((r) => r.json()).catch(() => ({ screens: {} }))
+  for (const f of frames.values()) badge(f)
+  if (selected) inspector(selected)
+  summary()
+}
+
+async function load(first, given) {
+  const next = given ?? (await fetch('/api/screens').then((r) => r.json()))
+  const keep = new Set(next.map((s) => s.path))
+  for (const [p, f] of frames) if (!keep.has(p)) { f.el.remove(); frames.delete(p); if (selected === f) selected = null }
+  for (const s of next) {
+    const f = frames.get(s.path)
+    if (f) { f.screen = s; paintLabel(f) } else frameFor(s)
+  }
+  screens = next
+  layout()
+  await loadChecks()
+  if (selected) inspector(selected)
+  if (first && !localStorage.getItem('stitch2-view')) setTimeout(fit, 1500)
+}
+
+// ---- filters ----
+for (const [id, key] of [['statusFilter', 'status'], ['deviceFilter', 'device']]) {
+  const seg = document.getElementById(id)
+  for (const b of seg.querySelectorAll('button')) {
+    b.classList.toggle('on', b.dataset.v === filters[key])
+    b.onclick = () => {
+      filters[key] = b.dataset.v
+      localStorage.setItem('stitch2-filters', JSON.stringify(filters))
+      for (const o of seg.querySelectorAll('button')) o.classList.toggle('on', o === b)
+      layout()
+    }
+  }
+}
+document.getElementById('search').oninput = layout
+
+// ---- live reload ----
+const events = new EventSource('/events')
+events.onmessage = async (e) => {
+  const { paths } = JSON.parse(e.data)
+  if (paths.some((p) => p === 'checks.json')) await loadChecks()
+  const html = paths.filter((p) => p.endsWith('.html'))
+  if (html.length) await load(false)
+  if (paths.includes('DESIGN.md') && document.getElementById('doc').classList.contains('open')) document.querySelector('#doc iframe').contentWindow.location.reload()
+  const shared = paths.some((p) => /^(tokens\.css|tailwind\.tokens\.js|components\/)/.test(p))
+  for (const f of frames.values()) {
+    if (shared || html.includes(f.screen.path)) {
+      f.iframe.contentWindow?.location.reload()
+      f.el.classList.remove('changed'); void f.el.offsetWidth; f.el.classList.add('changed')
+    }
+  }
+}
+
+// ---- pan, zoom, keys ----
+let drag = null
+viewport.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.badge, .label, .frame.live .device')) return
+  drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false }
+  viewport.classList.add('panning')
+  viewport.setPointerCapture(e.pointerId)
+})
+viewport.addEventListener('pointermove', (e) => {
+  if (!drag) return
+  if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 3) drag.moved = true
+  view.x = drag.vx + e.clientX - drag.x
+  view.y = drag.vy + e.clientY - drag.y
+  apply()
+})
+viewport.addEventListener('pointerup', (e) => {
+  const d = drag
+  drag = null
+  viewport.classList.remove('panning')
+  if (d?.moved) return
+  // A click without a drag: select the frame under the pointer, or clear the selection on empty canvas.
+  const hit = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('shield'))
+  const f = hit && [...frames.values()].find((g) => g.el.contains(hit))
+  if (f) select(f, false)
+  else if (!e.target.closest('.frame')) select(null)
+})
+viewport.addEventListener('dblclick', (e) => {
+  // Double-click a frame to use it like a phone (scroll, tap); Esc or a click outside leaves.
+  const hit = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('shield'))
+  const f = hit && [...frames.values()].find((g) => g.el.contains(hit))
+  if (f) { select(f, false); f.el.classList.add('live') }
+})
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault()
+  if (e.ctrlKey || e.metaKey) zoomAt(e.clientX - SIDE, e.clientY, view.z * Math.exp(-e.deltaY * 0.01))
+  else { view.x -= e.deltaX; view.y -= e.deltaY; apply() }
+}, { passive: false })
+const visibleFrames = () => rows().flatMap((r) => r.visible.map((s) => frames.get(s.path)))
+addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return }
+  if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus() }
+  if (e.key === 'Escape') { closeDoc(); select(null) }
+  if (e.key === 'f' || e.key === 'F') fit()
+  if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
+  if (e.key === '+' || e.key === '=') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z * 1.2)
+  if (e.key === '-') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z / 1.2)
+  if (e.key === 'r' || e.key === 'R') for (const f of frames.values()) f.iframe.contentWindow?.location.reload()
+  if (['j', 'k', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+    const list = visibleFrames()
+    if (!list.length) return
+    const i = list.indexOf(selected)
+    const next = list[(i + (e.key === 'j' || e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length]
+    select(next, true)
+    e.preventDefault()
+  }
+  if (selected?.screen.kind === 'screen' && e.key === 'a') setMeta(selected.screen.path, { status: 'approved' })
+})
+document.getElementById('fit').onclick = fit
+document.getElementById('reload').onclick = () => { for (const f of frames.values()) f.iframe.contentWindow?.location.reload() }
+
+apply()
+fetch('/api/config').then((r) => r.json()).then((c) => {
+  ORDER = c.order ?? []
+  document.getElementById('labName').textContent = c.name
+  document.title = c.name
+  load(true)
+})
+</script>
+</body>
+</html>

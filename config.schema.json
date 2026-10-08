@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "stitch2.config.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Shown on the canvas.",
+      "default": "stitch2"
+    },
+    "designDir": {
+      "type": "string",
+      "description": "Folder with DESIGN.md, the generated tokens, components and screens, relative to this file.",
+      "default": "design"
+    },
+    "screenDirs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Folders under designDir that hold screens.",
+      "default": ["screens"]
+    },
+    "stitchDir": {
+      "type": "string",
+      "description": "Folder under designDir with Google Stitch exports (their source defaults to stitch).",
+      "default": "stitch"
+    },
+    "archiveDirs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Folders under designDir with past experiments: archived by default, compared only among themselves.",
+      "default": []
+    },
+    "catalogDir": {
+      "type": "string",
+      "description": "Folder under designDir with the component catalog screen(s), the reference for consistency.",
+      "default": "screens/components"
+    },
+    "prefix": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*$",
+      "description": "Prefix of meta tags (<prefix>-status), components (<prefix>-button, data-<prefix>) and CSS variables (--<prefix>-*).",
+      "default": "s2"
+    },
+    "order": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Screen names in canvas order; the rest follow alphabetically.",
+      "default": []
+    },
+    "comfortableTarget": {
+      "type": "number",
+      "description": "Tap targets smaller than this (px) get a warning.",
+      "default": 32
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Skill folders a blind-trial sandbox copies, relative to this file.",
+      "default": []
+    },
+    "sandboxExclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Paths under designDir a sandbox leaves out besides screens.",
+      "default": []
+    }
+  }
+}

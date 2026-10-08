@@ -1,0 +1,6 @@
+node_modules/
+# stitch2 output inside example projects
+design/renders/
+design/consistency/
+design/checks.json
+design/type-audit.json

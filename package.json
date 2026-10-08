@@ -1,0 +1,53 @@
+{
+  "name": "stitch2",
+  "version": "0.1.0",
+  "description": "A design canvas, layout and type checks, component consistency and screen versioning for agent-built UI, on Google's DESIGN.md format.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "stitch2": "src/cli.ts"
+  },
+  "files": [
+    "src",
+    "skills",
+    "config.schema.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "canvas": "node src/cli.ts canvas",
+    "check": "node src/cli.ts check",
+    "consistency": "node src/cli.ts consistency",
+    "type": "node src/cli.ts type",
+    "tokens": "node src/cli.ts tokens",
+    "lint": "node src/cli.ts lint",
+    "screens": "node src/cli.ts screens",
+    "localize": "node src/cli.ts localize",
+    "sandbox": "node src/cli.ts sandbox"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@google/design.md": "0.4.0",
+    "@material/material-color-utilities": "0.3.0",
+    "@playwright/test": "1.63.0",
+    "yaml": "2.9.1"
+  },
+  "keywords": [
+    "design",
+    "design-system",
+    "design-md",
+    "agents",
+    "skills",
+    "canvas",
+    "ui",
+    "stitch",
+    "playwright"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ifokeev/stitch2.git"
+  },
+  "private": true
+}
