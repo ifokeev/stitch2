@@ -29,7 +29,7 @@ const COMMANDS: Record<string, [string, string]> = {
   localize: ['assets.ts', '[filter]  Copy remote images a screen uses into its assets/ folder'],
   sandbox: [
     'sandbox.ts',
-    '<dir> <brief.md>…  (evaluation) A folder to test skill changes on fresh agents, without screens',
+    'create <dir> <brief.md>… [--context <screen>…] | import <dir>  Fresh-eyes versions from agents that see no other versions',
   ],
 }
 

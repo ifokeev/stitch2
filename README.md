@@ -26,11 +26,14 @@ agents skills that tell them how.
 - **DESIGN.md builder**: `stitch2 init` writes a complete DESIGN.md from a few choices (brand colour, modes,
   fonts, roundness, density), with colours checked for contrast; `stitch2 extract` measures one from an existing
   site or screens.
-- **Blind trials** (`stitch2 sandbox`, for evaluating changes to the skills): a folder with your design system
-  and skills but no screens, so a fresh agent's output shows what the rules alone produce.
+- **Fresh-eyes variants** (`stitch2 sandbox`): a folder with your design system, components and skills but no
+  screens, where a fresh agent designs from a brief without being anchored to the existing versions;
+  `stitch2 sandbox import` brings the result back as the next version for review. Also the way to test a change
+  to the skills on output only the rules produced.
 - **Skills** for agents (`skills/`): `stitch2` (the design workflow, principles, typography, components,
-  versions), `stitch2-design-md` (building the design system), `stitch2-consistency` (verifying and fixing
-  consistency) and, optional, `stitch2-google-stitch` (drafting screens in Google Stitch through its MCP server).
+  versions), `stitch2-design-md` (building the design system), `stitch2-variants` (fresh-eyes versions and
+  testing skill changes), `stitch2-consistency` (verifying and fixing
+  consistency) and, optional, `stitch2-import-from-google-stitch` (drafting screens in Google Stitch through its MCP server).
 
 ## Setup
 
@@ -74,7 +77,8 @@ agents skills that tell them how.
 | `stitch2 tokens` | Tokens from DESIGN.md |
 | `stitch2 lint` | Google's DESIGN.md linter |
 | `stitch2 localize [filter]` | Copies a screen's remote images into its `assets/` folder |
-| `stitch2 sandbox <dir> <brief.md>…` | A blind-trial folder, for evaluating skill changes |
+| `stitch2 sandbox create <dir> <brief.md>… [--context <screen>…]` | A fresh-eyes folder for an agent that sees no other versions |
+| `stitch2 sandbox import <dir> [--label …]` | Brings its screens back as new versions, status review |
 
 ## Status
 

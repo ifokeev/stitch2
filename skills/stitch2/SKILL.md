@@ -64,12 +64,11 @@ References, read before the first screen:
 | `lint` | Google's DESIGN.md linter |
 | `localize [filter]` | Copies remote images a screen uses into its `assets/` folder |
 | `init`, `extract` | Build DESIGN.md from choices, or measure it from an existing site (stitch2-design-md) |
-| `sandbox <dir> <brief.md>…` | An isolated folder for a blind trial (evaluating skill changes) |
+| `sandbox create <dir> <brief.md>…`, `sandbox import <dir>` | Fresh-eyes versions from agents that see no other versions (stitch2-variants) |
 
-## Blind trial
+## Alternatives and fresh eyes
 
-To compare approaches (a changed rule, another model, Stitch) without leaking context, `stitch2 sandbox
-/tmp/<name> briefs…` builds a folder with the project's design system, components, catalog, template, skills and
-a copy of stitch2, and no screens or history. Start a fresh agent with no forked conversation in that folder, give
-it the briefs verbatim, then copy its screens into an archive folder (`archiveDirs` in the config) and compare
-with `check`, `type` and the canvas.
+When the user wants options or a new direction, or a design is stuck, do not iterate on the existing versions:
+use the **stitch2-variants** skill. Fresh agents in sandboxes design from the brief without seeing the other
+versions, and their screens come back as new versions to compare on the canvas. The same skill tests changes to
+the skills or DESIGN.md.
