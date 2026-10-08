@@ -37,7 +37,13 @@ agents skills that tell them how.
 
 ## Setup
 
-1. Install it as a dev dependency (Node 24 or newer) and Chromium for Playwright: `npx playwright install chromium`.
+1. Install it as a dev dependency (Node 24 or newer); it builds itself on install. Then install Chromium for
+   Playwright, which renders the screens:
+
+   ```bash
+   pnpm add -D github:ifokeev/stitch2     # or: npm install -D github:ifokeev/stitch2
+   npx playwright install chromium
+   ```
 2. Create `DESIGN.md` in [Google's DESIGN.md format](https://github.com/google-labs-code/design.md) (tokens in
    the YAML front matter, rules in the prose): `stitch2 init --name "My app" --primary "#2F6FEB"` from a few
    choices, or `stitch2 extract https://my.app` from an existing product; then refine the prose.
@@ -80,11 +86,17 @@ agents skills that tell them how.
 | `stitch2 sandbox create <dir> <brief.md>… [--context <screen>…]` | A fresh-eyes folder for an agent that sees no other versions |
 | `stitch2 sandbox import <dir> [--label …]` | Brings its screens back as new versions, status review |
 
-## Status
+## Development
 
-Built and used inside [gymgym](https://github.com/ifokeev/gymgym), where it is tuned on a real app. Not yet
-published to npm: it runs its TypeScript sources directly with Node's type stripping, which Node does not apply
-inside `node_modules`, so a build step comes first.
+```bash
+git clone https://github.com/ifokeev/stitch2 && cd stitch2
+pnpm install
+node src/cli.ts <command>    # runs the TypeScript sources directly (Node 24 strips the types)
+pnpm typecheck
+pnpm build                   # compiles to dist/, which the installed package runs
+```
+
+Point it at a project with `STITCH2_CONFIG=/path/to/stitch2.config.json`, or run it from inside the project.
 
 ## Licence
 

@@ -5,16 +5,19 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "stitch2": "src/cli.ts"
+    "stitch2": "dist/cli.js"
   },
   "files": [
-    "src",
+    "dist",
     "skills",
     "config.schema.json",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
+    "build": "tsc -p . && node -e \"require('node:fs').copyFileSync('src/canvas.html','dist/canvas.html')\"",
+    "prepare": "npm run build",
+    "typecheck": "tsc -p . --noEmit",
     "canvas": "node src/cli.ts canvas",
     "check": "node src/cli.ts check",
     "consistency": "node src/cli.ts consistency",
@@ -48,6 +51,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ifokeev/stitch2.git"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "typescript": "7.0.2"
   },
   "private": true
 }

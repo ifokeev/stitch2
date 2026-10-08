@@ -80,7 +80,7 @@ export function writeDesign(c: Choices, a: Record<string, string | true>) {
   console.log('next: refine the prose (brand, voice, components), then stitch2 lint and stitch2 tokens')
 }
 
-if (process.argv[1]?.endsWith('init.ts')) {
+if (/init\.[jt]s$/.test(process.argv[1] ?? '')) {
   const a = parseArgs(process.argv.slice(2))
   writeDesign(choicesFrom(a), a)
 }

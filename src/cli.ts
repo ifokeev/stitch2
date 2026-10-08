@@ -50,7 +50,9 @@ if (command === 'lint') {
     process.exit(1)
   }
 } else {
-  const script = fileURLToPath(new URL(entry[0], import.meta.url))
+  // Sources run as .ts (Node strips the types); the published build runs as .js.
+  const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js'
+  const script = fileURLToPath(new URL(entry[0].replace(/\.ts$/, ext), import.meta.url))
   process.argv = [process.argv[0]!, script, ...rest]
   await import(script)
 }

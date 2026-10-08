@@ -22,6 +22,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { BASE, CONFIG_NAME, config, type LabConfig } from './config.ts'
 import { listScreens, meta, ROOT, tag, writeMeta } from './screens.ts'
 
@@ -52,7 +53,11 @@ if (sub === 'create') {
     console.error(`${out} is not empty`)
     process.exit(1)
   }
-  const lab = new URL('..', import.meta.url).pathname
+  // The running code (src/*.ts from a checkout, dist/*.js from an install) and the node_modules it resolves from.
+  const code = dirname(fileURLToPath(import.meta.url))
+  const codeDir = basename(code)
+  const ext = import.meta.url.endsWith('.ts') ? 'ts' : 'js'
+  const modules = fileURLToPath(import.meta.resolve('@playwright/test')).replace(/(.*\/node_modules)\/.*/, '$1')
   // The design folder minus every screen, except the catalog and templates (files starting with _).
   const generated = new Set(['renders', 'checks.json', 'type-audit.json', 'consistency'])
   cpSync(ROOT, join(out, 'design'), {
@@ -95,9 +100,9 @@ if (sub === 'create') {
     join(out, CONFIG_NAME),
     `${JSON.stringify({ ...config, designDir: 'design', screenDirs: config.screenDirs.filter((d) => d !== config.stitchDir), archiveDirs: [] }, null, 2)}\n`,
   )
-  cpSync(join(lab, 'src'), join(out, 'stitch2/src'), { recursive: true })
-  cpSync(join(lab, 'package.json'), join(out, 'stitch2/package.json'))
-  symlinkSync(join(lab, 'node_modules'), join(out, 'stitch2/node_modules'))
+  cpSync(code, join(out, 'stitch2', codeDir), { recursive: true })
+  cpSync(join(code, '..', 'package.json'), join(out, 'stitch2/package.json'))
+  symlinkSync(modules, join(out, 'stitch2/node_modules'))
   mkdirSync(join(out, 'briefs'), { recursive: true })
   for (const b of briefs) cpSync(resolve(b), join(out, 'briefs', basename(b)))
   const p = config.prefix
@@ -116,9 +121,9 @@ public design guides listed in the skills is fine.
 - Briefs, one screen each: ${briefs.map((b) => `briefs/${basename(b)} → ${target(basename(b).replace(/\.md$/, ''))}`).join('; ')}.
   Start from the template in design/${appDir(config)}/; set <meta name="${p}-screen"> to the brief's name,
   ${p}-device to ${device} and ${p}-status to review when done.
-- stitch2, from this folder: node stitch2/src/cli.ts check --shots once, then node stitch2/src/cli.ts check
-  <path> --shots --strict (renders in design/renders/), node stitch2/src/cli.ts type <path>,
-  node stitch2/src/cli.ts canvas (PORT=4410)
+- stitch2, from this folder: node stitch2/${codeDir}/cli.${ext} check --shots once, then
+  node stitch2/${codeDir}/cli.${ext} check <path> --shots --strict (renders in design/renders/),
+  node stitch2/${codeDir}/cli.${ext} type <path>, node stitch2/${codeDir}/cli.${ext} canvas (PORT=4410)
 `,
   )
   writeFileSync(
