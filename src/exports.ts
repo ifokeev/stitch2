@@ -2,8 +2,9 @@
  * Token exports: DESIGN.md's tokens written for the app, so the product and the canvas share one source. Listed
  * in stitch2.config.json under "exports" and written by stitch2 tokens:
  *   css        CSS variables for both themes and the .type-<level> classes
- *   tailwind4  the same, plus an @theme block (bg-<colour>, rounded-<name>, p-<name>, font-sans) and the type
- *              levels as @utility type-<level>, for a Tailwind v4 stylesheet to @import
+ *   tailwind4  the same, plus an @theme block (bg-<colour>, rounded-<name>, font-sans) and the type levels as
+ *              @utility type-<level>, for a Tailwind v4 stylesheet to @import. Spacing stays out of @theme:
+ *              names like lg or 2xl would also resize max-w-lg and friends; it is --<prefix>-spacing-<name>.
  *   dtcg       W3C Design Tokens JSON, for Style Dictionary and other platforms (iOS, Android)
  * "aliases" maps the app's own variable names to DESIGN.md colours ({ "background": "floor" } writes
  * --background: var(--<prefix>-floor) in each theme), so an existing theme (shadcn's, say) keeps its names.
@@ -52,7 +53,8 @@ function themeBlocks(t: Tokens, e: TokenExport): string[] {
   // The block on :root goes first: a theme class (.dark) has the same specificity and must come later to win.
   const themes = [block(dark, t.dark, 'dark'), block(light, t.light, 'light')]
   if (/:root/.test(light) && !/:root/.test(dark)) themes.reverse()
-  return [...themes, `:root {\n${Object.entries(t.root).map(([k, v]) => `  --${k}: ${v};`).join('\n')}\n}`]
+  const root = { ...t.root, ...Object.fromEntries(Object.entries(t.design.spacing).map(([k, v]) => [`${p()}-spacing-${k}`, v])) }
+  return [...themes, `:root {\n${Object.entries(root).map(([k, v]) => `  --${k}: ${v};`).join('\n')}\n}`]
 }
 
 function css(t: Tokens, e: TokenExport): string {
@@ -67,7 +69,6 @@ function tailwind4(t: Tokens, e: TokenExport): string {
   const theme = [
     ...Object.keys(t.dark).map((k) => `  --color-${k}: var(--${p()}-${k});`),
     ...Object.entries(t.design.rounded).map(([k, v]) => `  --radius-${k}: ${v};`),
-    ...Object.entries(t.design.spacing).map(([k, v]) => `  --spacing-${k}: ${v};`),
     ...(sans ? [`  --font-sans: "${sans}", var(--${p()}-font-sans-fallback);`] : []),
     ...(mono ? [`  --font-mono: "${mono}", var(--${p()}-font-mono-fallback);`] : []),
   ]
