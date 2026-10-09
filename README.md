@@ -7,6 +7,26 @@ agents skills that tell them how.
 > stitch2 is inspired by [Google Stitch](https://stitch.withgoogle.com) and works with it, but it is an
 > independent project, not affiliated with or endorsed by Google.
 
+## Quick start with an AI agent
+
+Paste this to your coding agent (Codex, Claude Code, Cursor or any agent that runs commands) in your project:
+
+```text
+Set up stitch2 (https://github.com/ifokeev/stitch2) in this project:
+1. Install it as a dev dependency (pnpm add -D github:ifokeev/stitch2#release, or the npm equivalent) and
+   Chromium for Playwright (npx playwright install chromium).
+2. Ask me for the product name, the brand colour and whether it needs dark, light or both modes, then run
+   npx stitch2 setup --name "<name>" --primary "<#hex>" --modes <modes>
+   (add --skills-dir .claude/skills if you read skills from there).
+3. Read the stitch2 skill it linked and follow it from now on: refine DESIGN.md's prose with me, draft the
+   screens I describe from the template, run npx stitch2 check --strict until it passes, and tell me to open the
+   canvas (npx stitch2 canvas) to review.
+```
+
+`stitch2 setup` does the mechanical part in one step: it links the skills, writes `stitch2.config.json`,
+DESIGN.md and its tokens, a screen template and a component catalog with a few starter components, and keeps any
+file that already exists. From there the agent spends its effort on the design.
+
 ## What it does
 
 - **Canvas** (`stitch2 canvas`): every screen and its versions on a pan-and-zoom board, a sidebar with search
@@ -55,34 +75,29 @@ agents skills that tell them how.
 1. Install it as a dev dependency (Node 24 or newer), then Chromium for Playwright, which renders the screens:
 
    ```bash
-   pnpm add -D github:ifokeev/stitch2#release   # the latest release; #v0.1.0 to pin one
+   pnpm add -D github:ifokeev/stitch2#release   # the latest release; #v0.6.1 to pin one
    npm install -D github:ifokeev/stitch2#release
    npx playwright install chromium
    ```
-2. Create `DESIGN.md` in [Google's DESIGN.md format](https://github.com/google-labs-code/design.md) (tokens in
-   the YAML front matter, rules in the prose): `stitch2 init --name "My app" --primary "#2F6FEB"` from a few
-   choices, or `stitch2 extract https://my.app` from an existing product; then refine the prose.
-   `stitch2 lint` validates it.
-3. Add `stitch2.config.json` at the project root (all keys optional):
+2. Set the project up:
 
-   ```json
-   {
-     "name": "my app design lab",
-     "designDir": "design",
-     "screenDirs": ["screens"],
-     "catalogDir": "screens/components",
-     "prefix": "ma",
-     "order": ["home", "settings"]
-   }
+   ```bash
+   npx stitch2 setup --name "My app" --primary "#2F6FEB" [--modes dark,light] [--prefix ma] [--skills-dir .agents/skills]
    ```
 
-   The schema is [config.schema.json](config.schema.json). `prefix` names your meta tags (`ma-status`), your
-   components and their marker (`<ma-button>`, `data-ma`) and your CSS variables (`--ma-*`).
-4. Run `stitch2 tokens`, write your components as light-DOM custom elements that mark themselves
-   `data-<prefix>="<name>"`, show them in a catalog screen, and a screen template that loads Tailwind, your
-   tokens, your components and your icons.
-5. Copy or link the skills from `skills/` into your agent's skills folder (for example `.agents/skills/`), and
-   add a short project skill with your brand, component list, screen names and demo data.
+   It links the skills from `skills/` into your agent's skills folder, and writes:
+   - `stitch2.config.json` (schema: [config.schema.json](config.schema.json)). `prefix` names your meta tags
+     (`ma-status`), your components and their marker (`<ma-button>`, `data-ma`) and your CSS variables (`--ma-*`);
+     by default it comes from the product name.
+   - `design/DESIGN.md` in [Google's DESIGN.md format](https://github.com/google-labs-code/design.md) (tokens in the
+     YAML front matter, rules in the prose) and its tokens. Without `--primary` it leaves DESIGN.md to you:
+     `stitch2 init` from a few choices, or `stitch2 extract https://my.app` from an existing product.
+   - `design/screens/_template.html`, `design/screens/components/catalog.html` and `design/components/<prefix>.js`:
+     a screen template, the component catalog and starter components (header, section, card, row, button, chip) as
+     light-DOM custom elements on the tokens. Grow them, or swap in your app's own components (next section).
+3. Refine DESIGN.md's prose (brand, voice, component rules); `stitch2 lint` validates it and `stitch2 tokens`
+   regenerates the tokens. Add a short project skill with your brand, component list, screen names and demo data.
+4. `stitch2 canvas` and start drafting screens from the template.
 
 ## Your app's components on the canvas
 
@@ -148,6 +163,7 @@ component): dialog roots are often zero-sized wrappers, which Playwright reports
 
 | Command | What it does |
 |---|---|
+| `stitch2 setup [--name N --primary #hex] [options]` | Sets a project up: skills, config, DESIGN.md and tokens, template, catalog, starter components |
 | `stitch2 init --name N --primary #hex [options]` | Writes a complete DESIGN.md from a few choices |
 | `stitch2 extract <url or file…>` | Writes a DESIGN.md measured from an existing site or screens |
 | `stitch2 canvas` | The canvas at http://localhost:4400 (`PORT` and `HOST` to change) |
@@ -165,11 +181,14 @@ component): dialog roots are often zero-sized wrappers, which Playwright reports
 
 ## Development
 
+Agents working on stitch2 itself: see [AGENTS.md](AGENTS.md).
+
 ```bash
 git clone https://github.com/ifokeev/stitch2 && cd stitch2
 pnpm install
 node src/cli.ts <command>    # runs the TypeScript sources directly (Node 24 strips the types)
 pnpm typecheck
+pnpm test                    # smoke test in a fresh project; needs Chromium (npx playwright install chromium)
 pnpm build                   # compiles to dist/, which the installed package runs
 ```
 

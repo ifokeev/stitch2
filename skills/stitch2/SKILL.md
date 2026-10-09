@@ -14,8 +14,10 @@ The project tunes all of this in `stitch2.config.json` (folders, the prefix of i
 CSS variables, screen order) and in a **project skill** with its specifics: brand, components, screen names,
 data. Read the project skill first when there is one; it wins over this one where they differ.
 
-No DESIGN.md yet, or a new look: build it first with the **stitch2-design-md** skill (`stitch2 init` or
-`stitch2 extract`).
+A project without stitch2 yet: ask the user for the product name, brand colour and modes, then run
+`stitch2 setup --name "…" --primary "#…" --modes …` (config, DESIGN.md and tokens, template, catalog, starter
+components, and these skills linked). No DESIGN.md yet, or a new look: build it first with the
+**stitch2-design-md** skill (`stitch2 init` or `stitch2 extract`).
 
 References, read before the first screen:
 
@@ -56,6 +58,7 @@ References, read before the first screen:
 
 | Command | What it does |
 |---|---|
+| `setup [--name N --primary #hex] [options]` | Sets a project up in one step; keeps every file that exists |
 | `canvas` | The canvas at http://localhost:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
 | `check [filter] [--shots] [--strict]` | Layout, type, reuse and consistency checks; `--shots` saves renders |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |

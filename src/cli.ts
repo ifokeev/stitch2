@@ -8,6 +8,10 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const COMMANDS: Record<string, [string, string]> = {
+  setup: [
+    'setup.ts',
+    '[--name N --primary #hex] [--prefix p] [--skills-dir .agents/skills,…]  Set a project up: skills, config, template, catalog, starter components',
+  ],
   init: [
     'init.ts',
     '--name N --primary #hex [--modes dark,light --sans Inter --mono … --base 15 --roundness 16]  Write a complete DESIGN.md',
