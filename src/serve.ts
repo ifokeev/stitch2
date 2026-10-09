@@ -125,15 +125,25 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
   })
 
   return new Promise((resolve) => {
-    server.listen(port, '127.0.0.1', () => {
+    // Loopback only, on both IPv4 and IPv6: port forwarders often reach "localhost" as ::1. HOST overrides it
+    // (HOST=0.0.0.0 to open the canvas to the network).
+    const host = process.env.HOST ?? '127.0.0.1'
+    let v6: ReturnType<typeof createServer> | undefined
+    server.listen(port, host, () => {
       const address = server.address()
+      const actual = typeof address === 'object' && address ? address.port : port
+      if (!process.env.HOST) {
+        v6 = createServer((req, res) => server.emit('request', req, res))
+        v6.on('error', () => {}).listen(actual, '::1')
+      }
       resolve({
-        port: typeof address === 'object' && address ? address.port : port,
+        port: actual,
         close: () => {
           watcher.close()
           clearInterval(keepAlive)
           for (const c of clients) c.end()
           server.close()
+          v6?.close()
         },
       })
     })
@@ -143,6 +153,6 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { port } = await startServer(Number(process.env.PORT ?? 4400))
   console.log(
-    `${config.name}: http://127.0.0.1:${port}  (${CONFIG_FILE ?? 'no stitch2.config.json, defaults'}; screens from ${config.screenDirs.join(', ')})`,
+    `${config.name}: http://localhost:${port}  (${CONFIG_FILE ?? 'no stitch2.config.json, defaults'}; screens from ${config.screenDirs.join(', ')})`,
   )
 }

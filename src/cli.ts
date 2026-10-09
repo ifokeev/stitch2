@@ -18,7 +18,7 @@ const COMMANDS: Record<string, [string, string]> = {
   ],
   canvas: [
     'serve.ts',
-    'The canvas at http://127.0.0.1:4400 (PORT to change): screens, versions, DESIGN.md, approval',
+    'The canvas at http://localhost:4400 (PORT and HOST to change): screens, versions, DESIGN.md, approval',
   ],
   check: ['check.ts', '[filter] [--shots] [--strict]  Layout, type, reuse and consistency checks'],
   consistency: ['report.ts', '[kind]  Every shared component cropped from every screen, side by side'],

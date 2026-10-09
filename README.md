@@ -75,7 +75,7 @@ agents skills that tell them how.
 |---|---|
 | `stitch2 init --name N --primary #hex [options]` | Writes a complete DESIGN.md from a few choices |
 | `stitch2 extract <url or file…>` | Writes a DESIGN.md measured from an existing site or screens |
-| `stitch2 canvas` | The canvas at http://127.0.0.1:4400 (`PORT` to change) |
+| `stitch2 canvas` | The canvas at http://localhost:4400 (`PORT` and `HOST` to change) |
 | `stitch2 check [filter] [--shots] [--strict]` | All checks; `--shots` saves renders to `<design>/renders/` |
 | `stitch2 consistency [kind…]` | The consistency report, `<design>/consistency/index.html` |
 | `stitch2 type [filter] [--json]` | The type audit |

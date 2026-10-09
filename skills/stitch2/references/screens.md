@@ -49,7 +49,7 @@ component, before the first desktop screen.
 
 ## The canvas
 
-`stitch2 canvas` → http://127.0.0.1:4400. The sidebar lists DESIGN.md (drawn as tokens and rules), the
+`stitch2 canvas` → http://localhost:4400. The sidebar lists DESIGN.md (drawn as tokens and rules), the
 consistency report, the component catalog and every screen with its versions; filters for active, approved,
 needs review or all, and mobile or desktop. Selecting a version opens the inspector: status, note, checks, and
 Copy for its reference. Keys: `/` search, `j`/`k` next and previous, `a` approve, `f` fit, `0` actual size,

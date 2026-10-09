@@ -55,7 +55,7 @@ References, read before the first screen:
 
 | Command | What it does |
 |---|---|
-| `canvas` | The canvas at http://127.0.0.1:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
+| `canvas` | The canvas at http://localhost:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
 | `check [filter] [--shots] [--strict]` | Layout, type, reuse and consistency checks; `--shots` saves renders |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |
