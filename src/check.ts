@@ -153,6 +153,32 @@ async function audit(opts: { comfortable: number }): Promise<Issue[]> {
       }
     }
   }
+  // 3b. Fixed bars never overlap one another, including what sticks out of them (a raised tab-bar button
+  // reaching into a docked timer). Compares the painted parts: backgrounds, borders, text, icons, controls.
+  const painted = (el: Element) => {
+    const cs = getComputedStyle(el)
+    return (
+      ownText(el) ||
+      el.matches('svg, img, button, input') ||
+      !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ||
+      Number.parseFloat(cs.borderTopWidth) > 0
+    )
+  }
+  const fixedBars = outer.filter(
+    (b) => getComputedStyle(b).position === 'fixed' && b.getBoundingClientRect().height < window.innerHeight * 0.8,
+  )
+  const parts = (bar: Element) =>
+    [bar, ...bar.querySelectorAll('*')].filter((e) => shown(e) && !inSvg(e) && painted(e)).map((e) => e.getBoundingClientRect())
+  for (const [i, a] of fixedBars.entries())
+    for (const b of fixedBars.slice(i + 1)) {
+      const hit = parts(a).some((r) =>
+        parts(b).some(
+          (q) => Math.min(r.right, q.right) - Math.max(r.left, q.left) > 2 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 2,
+        ),
+      )
+      if (hit) push('error', 'fixed-overlap', b, `Overlaps another fixed bar (“${text(a).slice(0, 30)}”): move one clear of the other`)
+    }
+
   await covered('bottom')
   await covered('top')
   window.scrollTo(0, 0)

@@ -15,7 +15,7 @@ agents skills that tell them how.
   Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
   `home mobile v1 (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`; Shift-click collects
   several to copy at once or add to the version's note.
-- **Checks** (`stitch2 check`): content past the frame edge, labels that wrap, content under fixed bars, tap
+- **Checks** (`stitch2 check`): content past the frame edge, labels that wrap, content under fixed bars, fixed bars that overlap each other, tap
   targets (WCAG 2.2), text contrast, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, components that differ between screens, and colours
   written as values instead of DESIGN.md tokens.

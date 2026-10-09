@@ -43,7 +43,7 @@ References, read before the first screen:
    defines. Never add classes to a component to change how it looks, and never write a colour value (hex,
    `rgb()`, `hsl()`): only DESIGN.md's colours, as token classes or `var(--<prefix>-<name>)`.
 5. **Check** `stitch2 check <path> --shots --strict`. Fix every error (overflow, wrapped labels, content under
-   fixed bars, tap targets, contrast, cramped text) and every warning about type (`type-*`), hand-built
+   fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text) and every warning about type (`type-*`), hand-built
    components (`reuse`), components that differ from the catalog (`consistency`) and colour values (`color`).
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.

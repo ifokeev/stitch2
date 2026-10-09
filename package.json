@@ -1,6 +1,6 @@
 {
   "name": "stitch2",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A design canvas, layout and type checks, component consistency and screen versioning for agent-built UI, on Google's DESIGN.md format.",
   "license": "MIT",
   "type": "module",
