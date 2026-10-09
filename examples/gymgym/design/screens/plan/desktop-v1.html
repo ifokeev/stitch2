@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-status" content="approved" />
+<meta name="gg-screen" content="plan" />
+<meta name="gg-device" content="desktop" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="1280" />
+<title>gymgym — Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <div class="flex">
+    <gg-sidebar active="plan"></gg-sidebar>
+    <main class="min-w-0 flex-1 px-10 pb-12 pt-8"><div class="mx-auto max-w-[960px]">
+<gg-header title="Plan">
+  <gg-icon-button icon="share-2" label="Share your plan"></gg-icon-button>
+  <gg-icon-button icon="ellipsis" label="Import, export and print"></gg-icon-button>
+</gg-header>
+<div class="grid grid-cols-2 items-start gap-6"><div><gg-section label="Weekly plan">
+  <gg-card list>
+    <gg-row icon="arrow-down" name="Pull" meta="Monday" value-meta="Done" chevron></gg-row>
+    <gg-row icon="arrow-up" name="Push" meta="Tuesday · today" value-meta="5 exercises" chevron></gg-row>
+    <gg-row icon="moon" name="Rest day" meta="Wednesday" chevron></gg-row>
+    <gg-row icon="footprints" name="Legs" meta="Thursday" value-meta="6 exercises" chevron></gg-row>
+    <gg-row icon="arrow-up" name="Push" meta="Friday" value-meta="5 exercises" chevron></gg-row>
+    <gg-row icon="arrow-down" name="Pull" meta="Saturday" value-meta="5 exercises" chevron></gg-row>
+    <gg-row icon="moon" name="Rest day" meta="Sunday" chevron></gg-row>
+  </gg-card>
+</gg-section></div><div><gg-section label="Routines" link="New routine">
+  <gg-card list>
+    <gg-row icon="arrow-up" name="Push" meta="5 exercises · Linear progression" chevron></gg-row>
+    <gg-row icon="arrow-down" name="Pull" meta="5 exercises · Double progression" chevron></gg-row>
+    <gg-row icon="footprints" name="Legs" meta="6 exercises · Linear progression" chevron></gg-row>
+  </gg-card>
+</gg-section>
+<gg-section label="Starter plans">
+  <gg-card list>
+    <gg-row name="Push / Pull / Legs" meta="3 routines · 6 days a week" chevron></gg-row>
+    <gg-row name="Full body (Greyskull LP)" meta="2 routines · 3 days a week" chevron></gg-row>
+    <gg-row name="Upper / Lower" meta="2 routines · 4 days a week" chevron></gg-row>
+  </gg-card>
+</gg-section></div></div>
+    </div></main>
+  </div>
+
+</body>
+</html>

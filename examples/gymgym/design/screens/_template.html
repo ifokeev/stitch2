@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-screen" content="screen-name" />
+<meta name="gg-device" content="mobile" />
+<meta name="gg-status" content="draft" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="390" />
+<title>gymgym — Screen name</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<!--
+  Template for gymgym screens (stitch2). Copy to the next version, design/screens/<screen>/<device>-v<N>.html, and
+  set the gg-* meta tags above (desktop: gg-device desktop and gg-frame-width 1280); status draft while you
+  work, review when done (files starting with _ are not shown on the canvas). Versions, statuses and notes:
+  .agents/skills/stitch2/references/screens.md. Build with the <gg-*> elements, the React components in packages/ui (@gymgym/ui, the same ones the app uses), bundled into design/components/gg.elements.js by "corepack pnpm --filter @gymgym/ui elements" (see the catalog screen,
+  design/screens/components/catalog.html): gg-header, gg-section, gg-card, gg-row, gg-button, gg-chip,
+  gg-segmented, gg-stat, gg-set-row, gg-search, gg-tab-bar. Write plain markup only for what no component
+  covers, with token classes (bg-floor/iron/raised, border-hairline, text-chalk/steel/faint, bg-ember,
+  rounded-btn/row/card/sheet) and one .type-<level> class per text element. Keep 120px bottom padding.
+-->
+<body class="bg-floor font-sans text-chalk antialiased">
+  <main class="mx-auto max-w-[390px] px-4 pb-32 pt-6">
+    <gg-header title="Title"></gg-header>
+  </main>
+  <gg-tab-bar active="home"></gg-tab-bar>
+</body>
+</html>

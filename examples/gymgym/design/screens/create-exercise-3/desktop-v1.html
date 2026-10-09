@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-status" content="approved" />
+<meta name="gg-screen" content="create-exercise-3" />
+<meta name="gg-device" content="desktop" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="1280" />
+<title>gymgym — Landmine press</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <div class="flex">
+    <gg-sidebar active="exercises"></gg-sidebar>
+    <main class="min-w-0 flex-1 px-10 pb-12 pt-8"><div class="mx-auto max-w-[960px]">
+<gg-header title="Exercises">
+  <gg-icon-button icon="plus" label="Create an exercise"></gg-icon-button>
+</gg-header>
+<div class="mb-3"><gg-search placeholder="Search 1,324 exercises"></gg-search></div>
+<div class="mb-4"><gg-chip-row>
+  <gg-chip trailing-icon="chevron-down">By muscle</gg-chip>
+  <gg-chip trailing-icon="chevron-down">Equipment</gg-chip>
+  <gg-chip selected icon="map-pin">Home gym</gg-chip>
+  <gg-chip icon="star">Favourites</gg-chip>
+</gg-chip-row></div>
+<p class="mb-3 type-meta text-steel">Showing what you can do at <span class="text-chalk">Home gym</span>: 312 exercises.</p>
+<gg-card list>
+  <gg-row icon="dumbbell" name="Dumbbell Bench Press" meta="Chest · Dumbbell" star="on"></gg-row>
+  <gg-row icon="dumbbell" name="Push-Up" meta="Chest · Body weight" star="off"></gg-row>
+  <gg-row icon="dumbbell" name="Dumbbell Romanian Deadlift" meta="Hamstrings · Dumbbell" star="off"></gg-row>
+  <gg-row icon="dumbbell" name="Goblet Squat" meta="Upper legs · Dumbbell" star="on"></gg-row>
+  <gg-row icon="dumbbell" name="Pull-Up" meta="Back · Body weight" star="on"></gg-row>
+  <gg-row icon="dumbbell" name="Lateral Raise" meta="Shoulders · Dumbbell" star="off"></gg-row>
+  <gg-row icon="dumbbell" name="Landmine Press" meta="Shoulders · Your exercise" star="off"></gg-row>
+</gg-card>
+    </div></main>
+  </div>
+<gg-sheet title="Landmine press" meta="Your exercise · Shoulders" star="off">
+<button type="button" class="mb-6 flex w-full flex-col items-center gap-2 rounded-card border border-dashed border-hairline px-4 py-6 text-steel hover:text-chalk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember">
+  <i data-lucide="image-plus" class="size-5" aria-hidden="true"></i><span class="type-label-button text-chalk">Add a photo</span><span class="type-meta">Only you can see it. Location and camera details are removed.</span>
+</button>
+<p class="mb-6 type-body text-chalk">Half-kneeling, one arm, brace hard.</p>
+<gg-section label="Muscles"><gg-card><gg-body-map shade="shoulders:1" label="Shoulders"></gg-body-map></gg-card></gg-section>
+<gg-section label="Your stats"><gg-card><gg-empty icon="chart-column" title="No sessions yet." text="Log a set of 12 reps or fewer to get an estimate."></gg-empty></gg-card></gg-section>
+<gg-section label="Exercise settings">
+  <gg-card list>
+    <gg-row name="Bodyweight exercise" meta="No load column" toggle="off"></gg-row>
+    <gg-row name="Reps per side" toggle="on"></gg-row>
+    <gg-row name="Load step" value="2.5 kg" chevron></gg-row>
+    <gg-row name="Rep ceiling" meta="Then add a set" value="12" chevron></gg-row>
+  </gg-card>
+</gg-section>
+<div class="grid grid-cols-2 gap-3"><gg-button variant="secondary" icon="pencil">Edit</gg-button><gg-button variant="danger" icon="trash-2">Delete</gg-button></div>
+<p class="mt-2 type-meta text-steel">It is removed from your routines. Logged workouts keep their sets and its name.</p>
+</gg-sheet>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-status" content="approved" />
+<meta name="gg-screen" content="settings" />
+<meta name="gg-device" content="mobile" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="390" />
+<title>gymgym — Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <main class="mx-auto max-w-[390px] px-4 pb-32 pt-6">
+<gg-header title="Settings"></gg-header>
+<gg-section label="Account">
+  <gg-card list>
+    <gg-row icon="user-round" name="Ivan" meta="ivan@gymgym.test" chevron></gg-row>
+    <gg-row icon="key-round" name="Sign-in methods" meta="Google, passkey" chevron></gg-row>
+  </gg-card>
+</gg-section>
+<gg-section label="Units and language">
+  <gg-card list>
+    <gg-row name="Weight unit"><div class="w-32"><gg-segmented options="kg,lb" selected="kg"></gg-segmented></div></gg-row>
+    <gg-row name="Language" value="English" chevron></gg-row>
+    <gg-row name="Week starts on" value="Monday" chevron></gg-row>
+    <gg-row name="Theme" value="Dark" chevron></gg-row>
+  </gg-card>
+</gg-section>
+<gg-section label="Workout">
+  <gg-card list>
+    <gg-row name="Rest timer after each set" toggle="on"></gg-row>
+    <gg-row name="Flash the screen" meta="When a rest or timed hold ends" toggle="on"></gg-row>
+    <gg-row name="Sessions start from" value="The plan" chevron></gg-row>
+    <gg-row name="Plates and bars" value-meta="25 20 15 10 5 2.5 1.25" chevron></gg-row>
+    <gg-row name="Equipment profiles" value="Home gym" chevron></gg-row>
+    <gg-row name="Body weight on Home" toggle="on"></gg-row>
+  </gg-card>
+</gg-section><gg-section label="Connections">
+  <gg-card list>
+    <gg-row icon="bot" name="Connected apps" meta="Claude, Codex" chevron></gg-row>
+    <gg-row icon="braces" name="API keys" meta="1 key" chevron></gg-row>
+    <gg-row icon="laptop" name="Signed-in devices" meta="This device and 2 more" chevron></gg-row>
+  </gg-card>
+</gg-section>
+<gg-section label="Your data">
+  <gg-card list>
+    <gg-row icon="upload" name="Import" meta="FitNotes, Strong, Hevy, Apple Health" chevron></gg-row>
+    <gg-row icon="download" name="Export" meta="Everything, as a file" chevron></gg-row>
+  </gg-card>
+</gg-section>
+<gg-button variant="danger" icon="log-out" full>Sign out</gg-button>
+  </main>
+  <gg-tab-bar></gg-tab-bar>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-status" content="approved" />
+<meta name="gg-screen" content="create-exercise-2" />
+<meta name="gg-device" content="mobile" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="390" />
+<title>gymgym — Create an exercise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <main class="mx-auto max-w-[390px] px-4 pb-32 pt-6">
+<gg-header title="Exercises">
+  <gg-icon-button icon="plus" label="Create an exercise"></gg-icon-button>
+</gg-header>
+<div class="mb-3"><gg-search placeholder="Search 1,324 exercises" value="landmine press"></gg-search></div>
+<div class="mb-4"><gg-chip-row>
+  <gg-chip trailing-icon="chevron-down">By muscle</gg-chip>
+  <gg-chip trailing-icon="chevron-down">Equipment</gg-chip>
+  <gg-chip selected icon="map-pin">Home gym</gg-chip>
+  <gg-chip icon="star">Favourites</gg-chip>
+</gg-chip-row></div>
+<gg-card><gg-empty icon="search" title="No exercise matches “landmine press”." text="Your own exercises work everywhere a library exercise does: in routines, workouts, stats and progression."><gg-button icon="plus" full>Create “landmine press”</gg-button></gg-empty></gg-card>
+  </main>
+  <gg-sheet title="Create an exercise">
+<div class="space-y-5">
+  <gg-field label="Name" value="Landmine press" counter="14 / 80"></gg-field>
+  <div>
+    <p class="mb-1.5 type-label-chip text-steel">Body part</p>
+    <div class="flex flex-wrap gap-2"><gg-chip>Chest</gg-chip><gg-chip>Back</gg-chip><gg-chip selected>Shoulders</gg-chip><gg-chip>Upper arms</gg-chip><gg-chip>Lower arms</gg-chip><gg-chip>Upper legs</gg-chip><gg-chip>Lower legs</gg-chip><gg-chip>Waist</gg-chip><gg-chip>Neck</gg-chip><gg-chip>Cardio</gg-chip></div>
+  </div>
+  <gg-field label="Description (optional)" multiline value="Half-kneeling, one arm, brace hard."></gg-field>
+  <div class="space-y-3 pt-1"><gg-button full>Save exercise</gg-button><gg-button variant="ghost" full>Cancel</gg-button></div>
+</div>
+</gg-sheet>
+</body>
+</html>

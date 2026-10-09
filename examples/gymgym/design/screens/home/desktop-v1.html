@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-status" content="approved" />
+<meta name="gg-screen" content="home" />
+<meta name="gg-device" content="desktop" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="1280" />
+<title>gymgym — Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <div class="flex">
+    <gg-sidebar active="home"></gg-sidebar>
+    <main class="min-w-0 flex-1 px-10 pb-12 pt-8"><div class="mx-auto max-w-[960px]">
+<gg-header meta="Tuesday, 6 October" title="Hi, Ivan"></gg-header>
+<div class="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-6">
+  <div>
+    <div class="mb-6"><gg-card><gg-week days="Mon 5,Tue 6,Wed 7,Thu 8,Fri 9,Sat 10,Sun 11" marks="dprpppr" selected="1"></gg-week></gg-card></div>
+    <div class="mb-6"><gg-card>
+  <gg-card-header title="Push"><gg-chip>5 exercises</gg-chip></gg-card-header>
+  <div class="flex items-baseline justify-between gap-3">
+    <p class="truncate type-body-strong text-chalk">Barbell Bench Press</p>
+    <gg-stat value="82.5" unit="kg"></gg-stat>
+  </div>
+  <p class="mt-1 flex items-center gap-1.5 type-meta text-steel"><i data-lucide="trending-up" class="size-4 shrink-0 text-success" aria-hidden="true"></i><span class="truncate">4 × 6 · every rep last time, 2.5 kg more</span></p>
+  <gg-card-note>Incline Dumbbell Press, Overhead Press, Dips, Triceps Pushdown</gg-card-note>
+  <div class="mt-4"><gg-button icon="play" full>Start Push</gg-button></div>
+</gg-card></div>
+    <gg-section label="Recent workouts" link="History">
+  <gg-card list>
+    <gg-row icon="footprints" name="Legs" meta="Sun, 4 Oct" value-meta="55 min · 14 sets" chevron></gg-row>
+    <gg-row icon="arrow-down" name="Pull" meta="Fri, 2 Oct" value-meta="61 min · 15 sets" chevron></gg-row>
+    <gg-row icon="arrow-up" name="Push" meta="Wed, 30 Sep" value-meta="52 min · 16 sets" chevron></gg-row>
+  </gg-card>
+</gg-section>
+  </div>
+  <div class="space-y-6"><gg-card>
+  <gg-card-header label="Body weight"><gg-button variant="secondary" size="sm" icon="plus">Log weight</gg-button></gg-card-header>
+  <gg-stat value="80.7" unit="kg" note="1.5 kg toward your goal of 79 kg"></gg-stat>
+  <div class="mt-4"><gg-line-chart points="82.2,82,81.9,81.9,81.6,81.5,81.6,81.2,81.1,81,80.9,80.8,80.7" min="78.5" max="82.5" goal="79" from="13 Jul" to="6 Oct" height="96"></gg-line-chart></div>
+</gg-card><gg-card>
+  <gg-card-header label="Streak"></gg-card-header>
+  <gg-stat value="4" unit="weeks" note="3 of 5 this week"></gg-stat>
+</gg-card></div>
+</div>
+    </div></main>
+  </div>
+
+</body>
+</html>

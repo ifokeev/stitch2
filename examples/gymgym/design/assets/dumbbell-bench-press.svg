@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" width="400" height="240" fill="none">
+  <!-- Clean minimalist technical line drawing of figure lying on flat bench pressing two dumbbells -->
+  <rect width="100%" height="100%" fill="#F4F4F5"/>
+  
+  <!-- Bench structure -->
+  <!-- Bench pad -->
+  <rect x="70" y="145" width="230" height="12" rx="4" fill="#18181B" stroke="#18181B" stroke-width="2"/>
+  <!-- Bench support pillar front -->
+  <line x1="110" y1="157" x2="110" y2="195" stroke="#18181B" stroke-width="6" stroke-linecap="round"/>
+  <!-- Bench support pillar rear -->
+  <line x1="260" y1="157" x2="260" y2="195" stroke="#18181B" stroke-width="6" stroke-linecap="round"/>
+  <!-- Floor base / crossbar -->
+  <line x1="90" y1="195" x2="130" y2="195" stroke="#18181B" stroke-width="6" stroke-linecap="round"/>
+  <line x1="240" y1="195" x2="280" y2="195" stroke="#18181B" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Lifter Body (profile / slight 3/4 angle) -->
+  <!-- Head on bench pad -->
+  <circle cx="105" cy="133" r="13" fill="#18181B"/>
+  
+  <!-- Torso lying flat on bench -->
+  <path d="M118 139 C140 137, 185 137, 215 139 C220 139, 225 142, 228 145 L118 145 Z" fill="#18181B"/>
+  
+  <!-- Leg bent at knee, foot on floor -->
+  <path d="M224 142 L252 154 L258 195" fill="none" stroke="#18181B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Foot on ground -->
+  <line x1="254" y1="195" x2="272" y2="195" stroke="#18181B" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Secondary/far leg slightly offset for depth -->
+  <path d="M228 143 L264 152 L272 195" fill="none" stroke="#71717A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+  <line x1="268" y1="195" x2="284" y2="195" stroke="#71717A" stroke-width="5" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- Arms pressing dumbbells upward in lockout position -->
+  <!-- Far Arm (Left Arm) -->
+  <path d="M142 136 L148 96 L152 68" fill="none" stroke="#71717A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+  <!-- Far Dumbbell -->
+  <g opacity="0.45">
+    <rect x="136" y="52" width="6" height="26" rx="2" fill="#71717A"/>
+    <rect x="162" y="52" width="6" height="26" rx="2" fill="#71717A"/>
+    <line x1="138" y1="65" x2="166" y2="65" stroke="#71717A" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Near Arm (Right Arm) pressing directly upwards -->
+  <path d="M152 138 L160 98 L164 68" fill="none" stroke="#18181B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Hand gripping dumbbell handle -->
+  <circle cx="164" cy="68" r="6" fill="#18181B"/>
+
+  <!-- Near Dumbbell -->
+  <g>
+    <!-- Left bell head -->
+    <rect x="146" y="54" width="8" height="28" rx="3" fill="#18181B"/>
+    <!-- Right bell head -->
+    <rect x="174" y="54" width="8" height="28" rx="3" fill="#18181B"/>
+    <!-- Dumbbell handle bar -->
+    <line x1="149" y1="68" x2="179" y2="68" stroke="#18181B" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- Subtle floor ground line -->
+  <line x1="50" y1="198" x2="350" y2="198" stroke="#E4E4E7" stroke-width="2" stroke-linecap="round"/>
+</svg>

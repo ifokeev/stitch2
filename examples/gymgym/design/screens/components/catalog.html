@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="390" />
+<title>gymgym — Components</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<!-- The component catalog: every shared element and its variants. Screens use these elements; they never
+     rebuild them by hand. To change one, edit its React component in packages/ui/src/index.tsx (the app uses the same one),
+     rebuild with "corepack pnpm --filter @gymgym/ui elements" and look here. -->
+<body class="bg-floor font-sans text-chalk antialiased">
+  <main class="mx-auto max-w-[390px] px-4 pb-32 pt-6">
+    <gg-header meta="Design lab" title="Components">
+      <gg-icon-button icon="history" label="History"></gg-icon-button>
+      <gg-icon-button icon="settings" label="Settings"></gg-icon-button>
+    </gg-header>
+
+    <gg-section label="Buttons">
+      <div class="space-y-3">
+        <gg-button variant="primary" icon="play" full>Start Push</gg-button>
+        <div class="grid grid-cols-2 gap-3">
+          <gg-button variant="secondary" icon="plus">Add set</gg-button>
+          <gg-button variant="danger">Remove set</gg-button>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <gg-button variant="ghost" icon="chevron-left">Previous</gg-button>
+          <gg-button variant="primary" disabled>Finish</gg-button>
+        </div>
+        <div class="flex gap-3">
+          <gg-button variant="primary" size="sm">Finish</gg-button>
+          <gg-button variant="secondary" size="sm">−15s</gg-button>
+        </div>
+      </div>
+    </gg-section>
+
+    <gg-section label="Chips and segments">
+      <div class="space-y-3">
+        <gg-chip-row>
+          <gg-chip trailing-icon="chevron-down">By muscle</gg-chip>
+          <gg-chip selected>Home gym</gg-chip>
+          <gg-chip icon="star">Favourites</gg-chip>
+          <gg-chip count="12">Chest</gg-chip>
+        </gg-chip-row>
+        <gg-card><gg-segmented options="30d,90d,1y,All" selected="90d"></gg-segmented></gg-card>
+      </div>
+    </gg-section>
+
+    <gg-section label="Search">
+      <gg-search placeholder="Search 1,324 exercises"></gg-search>
+    </gg-section>
+
+    <gg-section label="Card with rows" link="History">
+      <gg-card list>
+        <gg-row icon="dumbbell" name="Dumbbell Bench Press" meta="Chest · Dumbbell" star="on"></gg-row>
+        <gg-row icon="dumbbell" name="Goblet Squat" meta="Upper legs · Dumbbell" star="off"></gg-row>
+        <gg-row name="Legs" meta="4 Oct" value-meta="55 min · 14 sets" chevron></gg-row>
+        <gg-row name="Barbell Bench Press" meta="Heaviest · was 82.5 kg" value="85 kg"></gg-row>
+      </gg-card>
+    </gg-section>
+
+    <gg-section label="Cards and stats">
+      <div class="space-y-3">
+        <gg-card>
+          <gg-card-header title="Push"><gg-chip>5 exercises</gg-chip></gg-card-header>
+          <p class="type-meta text-steel">A card whose title is its content uses a title header.</p>
+        </gg-card>
+        <gg-card>
+          <gg-card-header label="Body weight"></gg-card-header>
+          <gg-stat value="80.7" unit="kg" size="lg" note="1.1 kg toward your goal"></gg-stat>
+        </gg-card>
+        <gg-card>
+          <div class="-m-4 grid grid-cols-3 divide-x divide-hairline">
+            <div class="p-4"><gg-stat label="Time" value="58:12"></gg-stat></div>
+            <div class="p-4"><gg-stat label="Sets" value="16"></gg-stat></div>
+            <div class="p-4"><gg-stat label="Volume" value="6,840" unit="kg"></gg-stat></div>
+          </div>
+        </gg-card>
+        <gg-card>
+          <div class="space-y-3">
+            <gg-bar label="Back Squat" value="140 kg · 100%" percent="100" tone="neutral"></gg-bar>
+            <gg-bar label="Overhead Press" value="52.5 kg · 71%" percent="71" tone="warning"></gg-bar>
+            <gg-bar label="Chest" value="9 sets" percent="100"></gg-bar>
+          </div>
+        </gg-card>
+      </div>
+    </gg-section>
+
+    <gg-section label="Set rows">
+      <gg-card>
+        <gg-set-header></gg-set-header>
+        <div class="space-y-2">
+          <gg-set-row set="1" weight="82.5" reps="6" rpe="8" state="done"></gg-set-row>
+          <gg-set-row set="2" weight="82.5" reps="6" rpe="9.5" state="done"></gg-set-row>
+          <gg-set-row set="3" weight="142.5" reps="12" state="active" note="Each side: 25 + 20 + 15 + 1.25"></gg-set-row>
+          <gg-set-row set="4" weight="142.5" reps="10" rpe="10" state="todo"></gg-set-row>
+        </div>
+      </gg-card>
+    </gg-section>
+
+    <gg-section label="Week">
+      <gg-week days="Mon 5,Tue 6,Wed 7,Thu 8,Fri 9,Sat 10,Sun 11" marks="dprpppr" selected="1"></gg-week>
+    </gg-section>
+
+    <gg-section label="Fields">
+      <div class="space-y-4">
+        <gg-field label="Name" value="Landmine press" counter="14 / 80"></gg-field>
+        <div class="grid grid-cols-2 gap-3">
+          <gg-field label="Weight" value="36" unit="kg"></gg-field>
+          <gg-field label="Reps" value="" placeholder="8" error="Enter 1 or more"></gg-field>
+        </div>
+        <gg-field label="Progression rule" value="Linear progression" picker hint="Every rep made: add a step."></gg-field>
+        <gg-field label="Notes" multiline rows="2" placeholder="How did it go?"></gg-field>
+      </div>
+    </gg-section>
+
+    <gg-section label="Settings rows">
+      <gg-card list>
+        <gg-row name="Rest timer after each set" toggle="on"></gg-row>
+        <gg-row name="Reps per side" meta="Left and right logged apart" toggle="off"></gg-row>
+        <gg-row name="Language" value="English" chevron></gg-row>
+        <gg-row name="Weight unit"><div class="w-32"><gg-segmented options="kg,lb" selected="kg"></gg-segmented></div></gg-row>
+      </gg-card>
+    </gg-section>
+
+    <gg-section label="Brand, steps and card notes">
+      <div class="space-y-3">
+        <gg-logo></gg-logo>
+        <gg-card>
+          <gg-steps><li>Add the address to your assistant.</li><li>Sign in and pick the account to use.</li><li>Choose Allow.</li></gg-steps>
+          <gg-card-note>A closing line under a hairline: a summary or the weakest lift.</gg-card-note>
+        </gg-card>
+      </div>
+    </gg-section>
+
+    <gg-section label="Empty state">
+      <gg-card><gg-empty icon="search" title="No exercise matches “landmine press”." text="Your own exercises work everywhere a library exercise does."><gg-button icon="plus" full>Create “landmine press”</gg-button></gg-empty></gg-card>
+    </gg-section>
+
+    <gg-section label="Code">
+      <gg-code value="https://gymgym.club/mcp"></gg-code>
+    </gg-section>
+
+    <gg-section label="Charts">
+      <div class="space-y-3">
+        <gg-card><gg-line-chart points="82.2,82,81.9,81.9,81.6,81.5,81.6,81.2,81.1,81,80.9,80.8,80.7" min="78.5" max="82.5" goal="79" from="13 Jul" to="6 Oct"></gg-line-chart></gg-card>
+        <gg-card><gg-heatmap values="1101110211030021104300110120113032100130212013103101302201330120113031103402111203120310213032013110220210111" months="Jun:0,Jul:4,Aug:9,Sep:13"></gg-heatmap></gg-card>
+        <gg-card><gg-body-map shade="chest:1,triceps:0.6,shoulders:0.5,quads:0.3"></gg-body-map></gg-card>
+      </div>
+    </gg-section>
+
+    <gg-section label="Rest timer">
+      <gg-rest-timer time="1:32" progress="62"></gg-rest-timer>
+    </gg-section>
+  </main>
+  <gg-tab-bar active="home"></gg-tab-bar>
+</body>
+</html>

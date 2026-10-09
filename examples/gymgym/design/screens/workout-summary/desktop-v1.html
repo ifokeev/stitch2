@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-status" content="approved" />
+<meta name="gg-screen" content="workout-summary" />
+<meta name="gg-device" content="desktop" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="1280" />
+<title>gymgym — Workout complete</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <div class="flex">
+    <gg-sidebar ></gg-sidebar>
+    <main class="min-w-0 flex-1 px-10 pb-12 pt-8"><div class="mx-auto max-w-[960px]">
+<gg-header meta="Push · Tuesday, 6 October" title="Workout complete">
+  <gg-icon-button icon="x" label="Close"></gg-icon-button>
+</gg-header><div class="mb-6"><gg-card>
+  <div class="-m-4 grid grid-cols-3 divide-x divide-hairline">
+    <div class="p-4"><gg-stat label="Duration" value="58:12"></gg-stat></div>
+    <div class="p-4"><gg-stat label="Sets" value="16"></gg-stat></div>
+    <div class="p-4"><gg-stat label="Volume" value="6,840" unit="kg"></gg-stat></div>
+  </div>
+</gg-card></div>
+<div class="grid grid-cols-2 items-start gap-6"><div><gg-section label="Records">
+  <gg-card list>
+    <gg-row icon="trophy" name="Barbell Bench Press" meta="Heaviest · was 82.5 kg" value="85 kg"></gg-row>
+    <gg-row icon="trending-up" name="Incline Dumbbell Press" meta="Most reps at 30 kg" value="12 reps"></gg-row>
+  </gg-card>
+</gg-section><div class="mb-6"><gg-field label="Notes" multiline placeholder="How did it go?"></gg-field></div></div><div><gg-section label="What you trained">
+  <gg-card>
+    <div class="space-y-3">
+      <gg-bar label="Chest" value="9 sets" percent="100"></gg-bar>
+      <gg-bar label="Shoulders" value="6 sets" percent="67"></gg-bar>
+      <gg-bar label="Triceps" value="6 sets" percent="67"></gg-bar>
+    </div>
+    <gg-card-note>Effort: average <span class="tabular-nums text-chalk">RPE 8.4</span> · <span class="tabular-nums text-chalk">5</span> sets close to failure</gg-card-note>
+  </gg-card>
+</gg-section></div></div>
+<div class="flex justify-end"><gg-button>Done</gg-button></div>
+    </div></main>
+  </div>
+
+</body>
+</html>

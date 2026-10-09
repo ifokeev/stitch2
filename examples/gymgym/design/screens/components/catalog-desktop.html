@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-device" content="desktop" />
+<meta name="gg-frame-width" content="1280" />
+<title>gymgym — Components, desktop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<!-- The component catalog: every shared element and its variants. Screens use these elements; they never
+<!-- Desktop forms of the shared components: the sidebar that replaces the tab bar at 1024px and up, the page
+     layout (content max-width 960px, a side column where it helps) and the sheet as a centred dialog. Mobile forms
+     are in catalog.html. -->
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <div class="flex">
+    <gg-sidebar active="home"></gg-sidebar>
+    <main class="min-w-0 flex-1 px-10 pb-12 pt-8"><div class="mx-auto max-w-[960px]">
+      <gg-header meta="Design lab" title="Components, desktop">
+        <gg-icon-button icon="settings" label="Settings"></gg-icon-button>
+        <gg-button>Primary action</gg-button>
+      </gg-header>
+      <div class="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-6">
+        <div>
+          <gg-section label="Main column" link="Action">
+            <gg-card list>
+              <gg-row icon="footprints" name="Legs" meta="Sunday, 4 Oct" value-meta="55 min · 14 sets" chevron></gg-row>
+              <gg-row icon="arrow-down" name="Pull" meta="Friday, 2 Oct" value-meta="61 min · 15 sets" chevron></gg-row>
+            </gg-card>
+          </gg-section>
+        </div>
+        <div class="space-y-6">
+          <gg-card><gg-card-header label="Side column"></gg-card-header><gg-stat value="80.7" unit="kg" note="Goal 79 kg"></gg-stat></gg-card>
+          <gg-rest-timer time="1:32" progress="62"></gg-rest-timer>
+        </div>
+      </div>
+    </div></main>
+  </div>
+  <gg-sheet title="Sheet as a dialog" meta="Below 1024px the same element is a bottom sheet" star="on">
+    <div class="space-y-4">
+      <gg-field label="Name" value="Landmine press" counter="14 / 80"></gg-field>
+      <div class="grid grid-cols-2 gap-3"><gg-button variant="secondary" full>Cancel</gg-button><gg-button full>Save</gg-button></div>
+    </div>
+  </gg-sheet>
+</body>
+</html>
+

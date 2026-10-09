@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta name="gg-status" content="approved" />
+<meta name="gg-screen" content="stats" />
+<meta name="gg-device" content="desktop" />
+<meta name="gg-source" content="lab" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="gg-frame-width" content="1280" />
+<title>gymgym — Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="https://unpkg.com/lucide@1.51.0/dist/umd/lucide.min.js"></script>
+<script src="/components/gg.elements.js" defer></script>
+</head>
+<body class="relative min-h-screen bg-floor font-sans text-chalk antialiased">
+  <div class="flex">
+    <gg-sidebar active="stats"></gg-sidebar>
+    <main class="min-w-0 flex-1 px-10 pb-12 pt-8"><div class="mx-auto max-w-[960px]">
+<gg-header title="Stats"></gg-header>
+<div class="grid grid-cols-2 items-start gap-x-6">
+  <div class="col-span-2"><gg-section label="Body weight" link="Log weight">
+  <gg-card>
+    <div class="mb-4"><gg-segmented options="30d,90d,1y,All" selected="90d"></gg-segmented></div>
+    <gg-stat value="80.7" unit="kg" size="lg" note="1.5 kg toward your goal of 79 kg"></gg-stat>
+    <div class="mt-4"><gg-line-chart points="82.2,82,81.9,81.9,81.6,81.5,81.6,81.2,81.1,81,80.9,80.8,80.7" min="78.5" max="82.5" goal="79" from="13 Jul" to="6 Oct"></gg-line-chart></div>
+  </gg-card>
+</gg-section></div>
+  <div><gg-section label="Muscles · past 7 days">
+  <gg-card>
+    <div class="mb-4"><gg-segmented options="Balance,Fatigue,Strength" selected="Balance"></gg-segmented></div>
+    <gg-body-map shade="chest:1,lats:0.85,upperBack:0.75,quads:0.75,shoulders:0.65,triceps:0.6,glutes:0.55,hamstrings:0.5,biceps:0.45,traps:0.4,abs:0.3,calves:0.2" label="Sets per muscle, past 7 days"></gg-body-map>
+    <div class="mt-4 space-y-3 border-t border-hairline pt-4">
+      <gg-bar label="Chest" value="12 sets" percent="100"></gg-bar>
+      <gg-bar label="Back" value="10 sets" percent="83"></gg-bar>
+      <gg-bar label="Quads" value="9 sets" percent="75"></gg-bar>
+      <gg-bar label="Shoulders" value="8 sets" percent="67"></gg-bar>
+    </div>
+    
+  </gg-card>
+</gg-section></div>
+  <div><gg-section label="Lift balance">
+  <gg-card>
+    <div class="space-y-3">
+      <gg-bar label="Back Squat" value="140 kg · 100%" percent="100" tone="neutral"></gg-bar>
+      <gg-bar label="Bench Press" value="105 kg · 94%" percent="94" tone="neutral"></gg-bar>
+      <gg-bar label="Deadlift" value="165 kg · 88%" percent="88" tone="neutral"></gg-bar>
+      <gg-bar label="Overhead Press" value="52.5 kg · 71%" percent="71" tone="warning"></gg-bar>
+    </div>
+    <gg-card-note>Your weakest link right now: <span class="text-chalk">Overhead Press</span></gg-card-note>
+  </gg-card>
+</gg-section><gg-section label="Activity">
+  <gg-card>
+    <div class="mb-4"><gg-segmented options="Time,Volume" selected="Time"></gg-segmented></div>
+    <gg-heatmap values="00003300104030400003003010400001230320204000013004201120140040031003100104230230222041034103301330200313000141302400400300212114044302304420140411032022104304010030131034010303100000" months="Apr:0,May:4,Jun:9,Jul:13,Aug:17,Sep:22" label="Training days, past 26 weeks"></gg-heatmap>
+    <p class="mt-3 type-meta text-steel"><span class="tabular-nums text-chalk">4.2</span> workouts a week on average</p>
+  </gg-card>
+</gg-section></div>
+</div>
+    </div></main>
+  </div>
+
+</body>
+</html>
