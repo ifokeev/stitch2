@@ -7,6 +7,10 @@ agents skills that tell them how.
 > stitch2 is inspired by [Google Stitch](https://stitch.withgoogle.com) and works with it, but it is an
 > independent project, not affiliated with or endorsed by Google.
 
+[![Watch stitch2 in 80 seconds on YouTube: an agent's draft drifts from the design system, the checks catch it, and it is fixed and approved on the canvas](https://img.youtube.com/vi/mIhP_umyO3o/maxresdefault.jpg)](https://youtu.be/mIhP_umyO3o)
+
+▶ [Watch the 80-second demo on YouTube](https://youtu.be/mIhP_umyO3o)
+
 ## Quick start with an AI agent
 
 Paste this to your coding agent (Codex, Claude Code, Cursor or any agent that runs commands) in your project:
