@@ -79,7 +79,6 @@ file that already exists. From there the agent spends its effort on the design.
    npx playwright install chromium
    ```
 
-   Every release is also on GitHub: `github:ifokeev/stitch2#release` (latest) or `#v<version>` (pinned).
 2. Set the project up:
 
    ```bash
@@ -193,10 +192,9 @@ pnpm test                    # smoke test in a fresh project; needs Chromium (np
 pnpm build                   # compiles to dist/, which the installed package runs
 ```
 
-Releases: bump `version` in package.json, commit, then `pnpm release`. It builds, packs exactly what npm would
-publish, commits that to the `release` branch (built files only, so installs need no build step) and tags it
-`v<version>`; the tag push runs `.github/workflows/publish.yml`, which publishes that commit to npm through
-trusted publishing. `main` holds sources only; `dist/` is ignored.
+Releases: bump `version` in package.json, commit and push to `main`, then `pnpm release`. It tags that commit
+`v<version>` and pushes the tag, which runs `.github/workflows/publish.yml`: it builds and tests the tagged commit and
+publishes it to npm through trusted publishing. `dist/` is ignored; npm gets it from the build.
 
 Point it at a project with `STITCH2_CONFIG=/path/to/stitch2.config.json`, or run it from inside the project.
 

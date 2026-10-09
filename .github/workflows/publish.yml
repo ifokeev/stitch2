@@ -1,6 +1,6 @@
-# Publishes a release to npm when "pnpm release" pushes its tag. The tag points at a commit on the release branch,
-# which holds the built package (what npm pack produced) and a copy of this workflow, so the job publishes exactly
-# that commit, through npm's trusted publishing (no token stored here; provenance is added).
+# Publishes a release to npm when "pnpm release" pushes its v<version> tag. The tag points at a commit on main; the
+# job builds and tests that commit, then publishes it through npm's trusted publishing (no token stored here;
+# provenance is added).
 name: Publish to npm
 
 on:
@@ -15,14 +15,26 @@ jobs:
   publish:
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - name: The tag matches the package version
-        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - name: The tag is on main and matches the package version
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: npx playwright install --with-deps chromium
+      - run: pnpm test
       - name: Publish (skipped when this version is already on npm)
         run: |
           name=$(node -p "require('./package.json').name")
@@ -32,4 +44,3 @@ jobs:
           else
             npm publish --access public --ignore-scripts
           fi
-

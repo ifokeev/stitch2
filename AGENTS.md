@@ -12,7 +12,7 @@ it get the skills in `skills/` (`stitch2 setup` links them).
 - `src/config.ts` reads `stitch2.config.json`; `src/screens.ts` lists screen versions from their meta tags.
 - `src/canvas.html` is the canvas page (no build step).
 - `skills/` are the agent skills that ship with the package; `config.schema.json` documents the config.
-- `test/` is the smoke test; `scripts/release.mjs` publishes a build to the `release` branch.
+- `test/` is the smoke test; `scripts/release.mjs` tags a release.
 
 ## Rules
 
@@ -43,8 +43,7 @@ and read the screens, not only the numbers.
 
 ## Releases
 
-Bump `version` in package.json, commit, then `pnpm release`: it builds, packs what npm would publish, commits that to
-the `release` branch (built files only, so installs need no build step) and tags `v<version>`; the tag
-push publishes that commit to npm (`.github/workflows/publish.yml`, trusted publishing). `main` holds sources;
+Bump `version` in package.json, commit and push to `main`, then `pnpm release`: it tags that commit `v<version>` and
+pushes the tag, which builds, tests and publishes it to npm (`.github/workflows/publish.yml`, trusted publishing).
 `dist/` is ignored.
 
