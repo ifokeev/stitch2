@@ -202,5 +202,8 @@ Point it at a project with `STITCH2_CONFIG=/path/to/stitch2.config.json`, or run
 
 ## Licence
 
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), and [SECURITY.md](SECURITY.md) for reporting a
+vulnerability.
+
 MIT, see [LICENSE](LICENSE). It builds on Apache-2.0 projects: Playwright, Google's material-color-utilities and
 `@google/design.md`.
