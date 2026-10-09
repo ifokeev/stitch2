@@ -75,7 +75,7 @@ file that already exists. From there the agent spends its effort on the design.
 1. Install it as a dev dependency (Node 24 or newer), then Chromium for Playwright, which renders the screens:
 
    ```bash
-   pnpm add -D github:ifokeev/stitch2#release   # the latest release; #v0.6.1 to pin one
+   pnpm add -D github:ifokeev/stitch2#release   # the latest release; #v0.7.0 to pin one
    npm install -D github:ifokeev/stitch2#release
    npx playwright install chromium
    ```
