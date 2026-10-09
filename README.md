@@ -133,7 +133,9 @@ by side in `design/compare/index.html` (the canvas links it) rather than diffed.
 
 `signIn` and `prepare` are modules whose default export gets `{ page, url }` (a Playwright page): sign in once, or
 put a page into the state the design shows (open a sheet, start a workout). The app's components must carry the
-`data-<prefix>` markers, which they do when the screens use them too (see above).
+`data-<prefix>` markers, which they do when the screens use them too (see above). A `prepare` that throws becomes
+an error on that version and the run goes on. When it opens a modal, wait for something inside it (a marked
+component): dialog roots are often zero-sized wrappers, which Playwright reports as hidden.
 
 ## Commands
 

@@ -113,8 +113,15 @@ for (const s of versions) {
   await settle(design)
   await live.goto(url).catch(() => {})
   await settle(live)
+  const findings: Finding[] = []
   if (route.prepare) {
-    await (await load(route.prepare))({ page: live, url: app.url })
+    // A failing prepare is this version's error; the run goes on with the others.
+    try {
+      await (await load(route.prepare))({ page: live, url: app.url })
+    } catch (e) {
+      const message = (e instanceof Error ? e.message : String(e)).split('\n')[0]
+      findings.push({ severity: 'error', type: 'prepare', message: `${route.prepare} failed: ${message}` })
+    }
     await settle(live)
   }
   const [d, a] = [await design.evaluate(structure, config.prefix), await live.evaluate(structure, config.prefix)]
@@ -122,7 +129,6 @@ for (const s of versions) {
     (await design.evaluate(collectComponents, opts)).components,
     (await live.evaluate(collectComponents, opts)).components,
   ]
-  const findings: Finding[] = []
   const missing = Object.keys(d.counts).filter((k) => !a.counts[k])
   const extra = Object.keys(a.counts).filter((k) => !d.counts[k])
   if (missing.length) findings.push({ severity: 'error', type: 'missing', message: `In the design, not in the app: ${missing.join(', ')}` })
@@ -177,4 +183,3 @@ writeFileSync(join(ROOT, 'compare.json'), `${JSON.stringify({ comparedAt: new Da
 const total = results.reduce((n, r) => n + r.findings.filter((f) => f.severity === 'error').length, 0)
 console.log(`\n${results.length} versions compared, ${total} errors${unmapped.length ? `; no route for ${unmapped.join(', ')}` : ''}. Report: ${config.designDir}/compare/index.html`)
 if (strict && total) process.exit(1)
-
