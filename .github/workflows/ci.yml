@@ -1,0 +1,34 @@
+# Every push to main and every pull request: typecheck, build, and the smoke test (setup, lint, screens, checks,
+# canvas) in a fresh project. GitHub-hosted runners; the job is skipped while the repository is private.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: npx playwright install --with-deps chromium
+      - run: pnpm test
+

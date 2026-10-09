@@ -22,6 +22,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "test": "node --test test/*.test.ts",
     "build": "tsc -p . && node -e \"require('node:fs').copyFileSync('src/canvas.html','dist/canvas.html')\"",
     "typecheck": "tsc -p . --noEmit",
     "release": "node scripts/release.mjs",
@@ -66,5 +67,6 @@
     "@types/node": "26.6.4",
     "typescript": "7.0.2"
   },
-  "private": true
+  "private": true,
+  "packageManager": "pnpm@10.32.1"
 }
