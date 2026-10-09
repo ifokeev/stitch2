@@ -1,6 +1,0 @@
-{
-  "$comment": "Settings for the Material 3 colour roles that stitch2 tokens adds to DESIGN.md's own colours (as Stitch does). seed names a DESIGN.md colour or is a hex value. Run: corepack pnpm stitch2 tokens",
-  "seed": "ember",
-  "scheme": "fidelity",
-  "contrast": 0
-}

@@ -204,5 +204,4 @@ Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), and [SECURITY
 vulnerability.
 
 MIT, see [LICENSE](LICENSE). It builds on Apache-2.0 projects: Playwright, Google's material-color-utilities and
-`@google/design.md`. [examples/gymgym](examples/gymgym) comes from [gymgym](https://github.com/ifokeev/gymgym) and
-keeps its AGPL-3.0 licence.
+`@google/design.md`.
