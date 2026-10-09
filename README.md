@@ -12,6 +12,9 @@ agents skills that tell them how.
 - **Canvas** (`stitch2 canvas`): every screen and its versions on a pan-and-zoom board, a sidebar with search
   and status filters, your DESIGN.md drawn as tokens and rules, the component catalog, and an inspector to
   approve, archive or leave a note on a version. Live reload; copyable references to paste to an agent.
+  Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
+  `home mobile v1 (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`; Shift-click collects
+  several to copy at once or add to the version's note.
 - **Checks** (`stitch2 check`): content past the frame edge, labels that wrap, content under fixed bars, tap
   targets (WCAG 2.2), text contrast, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, and components that differ between screens.

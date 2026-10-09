@@ -39,6 +39,11 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
 4. Only approved versions get implemented in the product.
 5. When the user pastes a reference copied from the canvas, such as `home mobile v2
    (design/screens/home/mobile-v2.html)`, open that file: it names exactly the version they mean.
+6. A reference to an element adds its source line, its tag and its text: `home mobile v1
+   (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`. The element is the one with that tag
+   starting on that line (the text tells apart two on one line); a component's tag stands for everything it
+   renders. Change that element, or the component itself when the change belongs on every screen. Several
+   references in one message are numbered in the order the user picked them.
 
 ## Desktop
 
@@ -52,5 +57,6 @@ component, before the first desktop screen.
 `stitch2 canvas` → http://localhost:4400. The sidebar lists DESIGN.md (drawn as tokens and rules), the
 consistency report, the component catalog and every screen with its versions; filters for active, approved,
 needs review or all, and mobile or desktop. Selecting a version opens the inspector: status, note, checks, and
-Copy for its reference. Keys: `/` search, `j`/`k` next and previous, `a` approve, `f` fit, `0` actual size,
-double-click to use a frame, `Esc` to leave.
+Copy for its reference. Pick mode (`p`) highlights the element under the pointer; a click copies its reference,
+Shift-click collects several (Copy all, Add to note). Keys: `/` search, `j`/`k` next and previous, `a` approve,
+`p` pick, `f` fit, `0` actual size, double-click to use a frame, `Esc` to leave.

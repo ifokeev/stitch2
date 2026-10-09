@@ -83,6 +83,19 @@
   #inspector code { color: var(--faint); display: block; font-size: 11px; margin-top: 2px; word-break: break-all; }
   #toast { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; bottom: 16px; left: calc(var(--side) + 16px); opacity: 0; padding: 6px 12px; pointer-events: none; position: fixed; transition: opacity .2s; z-index: 30; }
   #toast.on { opacity: 1; }
+  .pick-box { pointer-events: none; position: absolute; z-index: 2; }
+  .pick-box.hover { background: rgba(232, 102, 44, .10); outline: 2px solid var(--accent); }
+  .pick-box.picked { outline: 2px dashed var(--accent); }
+  .pick-box span { background: var(--accent); border-radius: 4px; color: #0b0b0d; font-weight: 600; left: 0; padding: 1px 6px; position: absolute; top: 0; transform: translateY(-100%); white-space: nowrap; }
+  .pick-box.inside span { transform: none; }
+  body.picking .device .shield { cursor: crosshair; }
+  #pick.on { border-color: var(--accent); color: var(--text); }
+  #inspector .picks li { cursor: default; display: flex; gap: 6px; }
+  #inspector .picks code { flex: 1; margin: 0; }
+  #inspector .picks button, #inspector .pick-actions button { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; padding: 3px 8px; }
+  #inspector .picks button { align-self: start; padding: 0 6px; }
+  #inspector .pick-actions { display: flex; gap: 6px; margin: 6px 0 4px; }
+  #inspector .hint { color: var(--faint); font-size: 12px; margin: 0 0 8px; }
 </style>
 </head>
 <body>
@@ -96,6 +109,7 @@
   <nav id="tree"></nav>
   <footer>
     <button type="button" id="fit" title="Fit all (F)">Fit</button>
+    <button type="button" id="pick" title="Pick elements to reference (P)">Pick</button>
     <button type="button" id="reload" title="Reload every frame (R)">Reload</button>
     <span id="zoom">100%</span>
     <span id="summary"></span>
@@ -119,7 +133,8 @@ const STATUS_HINT = {
   archived: 'Kept for history, hidden unless you show all',
 }
 /** What to paste to an agent: the screen, device and version, and the file. */
-const ref = (s) => (s.kind === 'components' ? 'component catalog (design/screens/components/catalog.html)' : `${s.screen} ${s.device} ${s.version} (design/${s.path})`)
+let designDir = 'design'
+const ref = (s) => (s.kind === 'components' ? `component catalog (${designDir}/${s.path})` : `${s.screen} ${s.device} ${s.version} (${designDir}/${s.path})`)
 let toastTimer
 async function copy(text) {
   try {
@@ -342,7 +357,7 @@ function frameFor(s) {
   const iframe = el.querySelector('iframe')
   iframe.style.width = `${s.width}px`
   iframe.style.height = `${s.width > 700 ? 800 : 844}px`
-  iframe.src = `/${s.path}`
+  iframe.src = `/${s.path}?pick`
   const f = { el, iframe, screen: s, height: s.width > 700 ? 800 : 844 }
   iframe.addEventListener('load', () => { measure(f); setTimeout(() => measure(f), 800); setTimeout(() => measure(f), 2500) })
   el.querySelector('.shield').addEventListener('click', () => select(f, false))
@@ -377,6 +392,32 @@ function inspector(f) {
     ${s.kind === 'screen' ? `<div class="status">${['approved', 'review', 'draft', 'archived'].map((st) => `<button type="button" data-st="${st}" title="${STATUS_HINT[st]}" class="${s.status === st ? 'on' : ''}">${st === 'approved' ? 'Approve' : st === 'review' ? 'Needs review' : st === 'draft' ? 'Draft' : 'Archive'}</button>`).join('')}</div>
     <textarea placeholder="Note for the agent: what to keep, what to change"></textarea><button type="button" class="save">Save note</button>` : ''}
     <h4>Checks</h4><ul></ul>`
+  if (picked.length || picking) {
+    const sec = document.createElement('div')
+    sec.innerHTML = `<h4>Picked elements</h4><p class="hint">Click an element to copy its reference; Shift-click to add more.</p><ul class="picks"></ul>`
+    for (const [i, p] of picked.entries()) {
+      const li = document.createElement('li')
+      li.innerHTML = '<code></code><button type="button" title="Remove">×</button>'
+      li.querySelector('code').textContent = `${i + 1}. ${p.ref}`
+      li.querySelector('button').onclick = () => { picked.splice(i, 1); paintPicks(); inspector(selected) }
+      sec.querySelector('.picks').append(li)
+    }
+    if (picked.length) {
+      const actions = document.createElement('div')
+      actions.className = 'pick-actions'
+      actions.innerHTML = '<button type="button" data-a="copy">Copy all</button><button type="button" data-a="note">Add to note</button><button type="button" data-a="clear">Clear</button>'
+      actions.querySelector('[data-a=copy]').onclick = () => copy(picked.map((p) => p.ref).join('\n'))
+      actions.querySelector('[data-a=clear]').onclick = () => { picked = []; paintPicks(); inspector(selected) }
+      const noteBox = box.querySelector('textarea')
+      if (noteBox) actions.querySelector('[data-a=note]').onclick = () => {
+        noteBox.value = `${noteBox.value.trim() ? `${noteBox.value.trim()}\n` : ''}${picked.map((p) => p.ref).join('\n')}\n`
+        noteBox.focus()
+      }
+      else actions.querySelector('[data-a=note]').remove()
+      sec.append(actions)
+    }
+    box.insertBefore(sec, box.querySelector('h4'))
+  }
   box.querySelector('.h').textContent = s.kind === 'components' ? 'Component catalog' : `${s.screen} · ${s.version}`
   box.querySelector('.f').textContent = `${s.device} · ${s.source}`
   const a = box.querySelector('.facts a')
@@ -390,7 +431,7 @@ function inspector(f) {
     note.value = s.note
     box.querySelector('.save').onclick = () => setMeta(s.path, { note: note.value })
   }
-  const ul = box.querySelector('ul')
+  const ul = box.querySelector('ul:not(.picks)')
   if (!checks.screens?.[s.path]) ul.innerHTML = '<li>Not checked yet: run the check command.</li>'
   else if (!issues.length) ul.innerHTML = '<li>No issues.</li>'
   for (const i of issues) {
@@ -430,6 +471,78 @@ function locate(f, selector) {
 }
 
 let docUrl = ''
+// ---- picking elements: hover to highlight, click to copy a reference with the source line ----
+let picking = false
+let picked = [] // { f, el, ref }
+let hoverBox = null
+function elementAt(e) {
+  const hit = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('shield'))
+  const f = hit && [...frames.values()].find((g) => g.el.contains(hit))
+  if (!f) return null
+  let doc
+  try { doc = f.iframe.contentDocument } catch { return null }
+  const r = f.iframe.getBoundingClientRect()
+  const el = doc?.elementFromPoint((e.clientX - r.left) / view.z, (e.clientY - r.top) / view.z)?.closest('[data-s2-line]')
+  return el ? { f, el } : null
+}
+function describe(el) {
+  const text = (el.innerText || el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('alt') || el.value || '').trim().replace(/\s+/g, ' ')
+  return { tag: el.getAttribute('data-s2-tag') ?? el.localName, line: el.getAttribute('data-s2-line'), text: text.length > 48 ? `${text.slice(0, 47)}…` : text }
+}
+function elementRef(f, el) {
+  const d = describe(el)
+  const s = f.screen
+  const who = s.kind === 'components' ? 'component catalog' : `${s.screen} ${s.device} ${s.version}`
+  return `${who} (${designDir}/${s.path}:${d.line}) <${d.tag}>${d.text ? ` “${d.text}”` : ''}`
+}
+function drawBox(f, el, cls, label) {
+  const r = el.getBoundingClientRect()
+  const b = document.createElement('div')
+  b.className = `pick-box ${cls}${r.top < 24 / view.z ? ' inside' : ''}`
+  Object.assign(b.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, outlineWidth: `${2 / view.z}px` })
+  if (label) {
+    const t = document.createElement('span')
+    t.textContent = label
+    t.style.fontSize = `${12 / view.z}px`
+    b.append(t)
+  }
+  f.el.querySelector('.device').append(b)
+  return b
+}
+function paintPicks() {
+  document.querySelectorAll('.pick-box.picked').forEach((b) => b.remove())
+  picked = picked.filter((p) => p.el.isConnected)
+  for (const [i, p] of picked.entries()) drawBox(p.f, p.el, 'picked', String(i + 1))
+}
+function hover(e) {
+  hoverBox?.remove()
+  hoverBox = null
+  const hit = picking && elementAt(e)
+  if (!hit) return
+  const d = describe(hit.el)
+  hoverBox = drawBox(hit.f, hit.el, 'hover', `<${d.tag}> · line ${d.line}`)
+}
+function pickAt(e) {
+  const hit = elementAt(e)
+  if (!hit) return false
+  const p = { f: hit.f, el: hit.el, ref: elementRef(hit.f, hit.el) }
+  if (e.shiftKey || e.metaKey || e.ctrlKey) {
+    const i = picked.findIndex((q) => q.el === p.el)
+    if (i >= 0) picked.splice(i, 1)
+    else picked.push(p)
+  } else picked = [p]
+  if (picked.length) copy(picked.map((q) => q.ref).join('\n'))
+  paintPicks()
+  select(hit.f, false)
+  return true
+}
+function setPicking(on) {
+  picking = on
+  document.body.classList.toggle('picking', on)
+  document.getElementById('pick').classList.toggle('on', on)
+  if (!on) { hoverBox?.remove(); hoverBox = null }
+  if (selected) inspector(selected)
+}
 function openDoc(url = '/design') {
   docUrl = url
   selected = null
@@ -506,7 +619,7 @@ viewport.addEventListener('pointerdown', (e) => {
   viewport.setPointerCapture(e.pointerId)
 })
 viewport.addEventListener('pointermove', (e) => {
-  if (!drag) return
+  if (!drag) return hover(e)
   if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 3) drag.moved = true
   view.x = drag.vx + e.clientX - drag.x
   view.y = drag.vy + e.clientY - drag.y
@@ -517,6 +630,7 @@ viewport.addEventListener('pointerup', (e) => {
   drag = null
   viewport.classList.remove('panning')
   if (d?.moved) return
+  if (picking && pickAt(e)) return
   // A click without a drag: select the frame under the pointer, or clear the selection on empty canvas.
   const hit = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('shield'))
   const f = hit && [...frames.values()].find((g) => g.el.contains(hit))
@@ -524,6 +638,7 @@ viewport.addEventListener('pointerup', (e) => {
   else if (!e.target.closest('.frame')) select(null)
 })
 viewport.addEventListener('dblclick', (e) => {
+  if (picking) return
   // Double-click a frame to use it like a phone (scroll, tap); Esc or a click outside leaves.
   const hit = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('shield'))
   const f = hit && [...frames.values()].find((g) => g.el.contains(hit))
@@ -538,6 +653,8 @@ const visibleFrames = () => rows().flatMap((r) => r.visible.map((s) => frames.ge
 addEventListener('keydown', (e) => {
   if (e.target.matches('input, textarea')) { if (e.key === 'Escape') e.target.blur(); return }
   if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus() }
+  if (e.key === 'Escape' && picking) return setPicking(false)
+  if (e.key === 'p' || e.key === 'P') setPicking(!picking)
   if (e.key === 'Escape') { closeDoc(); select(null) }
   if (e.key === 'f' || e.key === 'F') fit()
   if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
@@ -555,11 +672,13 @@ addEventListener('keydown', (e) => {
   if (selected?.screen.kind === 'screen' && e.key === 'a') setMeta(selected.screen.path, { status: 'approved' })
 })
 document.getElementById('fit').onclick = fit
+document.getElementById('pick').onclick = () => setPicking(!picking)
 document.getElementById('reload').onclick = () => { for (const f of frames.values()) f.iframe.contentWindow?.location.reload() }
 
 apply()
 fetch('/api/config').then((r) => r.json()).then((c) => {
   ORDER = c.order ?? []
+  designDir = c.designDir ?? 'design'
   document.getElementById('labName').textContent = c.name
   document.title = c.name
   load(true)

@@ -10,6 +10,7 @@ import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CONFIG_FILE, config } from './config.ts'
 import { designPage } from './design-page.ts'
+import { annotate } from './pick.ts'
 import { listScreens, ROOT, STATUSES, type Status, tag, writeMeta } from './screens.ts'
 
 const CANVAS = fileURLToPath(new URL('./canvas.html', import.meta.url))
@@ -121,7 +122,9 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
       'cache-control': 'no-store',
     })
-    res.end(readFileSync(file))
+    // The canvas loads screens with ?pick: their elements carry source lines for picking.
+    if (extname(file) === '.html' && url.searchParams.has('pick')) res.end(annotate(readFileSync(file, 'utf8')))
+    else res.end(readFileSync(file))
   })
 
   return new Promise((resolve) => {
