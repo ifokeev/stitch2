@@ -10,7 +10,8 @@
  *     "signIn": "design/app/sign-in.mjs",          // export default async ({ page, url }) => { … }
  *     "routes": {
  *       "home": "/app",
- *       "exercise-detail": { "path": "/app/library", "prepare": "design/app/open-exercise.mjs" }
+ *       "exercise-detail": { "path": "/app/library", "prepare": "design/app/open-exercise.mjs" },
+ *       "sign-in": { "path": "/login", "signedOut": true }   // a page of its own, never signed in
  *     }
  *   }
  *
@@ -25,7 +26,7 @@ import { type Components, collectComponents, collectOptions } from './consistenc
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
 
-type Route = string | { path: string; prepare?: string }
+type Route = string | { path: string; prepare?: string; signedOut?: boolean }
 const app = config.app
 if (!app?.url || !app.routes) {
   console.error('stitch2 compare: add an "app" section with "url" and "routes" to stitch2.config.json')
@@ -34,7 +35,7 @@ if (!app?.url || !app.routes) {
 const args = process.argv.slice(2)
 const only = args.filter((a) => !a.startsWith('--'))
 const strict = args.includes('--strict')
-const routeOf = (screen: string): { path: string; prepare?: string } | undefined => {
+const routeOf = (screen: string): { path: string; prepare?: string; signedOut?: boolean } | undefined => {
   const r = app.routes[screen] as Route | undefined
   return typeof r === 'string' ? { path: r } : r
 }
@@ -101,11 +102,14 @@ const signIn = await context.newPage()
 if (app.signIn) await (await load(app.signIn))({ page: signIn, url: app.url })
 await signIn.close()
 const design = await browser.newPage({ deviceScaleFactor: 2 })
-const live = await context.newPage()
+const signedIn = await context.newPage()
+// Sign-in and other public pages often redirect a signed-in visitor, so they get a context of their own.
+const signedOut = await (await browser.newContext({ deviceScaleFactor: 2 })).newPage()
 const results: Result[] = []
 const opts = collectOptions()
 for (const s of versions) {
   const route = routeOf(s.screen)!
+  const live = route.signedOut ? signedOut : signedIn
   const url = new URL(route.path, app.url).href
   const height = s.width > 700 ? 800 : 844
   for (const p of [design, live]) await p.setViewportSize({ width: s.width, height })

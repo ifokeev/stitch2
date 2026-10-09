@@ -131,6 +131,9 @@ by side in `design/compare/index.html` (the canvas links it) rather than diffed.
 }
 ```
 
+A route with `"signedOut": true` (a sign-in page, which would redirect a signed-in visitor) is opened in a
+separate browser context that never signed in.
+
 `signIn` and `prepare` are modules whose default export gets `{ page, url }` (a Playwright page): sign in once, or
 put a page into the state the design shows (open a sheet, start a workout). The app's components must carry the
 `data-<prefix>` markers, which they do when the screens use them too (see above). A `prepare` that throws becomes
