@@ -602,7 +602,9 @@ events.onmessage = async (e) => {
   const html = paths.filter((p) => p.endsWith('.html'))
   if (html.length) await load(false)
   if (paths.includes('DESIGN.md') && document.getElementById('doc').classList.contains('open')) document.querySelector('#doc iframe').contentWindow.location.reload()
-  const shared = paths.some((p) => /^(tokens\.css|tailwind\.tokens\.js|components\/)/.test(p))
+  // Stylesheets and scripts are shared: tokens.css, tailwind.tokens.js, token exports the screens link
+  // (tokens.tailwind.css), the components.
+  const shared = paths.some((p) => /\.(css|js|mjs)$/.test(p) || p.startsWith('components/'))
   for (const f of frames.values()) {
     if (shared || html.includes(f.screen.path)) {
       f.iframe.contentWindow?.location.reload()
