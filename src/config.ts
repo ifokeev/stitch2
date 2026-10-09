@@ -31,6 +31,12 @@ export interface LabConfig {
   skills: string[]
   /** Paths under designDir a sandbox leaves out besides screens (notes that would give the trial away). */
   sandboxExclude?: string[]
+  /** The live app, for stitch2 compare (see compare.ts): its URL, a sign-in script and a route per screen. */
+  app?: {
+    url: string
+    signIn?: string
+    routes: Record<string, string | { path: string; prepare?: string }>
+  }
   /** Token files stitch2 tokens also writes for the app (see exports.ts). */
   exports?: {
     format: 'css' | 'tailwind4' | 'dtcg'

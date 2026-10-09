@@ -70,6 +70,12 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
       return res.end(designPage())
     }
+    if (url.pathname === '/compare/index.html' && !existsSync(join(ROOT, 'compare/index.html'))) {
+      res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
+      return res.end(
+        '<body style="background:#0f0f11;color:#a1a1aa;font:15px system-ui;padding:32px">No comparison yet: run <code>stitch2 compare</code> with the app running.</body>',
+      )
+    }
     if (url.pathname === '/consistency/index.html' && !existsSync(join(ROOT, 'consistency/index.html'))) {
       res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
       return res.end(

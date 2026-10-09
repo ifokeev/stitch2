@@ -61,6 +61,7 @@ References, read before the first screen:
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |
 | `screens [name] [--status s] [--json]` | Every version with its status and the user's note |
+| `compare [screen…]` | The live app against the approved versions: missing or extra components, order, looks; a side-by-side report |
 | `elements <entry>` | Bundles the app's components, turned into elements with `stitch2/elements`, for the screens |
 | `tokens` | `tokens.css` (colours, `.type-*` classes) and `tailwind.tokens.js` from DESIGN.md |
 | `lint` | Google's DESIGN.md linter |

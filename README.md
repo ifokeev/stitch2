@@ -116,6 +116,25 @@ Attributes become props (kebab-case to camelCase, an empty attribute is `true`),
 The stitch2 server inlines `text/tailwindcss` links, which the browser build cannot load itself. Tested with
 React; any framework with a string renderer fits `render` (Preact, Solid, and Vue's asynchronous one).
 
+## Is the app still the design?
+
+`stitch2 compare` opens every approved version next to its live page in the app, at the same width, and reports
+what differs in structure: shared components the design has and the app lacks (or the other way round), their
+order, and how the measured ones look. Mock-ups and the app hold different data, so the screenshots are shown side
+by side in `design/compare/index.html` (the canvas links it) rather than diffed. Configure it in the config:
+
+```json
+"app": {
+  "url": "http://localhost:3000",
+  "signIn": "design/app/sign-in.mjs",
+  "routes": { "home": "/", "exercise-detail": { "path": "/exercises", "prepare": "design/app/open-first.mjs" } }
+}
+```
+
+`signIn` and `prepare` are modules whose default export gets `{ page, url }` (a Playwright page): sign in once, or
+put a page into the state the design shows (open a sheet, start a workout). The app's components must carry the
+`data-<prefix>` markers, which they do when the screens use them too (see above).
+
 ## Commands
 
 | Command | What it does |
@@ -128,6 +147,7 @@ React; any framework with a string renderer fits `render` (Preact, Solid, and Vu
 | `stitch2 type [filter] [--json]` | The type audit |
 | `stitch2 screens [name] [--status s] [--json]` | Versions, statuses and notes |
 | `stitch2 tokens` | Tokens from DESIGN.md |
+| `stitch2 compare [screen…]` | The live app against the approved screens (`app` in the config) |
 | `stitch2 elements <entry>` | Bundle your components (`stitch2/elements`) for the screens |
 | `stitch2 lint` | Google's DESIGN.md linter |
 | `stitch2 localize [filter]` | Copies a screen's remote images into its `assets/` folder |

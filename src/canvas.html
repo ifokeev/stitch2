@@ -261,6 +261,7 @@ function tree() {
   const docOpen = (url) => document.getElementById('doc').classList.contains('open') && docUrl === url
   item('DESIGN.md', 'tokens · rules', docOpen('/design'), () => openDoc('/design'))
   item('Consistency report', 'components × screens', docOpen('/consistency/index.html'), () => openDoc('/consistency/index.html'))
+  item('App comparison', 'approved × live app', docOpen('/compare/index.html'), () => openDoc('/compare/index.html'))
   const all = rows()
   const comp = all.find((r) => r.key === '~components')
   if (comp?.visible.length) {

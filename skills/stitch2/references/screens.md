@@ -45,6 +45,14 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
    renders. Change that element, or the component itself when the change belongs on every screen. Several
    references in one message are numbered in the order the user picked them.
 
+## Implementing an approved version
+
+Build the screen in the app from the same components the screens use, in the version's order, with the app's
+own data, strings and behaviour; keep the app's tests passing. Then run `stitch2 compare <screen>` with the app
+running: fix every `missing` component and look at the side-by-side report. `extra` and `order` warnings are
+fine when the app needs them (a desktop-only control, a frame drawn by layout); say so when you hand over. When
+the page needs a state first (an open sheet, a running workout), add a `prepare` module for its route.
+
 ## Desktop
 
 Desktop is a device of the same screen, designed after the mobile version is approved: `desktop-v<N>.html`,

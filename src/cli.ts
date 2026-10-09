@@ -24,6 +24,7 @@ const COMMANDS: Record<string, [string, string]> = {
   consistency: ['report.ts', '[kind]  Every shared component cropped from every screen, side by side'],
   type: ['type.ts', '[filter] [--json]  Every text style a screen uses, by type level'],
   tokens: ['tokens.ts', 'Generate tokens.css and tailwind.tokens.js from DESIGN.md, and the exports in the config'],
+  compare: ['compare.ts', '[screen…] [--strict]  The live app against the approved screens ("app" in the config)'],
   elements: ['build-elements.ts', '<entry> [--out file]  Bundle the project\'s components (defineElements) for the screens'],
   lint: ['', "Google's DESIGN.md linter on the project's DESIGN.md"],
   screens: ['list.ts', '[name] [--status s] [--json]  Screen versions, statuses and notes'],
