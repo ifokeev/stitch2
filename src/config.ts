@@ -31,6 +31,13 @@ export interface LabConfig {
   skills: string[]
   /** Paths under designDir a sandbox leaves out besides screens (notes that would give the trial away). */
   sandboxExclude?: string[]
+  /** Token files stitch2 tokens also writes for the app (see exports.ts). */
+  exports?: {
+    format: 'css' | 'tailwind4' | 'dtcg'
+    path: string
+    aliases?: Record<string, string>
+    themes?: { dark?: string; light?: string }
+  }[]
 }
 
 const DEFAULTS: LabConfig = {

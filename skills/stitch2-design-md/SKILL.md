@@ -52,3 +52,13 @@ Edit the front matter and prose directly for small changes. For a rebrand, gener
 compare it with the current one (`npx @google/design.md diff old new`), and merge what the user approves;
 run `stitch2 tokens`, and every screen re-renders from the new tokens: screens and components use only token
 colours, and `stitch2 check` reports any colour value written into them (`color`).
+
+## The app uses the same tokens
+
+DESIGN.md is the one source of the product's look, not only the screens'. `stitch2 tokens` also writes every
+entry of `exports` in `stitch2.config.json` (format `css`, `tailwind4` or `dtcg`; `path` relative to the config).
+When the app already has its own theme variables (shadcn's `--background`, `--primary`, …), map each one to a
+DESIGN.md colour in `aliases` and import the generated file in place of the hand-written values, so nothing in
+the app sets a colour, radius or font of its own. `themes` sets the selectors when the app switches themes
+another way than `data-theme` (`{ "dark": ".dark", "light": ":root" }`). A colour the app needs and DESIGN.md
+lacks goes into DESIGN.md first. Commit the generated files; never edit them.

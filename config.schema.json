@@ -77,6 +77,33 @@
       },
       "description": "Paths under designDir a sandbox leaves out besides screens.",
       "default": []
+    },
+    "exports": {
+      "type": "array",
+      "description": "Token files stitch2 tokens also writes for the app, so DESIGN.md drives the product too.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["format", "path"],
+        "properties": {
+          "format": {
+            "enum": ["css", "tailwind4", "dtcg"],
+            "description": "css: variables and .type-* classes; tailwind4: also an @theme block and @utility type-*; dtcg: W3C Design Tokens JSON."
+          },
+          "path": { "type": "string", "description": "Output file, relative to this file." },
+          "aliases": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "The app's variable names mapped to DESIGN.md colours ({\"background\": \"floor\"}) or CSS values."
+          },
+          "themes": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "dark": { "type": "string" }, "light": { "type": "string" } },
+            "description": "Theme selectors; default :root, [data-theme='dark'] and [data-theme='light']."
+          }
+        }
+      }
     }
   }
 }

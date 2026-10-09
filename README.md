@@ -24,7 +24,17 @@ agents skills that tell them how.
 - **Type audit** (`stitch2 type`): every text style a screen uses, and the level it matches.
 - **Tokens** (`stitch2 tokens`): CSS variables, one `.type-<level>` class per type level (with per-language
   rules for scripts without capitals) and a Tailwind config, from DESIGN.md's front matter, plus Material 3
-  colour roles from a seed colour.
+  colour roles from a seed colour. **Exports** write the same tokens for your app, so DESIGN.md drives the
+  product as well as the screens: plain CSS variables, a Tailwind v4 theme (`@theme` plus `@utility type-*`), or
+  W3C Design Tokens JSON for Style Dictionary and native platforms. Aliases keep your app's own variable names:
+
+  ```json
+  "exports": [
+    { "format": "tailwind4", "path": "src/styles/design-tokens.css",
+      "aliases": { "background": "surface", "primary": "primary", "border": "border" } },
+    { "format": "dtcg", "path": "design/tokens.json" }
+  ]
+  ```
 - **Versions and approval**: every file is a version of a screen for a device, with its status (draft, review,
   approved, archived) and your note in meta tags, so agents can read what you decided (`stitch2 screens`).
 - **DESIGN.md builder**: `stitch2 init` writes a complete DESIGN.md from a few choices (brand colour, modes,
