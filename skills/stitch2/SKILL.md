@@ -40,10 +40,11 @@ References, read before the first screen:
 4. **Build** the next version, `<screens>/<screen>/<device>-v<N>.html`, from the project's template (status
    `draft`; never edit an approved version). Assemble it from the components; plain markup only where none
    applies, with token classes, `.type-<level>` classes for text, the spacing scale, and the states DESIGN.md
-   defines. Never add classes to a component to change how it looks.
+   defines. Never add classes to a component to change how it looks, and never write a colour value (hex,
+   `rgb()`, `hsl()`): only DESIGN.md's colours, as token classes or `var(--<prefix>-<name>)`.
 5. **Check** `stitch2 check <path> --shots --strict`. Fix every error (overflow, wrapped labels, content under
    fixed bars, tap targets, contrast, cramped text) and every warning about type (`type-*`), hand-built
-   components (`reuse`) and components that differ from the catalog (`consistency`).
+   components (`reuse`), components that differ from the catalog (`consistency`) and colour values (`color`).
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.
 7. **Hand over.** Set the version's status to `review`, point the user to it on the canvas, and report what

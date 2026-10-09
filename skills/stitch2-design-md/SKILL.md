@@ -50,4 +50,5 @@ The generated prose is correct but generic. Make it the product's:
 
 Edit the front matter and prose directly for small changes. For a rebrand, generate a new file with `--out`,
 compare it with the current one (`npx @google/design.md diff old new`), and merge what the user approves;
-every screen re-renders from the new tokens.
+run `stitch2 tokens`, and every screen re-renders from the new tokens: screens and components use only token
+colours, and `stitch2 check` reports any colour value written into them (`color`).

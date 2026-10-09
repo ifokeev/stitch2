@@ -17,7 +17,8 @@ agents skills that tell them how.
   several to copy at once or add to the version's note.
 - **Checks** (`stitch2 check`): content past the frame edge, labels that wrap, content under fixed bars, tap
   targets (WCAG 2.2), text contrast, text that is not one of DESIGN.md's type levels, capitals without tracking,
-  large numbers in monospace, components built by hand, and components that differ between screens.
+  large numbers in monospace, components built by hand, components that differ between screens, and colours
+  written as values instead of DESIGN.md tokens.
 - **Consistency report** (`stitch2 consistency`): every shared component (tab bar, header, buttons, chips, …)
   cropped from every screen, next to the catalog's version, with what differs (sizes, fonts, icon set, icons).
 - **Type audit** (`stitch2 type`): every text style a screen uses, and the level it matches.

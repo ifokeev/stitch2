@@ -10,6 +10,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
+import { colourIssues } from './colours.ts'
 import { config } from './config.ts'
 import {
   type Components,
@@ -279,6 +280,7 @@ for (const s of screens) {
     ...(await page.evaluate(audit, { comfortable: config.comfortableTarget })),
     ...typeIssues(levels, await page.evaluate(collectText)),
     ...reuseIssues(s.path, found),
+    ...colourIssues(s.path),
   ]
   if (shots) {
     const height = await page.evaluate(() => document.documentElement.scrollHeight)

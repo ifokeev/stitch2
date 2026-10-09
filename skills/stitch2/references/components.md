@@ -24,6 +24,14 @@ Go down only when the step above cannot work:
 
 Never restyle a component on one screen, copy its markup by hand, or build a near-twin ("a chip, but 30 px").
 
+## Colours come from DESIGN.md
+
+Every colour on a screen and in a component is one of DESIGN.md's: a token class (`bg-surface`,
+`text-muted`, …) or `var(--<prefix>-<name>)`, and for a shade a mix of those
+(`color-mix(in srgb, var(--<prefix>-accent) 30%, transparent)`). Then a colour changed in DESIGN.md and
+`stitch2 tokens` changes every screen at once. A colour DESIGN.md lacks (an illustration's backdrop, a chart
+series) is added to DESIGN.md first, with a line in the prose saying where it is used.
+
 ## What the checks report
 
 - **reuse**: on a lab screen, an element that looks like a catalog component but was built by hand (a bottom
@@ -32,6 +40,8 @@ Never restyle a component on one screen, copy its markup by hand, or build a nea
 - **consistency**: a component whose size, radius, font, icon set or icons differ from the catalog's version
   (or, without a catalog, from the majority of screens in its family), or that appears in two versions on one
   screen. `stitch2 consistency` shows the same as cropped images; see the stitch2-consistency skill.
+- **color**: a hex, `rgb()` or `hsl()` value in a lab screen's markup, or (reported on the catalog) in the
+  component scripts it loads, with the file and line.
 
 ## Generated drafts
 

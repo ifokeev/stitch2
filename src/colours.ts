@@ -1,0 +1,54 @@
+/**
+ * Literal colours. On a lab screen every colour comes from DESIGN.md through the generated tokens (token classes
+ * such as bg-surface, or var(--<prefix>-<name>), mixed with color-mix for a shade), so changing a colour in
+ * DESIGN.md and running stitch2 tokens changes it everywhere. A hex, rgb() or hsl() value written into a screen
+ * or a component would not follow. Screens are checked for their own markup; the component catalog is also
+ * checked for the scripts it loads from the design folder (the components), so each literal is reported once.
+ */
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { config } from './config.ts'
+import { familyOf } from './consistency.ts'
+import { ROOT } from './screens.ts'
+import type { Issue } from './typecheck.ts'
+
+const LITERAL = /(?<![\w&/=-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|(?<![a-zA-Z])(?:rgba?|hsla?)\(\s*[\d.][^)]*\)/g
+
+/** Lines with a literal colour, comments blanked out (keeping line numbers). */
+function literals(source: string, js: boolean): { line: number; value: string; text: string }[] {
+  let s = source.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
+  if (js) s = s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' ')).replace(/^\s*\/\/.*$/gm, '')
+  else s = s.replace(/<head[\s>][\s\S]*?<\/head>/i, (m) => m.replace(/[^\n]/g, ' '))
+  const out: { line: number; value: string; text: string }[] = []
+  s.split('\n').forEach((text, i) => {
+    for (const m of text.matchAll(LITERAL)) {
+      if (/href=["']$/.test(text.slice(0, m.index))) continue
+      out.push({ line: i + 1, value: m[0], text: text.trim().slice(0, 80) })
+    }
+  })
+  return out
+}
+
+/** Component scripts already reported in this run (two catalogs load the same file). */
+const seen = new Set<string>()
+
+export function colourIssues(path: string): Issue[] {
+  if (familyOf(path) !== 'screens') return []
+  const html = readFileSync(join(ROOT, path), 'utf8')
+  const found = literals(html, false).map((l) => ({ ...l, file: `${config.designDir}/${path}` }))
+  if (path.startsWith(`${config.catalogDir}/`))
+    for (const [, src] of html.matchAll(/<script[^>]*\bsrc="\/([^"]+\.js)"/g)) {
+      const file = join(ROOT, src!)
+      if (!existsSync(file) || /tokens/.test(src!) || seen.has(file)) continue
+      seen.add(file)
+      found.push(...literals(readFileSync(file, 'utf8'), true).map((l) => ({ ...l, file: `${config.designDir}/${src}` })))
+    }
+  return found.map((l) => ({
+    severity: 'warning',
+    type: 'color',
+    message: `Colour ${l.value} written into ${l.file}:${l.line}; use a DESIGN.md colour (a token class or var(--${config.prefix}-…)) so it follows DESIGN.md`,
+    selector: `${l.file}:${l.line}`,
+    text: l.text,
+  }))
+}
+
