@@ -1,11 +1,18 @@
 {
   "name": "stitch2",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A design canvas, layout and type checks, component consistency and screen versioning for agent-built UI, on Google's DESIGN.md format.",
   "license": "MIT",
   "type": "module",
   "bin": {
     "stitch2": "dist/cli.js"
+  },
+  "exports": {
+    "./elements": {
+      "types": "./dist/elements.d.ts",
+      "default": "./dist/elements.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -27,7 +34,8 @@
     "lint": "node src/cli.ts lint",
     "screens": "node src/cli.ts screens",
     "localize": "node src/cli.ts localize",
-    "sandbox": "node src/cli.ts sandbox"
+    "sandbox": "node src/cli.ts sandbox",
+    "elements": "node src/cli.ts elements"
   },
   "engines": {
     "node": ">=24"
@@ -36,7 +44,8 @@
     "@google/design.md": "0.4.0",
     "@material/material-color-utilities": "0.3.0",
     "@playwright/test": "1.63.0",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "esbuild": "0.28.2"
   },
   "keywords": [
     "design",

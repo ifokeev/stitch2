@@ -24,6 +24,15 @@ Go down only when the step above cannot work:
 
 Never restyle a component on one screen, copy its markup by hand, or build a near-twin ("a chip, but 30 px").
 
+## Components from the app
+
+When the project builds its elements from the app's own components (`stitch2/elements›, bundled with
+`stitch2 elements <entry>›), the catalog and every screen show exactly what the app renders. Then a change to
+a component is a change to the app's component: edit it there, rebuild the bundle, and look at the catalog;
+never patch the bundle or restyle the element on a screen. Props are the element's attributes (kebab-case,
+an empty attribute is true) and its content is children. A component the screens need but the app lacks is
+added to the app first, with the same name.
+
 ## Colours come from DESIGN.md
 
 Every colour on a screen and in a component is one of DESIGN.md's: a token class (`bg-surface`,

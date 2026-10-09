@@ -167,7 +167,7 @@ export function collectComponents(opts: CollectOptions): PageComponents {
     if (!visible(el)) continue
     const g = el.getAttribute(marker)!
     const kind =
-      g === 'button' ? `button:${el.getAttribute('data-variant')}:${el.getAttribute('data-size')}` : g
+      g === 'button' ? `button:${el.getAttribute('data-variant') ?? 'primary'}:${el.getAttribute('data-size') ?? 'md'}` : g
     if (!(g === 'button' && el.hasAttribute('disabled'))) add(kind, el)
   }
   // 2. Everything else is recognised by how it looks.

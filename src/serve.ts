@@ -6,11 +6,24 @@
  */
 import { existsSync, readFileSync, statSync, watch } from 'node:fs'
 import { createServer, type ServerResponse } from 'node:http'
-import { extname, join, normalize } from 'node:path'
+import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CONFIG_FILE, config } from './config.ts'
 import { designPage } from './design-page.ts'
 import { annotate } from './pick.ts'
+
+/**
+ * Inlines <link rel="stylesheet" type="text/tailwindcss" href="…">: the Tailwind v4 browser build reads @theme and
+ * @utility only from inline <style type="text/tailwindcss"> blocks. On one line, so source line numbers hold.
+ */
+function inlineTailwind(html: string, file: string): string {
+  return html.replace(/<link\b[^>]*\btype="text\/tailwindcss"[^>]*>/g, (tag) => {
+    const href = /\bhref="([^"]+)"/.exec(tag)?.[1]
+    const css = href && (href.startsWith('/') ? join(ROOT, href) : join(dirname(file), href))
+    if (!css || !existsSync(css)) return `<!-- stitch2: ${href} not found -->`
+    return `<style type="text/tailwindcss">${readFileSync(css, 'utf8').replace(/\s*\n\s*/g, ' ')}</style>`
+  })
+}
 import { listScreens, ROOT, STATUSES, type Status, tag, writeMeta } from './screens.ts'
 
 const CANVAS = fileURLToPath(new URL('./canvas.html', import.meta.url))
@@ -123,8 +136,10 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       'cache-control': 'no-store',
     })
     // The canvas loads screens with ?pick: their elements carry source lines for picking.
-    if (extname(file) === '.html' && url.searchParams.has('pick')) res.end(annotate(readFileSync(file, 'utf8')))
-    else res.end(readFileSync(file))
+    if (extname(file) === '.html') {
+      const html = inlineTailwind(readFileSync(file, 'utf8'), file)
+      res.end(url.searchParams.has('pick') ? annotate(html) : html)
+    } else res.end(readFileSync(file))
   })
 
   return new Promise((resolve) => {

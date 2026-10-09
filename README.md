@@ -83,6 +83,39 @@ agents skills that tell them how.
 5. Copy or link the skills from `skills/` into your agent's skills folder (for example `.agents/skills/`), and
    add a short project skill with your brand, component list, screen names and demo data.
 
+## Your app's components on the canvas
+
+Screens can use the app's own components, so a screen shows exactly what the app renders and the two cannot
+drift. `stitch2/elements` turns components of any framework into the `<prefix>-<name>` elements screens use:
+
+```tsx
+// design/elements.tsx
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { defineElements } from 'stitch2/elements'
+import { Button, Card, Row } from '../src/ui'
+
+defineElements({ button: Button, card: Card, row: Row }, {
+  prefix: 'ex',
+  render: (C, props) => renderToStaticMarkup(createElement(C, props)),
+})
+```
+
+`stitch2 elements design/elements.tsx` bundles it into `design/components/<prefix>.elements.js`. A screen loads
+that bundle, the Tailwind v4 browser build and the theme from a `tailwind4` export, and writes
+`<ex-row name="Morning run" chevron></ex-row>`:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" type="text/tailwindcss" href="/tokens.tailwind.css" />
+<script src="/components/ex.elements.js" defer></script>
+```
+
+Attributes become props (kebab-case to camelCase, an empty attribute is `true`), the element's content becomes
+`children`, and each element marks its root `data-<prefix>` so the checks and the consistency report find it.
+The stitch2 server inlines `text/tailwindcss` links, which the browser build cannot load itself. Tested with
+React; any framework with a string renderer fits `render` (Preact, Solid, and Vue's asynchronous one).
+
 ## Commands
 
 | Command | What it does |
@@ -95,6 +128,7 @@ agents skills that tell them how.
 | `stitch2 type [filter] [--json]` | The type audit |
 | `stitch2 screens [name] [--status s] [--json]` | Versions, statuses and notes |
 | `stitch2 tokens` | Tokens from DESIGN.md |
+| `stitch2 elements <entry>` | Bundle your components (`stitch2/elements`) for the screens |
 | `stitch2 lint` | Google's DESIGN.md linter |
 | `stitch2 localize [filter]` | Copies a screen's remote images into its `assets/` folder |
 | `stitch2 sandbox create <dir> <brief.md>… [--context <screen>…]` | A fresh-eyes folder for an agent that sees no other versions |
