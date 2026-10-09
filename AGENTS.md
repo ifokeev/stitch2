@@ -13,6 +13,8 @@ it get the skills in `skills/` (`stitch2 setup` links them).
 - `src/canvas.html` is the canvas page (no build step).
 - `skills/` are the agent skills that ship with the package; `config.schema.json` documents the config.
 - `test/` is the smoke test; `scripts/release.mjs` tags a release.
+- `examples/gymgym` is a complete example project (run it with `STITCH2_CONFIG=examples/gymgym/stitch2.config.json`);
+  `video/` is the product video (Remotion), recorded on a copy of it by `video/record/record.mjs`.
 
 ## Rules
 
