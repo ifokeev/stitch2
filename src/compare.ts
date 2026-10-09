@@ -21,6 +21,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { chromium, type Page } from '@playwright/test'
+import { audit, LAYOUT_ERRORS } from './audit.ts'
 import { BASE, config } from './config.ts'
 import { type Components, collectComponents, collectOptions } from './consistency.ts'
 import { listScreens, ROOT } from './screens.ts'
@@ -156,6 +157,11 @@ for (const s of versions) {
         message: `${kind} looks different: ${diffs.map((f) => `${f} ${mine.fields[f] ?? '–'} (design ${ref.fields[f] ?? '–'})`).join('; ')}`,
       })
   }
+  // The same layout rules check runs on the screens, on the app: a control squeezed over another shows up here
+  // even when the screen never drew that state.
+  for (const i of await live.evaluate(audit, { comfortable: config.comfortableTarget }))
+    if (i.severity === 'error' && LAYOUT_ERRORS.includes(i.type))
+      findings.push({ severity: 'error', type: i.type, message: `${i.message} (“${i.text}”)` })
   const kinds = Object.keys(d.counts)
   const match = kinds.length ? Math.round((100 * kinds.filter((k) => a.counts[k]).length) / kinds.length) : 100
   const base = `${s.screen}-${s.device}`

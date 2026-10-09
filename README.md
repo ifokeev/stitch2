@@ -47,7 +47,8 @@ agents skills that tell them how.
 - **Skills** for agents (`skills/`): `stitch2` (the design workflow, principles, typography, components,
   versions), `stitch2-design-md` (building the design system), `stitch2-variants` (fresh-eyes versions and
   testing skill changes), `stitch2-consistency` (verifying and fixing
-  consistency) and, optional, `stitch2-import-from-google-stitch` (drafting screens in Google Stitch through its MCP server).
+  consistency), `stitch2-app-sync` (keeping the app and the designs in step: design first, then the app) and,
+  optional, `stitch2-import-from-google-stitch` (drafting screens in Google Stitch through its MCP server).
 
 ## Setup
 
@@ -121,7 +122,10 @@ React; any framework with a string renderer fits `render` (Preact, Solid, and Vu
 `stitch2 compare` opens every approved version next to its live page in the app, at the same width, and reports
 what differs in structure: shared components the design has and the app lacks (or the other way round), their
 order, and how the measured ones look. Mock-ups and the app hold different data, so the screenshots are shown side
-by side in `design/compare/index.html` (the canvas links it) rather than diffed. Configure it in the config:
+by side in `design/compare/index.html` (the canvas links it) rather than diffed. It also runs check's layout
+rules on the app (content past the edge, fixed bars or controls overlapping), which catches a control the app
+squeezed in although no screen drew it. The `stitch2-app-sync` skill describes the workflow around it: a visible
+change goes component, canvas, approval, then app. Configure it in the config:
 
 ```json
 "app": {
