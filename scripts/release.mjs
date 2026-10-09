@@ -4,7 +4,7 @@
 //   github:ifokeev/stitch2#release   (latest)   or   github:ifokeev/stitch2#v<version>   (pinned).
 // Usage: pnpm release   (from a clean main; bump "version" in package.json first for a new tag)
 import { execFileSync } from 'node:child_process'
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -32,6 +32,12 @@ if (remote) {
 }
 for (const f of readdirSync(wt)) if (f !== '.git') rmSync(join(wt, f), { recursive: true, force: true })
 cpSync(join(tmp, 'package'), wt, { recursive: true })
+// Installers get the built package only: drop the scripts and dev tools that need the sources.
+const pkgPath = join(wt, 'package.json')
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+delete pkg.scripts
+delete pkg.devDependencies
+writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`)
 run('git', ['add', '-A'], wt)
 run('git', ['commit', '-q', '-m', `release ${tag}`, '-m', `Built from main ${head}.`], wt)
 run('git', ['tag', tag], wt)

@@ -22,6 +22,8 @@ majority of screens in the same family.
      material-symbols (catalog lucide); icons home,… (catalog house,…)". Every field is a fact:
      `height`/`width`/`radius` in px, `font` and `label` as size/weight/family/tracking, `icon` size,
      `iconSet` and `icons` (the glyph names), and for a tab bar its centre `circle` and `lift`.
+     Measured are the tab bar, header, section label, card, buttons, icon buttons and chips; every other
+     component takes its size from its content, so compare those by eye in the report.
    - `… different versions … on this screen`: the same component styled two ways on one screen.
    - `reuse`: a lab screen built a catalog component by hand instead of using it.
 4. Look at the crops yourself. Numbers say what differs; the images say whether it matters. A 1 px height

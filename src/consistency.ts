@@ -131,11 +131,7 @@ export function collectComponents(opts: CollectOptions): PageComponents {
     } else if (base === 'card') {
       f.radius = px(c.borderTopLeftRadius)
       f.background = c.backgroundColor
-    } else if (
-      ['card-header', 'stat', 'row', 'chip-row', 'set-row', 'search', 'segmented', 'bar'].includes(base!)
-    ) {
-      // Their look follows their content; the component guarantees the rest.
-    } else {
+    } else if (base === 'button' || base === 'icon-button' || base === 'chip') {
       f.height = px(String(r.height))
       f.radius = px(c.borderTopLeftRadius)
       f.font = font(firstText(el))
@@ -146,6 +142,8 @@ export function collectComponents(opts: CollectOptions): PageComponents {
         f.background = c.backgroundColor
       }
     }
+    // Every other component (rows, sheets, charts, a sidebar, …) takes its size from its content, and its code
+    // guarantees the rest: only its presence is recorded, so screens are not flagged for holding other content.
     for (const k of Object.keys(f)) if (!f[k]) delete f[k]
     return {
       selector: sel(el),
@@ -240,17 +238,8 @@ export function collectComponents(opts: CollectOptions): PageComponents {
   return { components, handBuilt }
 }
 
-/** Components whose look follows their content (they are generated, so the rest is guaranteed). */
-const CONTENT_SHAPED = new Set([
-  'card-header',
-  'stat',
-  'row',
-  'chip-row',
-  'set-row',
-  'search',
-  'segmented',
-  'bar',
-])
+/** The components whose look is measured and compared; the rest follow their content (see sigOf). */
+const MEASURED = new Set(['tab-bar', 'header', 'section', 'card', 'button', 'icon-button', 'chip'])
 
 export function familyOf(path: string): string {
   if (path.startsWith(`${config.stitchDir}/`)) return config.stitchDir
@@ -283,7 +272,7 @@ export function consistencyIssues(
     out[path] = issues
     const peers = (families.get(familyOf(path)) ?? []).filter((p) => p !== path)
     for (const [kind, sigs] of Object.entries(known[path] ?? {})) {
-      if (sigs.length > 1 && !CONTENT_SHAPED.has(kind))
+      if (sigs.length > 1 && MEASURED.has(kind.split(':')[0]!))
         issues.push({
           severity: 'warning',
           type: 'consistency',
