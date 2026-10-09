@@ -13,7 +13,7 @@ Paste this to your coding agent (Codex, Claude Code, Cursor or any agent that ru
 
 ```text
 Set up stitch2 (https://github.com/ifokeev/stitch2) in this project:
-1. Install it as a dev dependency (pnpm add -D github:ifokeev/stitch2#release, or the npm equivalent) and
+1. Install it as a dev dependency (pnpm add -D stitch2, or npm install -D stitch2) and
    Chromium for Playwright (npx playwright install chromium).
 2. Ask me for the product name, the brand colour and whether it needs dark, light or both modes, then run
    npx stitch2 setup --name "<name>" --primary "<#hex>" --modes <modes>
@@ -75,10 +75,11 @@ file that already exists. From there the agent spends its effort on the design.
 1. Install it as a dev dependency (Node 24 or newer), then Chromium for Playwright, which renders the screens:
 
    ```bash
-   pnpm add -D github:ifokeev/stitch2#release   # the latest release; #v0.7.0 to pin one
-   npm install -D github:ifokeev/stitch2#release
+   pnpm add -D stitch2          # or: npm install -D stitch2
    npx playwright install chromium
    ```
+
+   Every release is also on GitHub: `github:ifokeev/stitch2#release` (latest) or `#v<version>` (pinned).
 2. Set the project up:
 
    ```bash
@@ -194,7 +195,8 @@ pnpm build                   # compiles to dist/, which the installed package ru
 
 Releases: bump `version` in package.json, commit, then `pnpm release`. It builds, packs exactly what npm would
 publish, commits that to the `release` branch (built files only, so installs need no build step) and tags it
-`v<version>`. `main` holds sources only; `dist/` is ignored.
+`v<version>`; the tag push runs `.github/workflows/publish.yml`, which publishes that commit to npm through
+trusted publishing. `main` holds sources only; `dist/` is ignored.
 
 Point it at a project with `STITCH2_CONFIG=/path/to/stitch2.config.json`, or run it from inside the project.
 

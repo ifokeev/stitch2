@@ -1,0 +1,35 @@
+# Publishes a release to npm when "pnpm release" pushes its tag. The tag points at a commit on the release branch,
+# which holds the built package (what npm pack produced) and a copy of this workflow, so the job publishes exactly
+# that commit, through npm's trusted publishing (no token stored here; provenance is added).
+name: Publish to npm
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: The tag matches the package version
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - name: Publish (skipped when this version is already on npm)
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "$name@$version" version > /dev/null 2>&1; then
+            echo "$name@$version is already on npm"
+          else
+            npm publish --access public --ignore-scripts
+          fi
+

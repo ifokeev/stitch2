@@ -32,6 +32,8 @@ if (remote) {
 }
 for (const f of readdirSync(wt)) if (f !== '.git') rmSync(join(wt, f), { recursive: true, force: true })
 cpSync(join(tmp, 'package'), wt, { recursive: true })
+// The npm publish workflow runs from the tag, so the release commit carries it.
+cpSync('.github/workflows/publish.yml', join(wt, '.github/workflows/publish.yml'))
 // Installers get the built package only: drop the scripts and dev tools that need the sources.
 const pkgPath = join(wt, 'package.json')
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
@@ -43,4 +45,6 @@ run('git', ['commit', '-q', '-m', `release ${tag}`, '-m', `Built from main ${hea
 run('git', ['tag', tag], wt)
 run('git', ['push', '-q', 'origin', 'release', tag], wt)
 run('git', ['worktree', 'remove', '--force', wt])
-console.log(`released ${tag} (from ${head}): install github:ifokeev/stitch2#${tag} or #release`)
+console.log(
+  `released ${tag} (from ${head}): the tag push publishes it to npm; also github:ifokeev/stitch2#${tag} or #release`,
+)

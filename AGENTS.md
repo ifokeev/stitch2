@@ -44,6 +44,7 @@ and read the screens, not only the numbers.
 ## Releases
 
 Bump `version` in package.json, commit, then `pnpm release`: it builds, packs what npm would publish, commits that to
-the `release` branch (built files only, so installs need no build step) and tags `v<version>`. `main` holds sources;
+the `release` branch (built files only, so installs need no build step) and tags `v<version>`; the tag
+push publishes that commit to npm (`.github/workflows/publish.yml`, trusted publishing). `main` holds sources;
 `dist/` is ignored.
 
