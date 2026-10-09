@@ -204,10 +204,11 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
   }
 
   // 4b. Controls never overlap one another (a button squeezed over its neighbour). Controls inside one another
-  // and invisible overlays (a native picker laid over a row) are fine; fixed and scrolling layers are compared
-  // apart, since fixed-overlap and the covered check deal with what lies across them.
+  // and invisible overlays (a native picker laid over a row) are fine; fixed and sticky layers (a docked timer,
+  // a sticky Save bar floating over a list) are compared apart from the scrolling page.
   const layer = (el: Element) => {
-    for (let e: Element | null = el; e; e = e.parentElement) if (getComputedStyle(e).position === 'fixed') return e
+    for (let e: Element | null = el; e; e = e.parentElement)
+      if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return e
     return null
   }
   // Behind an open modal the page is inert and the modal covers it, so only the modal's own controls count.
