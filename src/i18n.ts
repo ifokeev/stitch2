@@ -9,6 +9,8 @@
  *                                                                a template: messages in braces, the rest kept
  *   <x-row meta="Sun, 4 Oct" data-t-meta="{@date|value=2026-10-04;weekday=short;day=numeric;month=short}">
  *                                                                dates and numbers ({@number|value=7920}) by Intl
+ *   <p data-t="lib.showing">At <b data-t-slot="place">Home gym</b></p>
+ *                                                                rich text: the slot keeps its markup, at {place}
  *
  * Opened with ?lang=<locale> (the canvas's Language switch, and check), the page's text is replaced from that
  * locale's messages before its components render, and the page gets lang and dir. Two pseudo-languages need no
@@ -156,7 +158,7 @@ function runtime(p: Awaited<ReturnType<typeof pagePayload>>) {
       const keys: string[] = []
       for (const a of Array.from(el.attributes)) {
         if (a.name !== 'data-t' && !a.name.startsWith('data-t-')) continue
-        if (a.name === 'data-t-args' || a.name === 'data-t-skip') continue
+        if (a.name === 'data-t-args' || a.name === 'data-t-skip' || a.name === 'data-t-slot') continue
         const args = parseArgs(el.getAttribute('data-t-args'))
         let v: string | undefined
         if (a.value.includes('{')) {
@@ -180,7 +182,20 @@ function runtime(p: Awaited<ReturnType<typeof pagePayload>>) {
           keys.push(...parts)
         }
         if (v === undefined) continue
-        if (a.name === 'data-t') el.textContent = v
+        if (a.name === 'data-t') {
+          // Rich text: children marked data-t-slot="name" keep their markup and take the place of {name}.
+          const slots = new Map<string, Element>()
+          for (const s of Array.from(el.querySelectorAll('[data-t-slot]'))) {
+            const outer = s.parentElement?.closest('[data-t-slot]')
+            if (!outer || !el.contains(outer)) slots.set(s.getAttribute('data-t-slot') ?? '', s)
+          }
+          if (!slots.size) el.textContent = v
+          else {
+            el.textContent = ''
+            for (const part of v.split(/(\{\w+\})/))
+              el.append(slots.get(part.slice(1, -1)) ?? document.createTextNode(part))
+          }
+        }
         else el.setAttribute(a.name.slice(7), v)
       }
       if (!keys.length) continue

@@ -53,6 +53,16 @@ Dates and numbers are written by the locale too: `{@date|value=2026-10-04;weekda
 `Intl.NumberFormat`'s, and dates are read and shown in UTC. Pair a number with the unit's message:
 `{@number|value=82.5} {unit.kg}`.
 
+A sentence with styled parts inside (a name in bold, a highlighted number) keeps them as **slots**: mark each part
+`data-t-slot="<placeholder>"` and key the sentence. The translation decides where each part goes:
+
+```html
+<p data-t="library.showing" data-t-args="count=312">Showing what you can do at
+  <b data-t-slot="profile" translate="no">Home gym</b>: 312 exercises.</p>
+```
+
+Never split such a sentence into separately keyed pieces: word order differs between languages.
+
 - Keep the source text in the markup: the screen reads correctly without stitch2, and a missing key shows it.
 - Key every string the product owns: labels, buttons, headings, empty states, hints, units, tab names, the
   placeholder and aria-label too. Sample data (an exercise name, a user's note, a number) gets `translate="no"`.

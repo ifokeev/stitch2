@@ -23,7 +23,10 @@ const suggest = args.includes('--suggest')
 
 /** Attributes that hold text people read. On components (a dash in the tag) any attribute that reads as words. */
 const TEXT_ATTRS = new Set(['title', 'label', 'placeholder', 'aria-label', 'alt'])
-const NOT_TEXT = /^(class|id|style|href|src|srcset|type|name|value|for|role|slot|lang|dir|icon|variant|tone|size|width|height|viewbox|d|fill|stroke|xmlns|rel|target|tabindex|loading|translate)$/
+const NOT_TEXT = /^(class|id|style|href|src|srcset|for|role|slot|lang|dir|icon|variant|tone|size|width|height|viewbox|d|fill|stroke|xmlns|rel|target|tabindex|loading|translate)$/
+// On native elements these are identifiers and form values; on components (<x-row name="API keys">) they are
+// usually what the component shows, so there they count as text when they read as words.
+const NATIVE_ONLY = /^(type|name|value)$/
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 const words = (s: string) => /\p{L}{2,}/u.test(s)
 const readsAsText = (s: string) => words(s) && (/\s/.test(s.trim()) || /\p{Lu}/u.test(s) || /[^\x00-\x7f]/.test(s))
@@ -71,8 +74,14 @@ export function scan(html: string): { uses: Use[]; loose: Loose[] } {
         for (const m of value.matchAll(/\{([^{}|@][^{}|]*)(?:\|([^}]*))?\}/g))
           uses.push({ key: m[1]!, line, plural: plural || /(^|;)\s*count\s*=/.test(m[2] ?? '') })
       else if (name === 'data-t') uses.push({ key: value, line, plural })
-      else if (keyed) for (const k of value.split(',')) uses.push({ key: k.trim(), line, plural })
-      else if (!skip && !name.startsWith('data-') && !NOT_TEXT.test(name) && !('data-t-' + name in a)) {
+      else if (keyed && name !== 'data-t-slot') for (const k of value.split(',')) uses.push({ key: k.trim(), line, plural })
+      else if (
+        !skip &&
+        !name.startsWith('data-') &&
+        !NOT_TEXT.test(name) &&
+        !(NATIVE_ONLY.test(name) && !tag.includes('-')) &&
+        !('data-t-' + name in a)
+      ) {
         const textual = TEXT_ATTRS.has(name) ? words(value) : tag.includes('-') && readsAsText(value)
         if (textual) loose.push({ text: value, line, attr: name })
       }

@@ -93,8 +93,8 @@ test('the canvas serves the screen list', async () => {
 
 test('languages: screens read the messages, and the report and check find what is missing', async () => {
   mkdirSync(join(dir, 'i18n'), { recursive: true })
-  writeFileSync(join(dir, 'i18n/en.json'), JSON.stringify({ hello: { title: 'Today', sets: { one: '{count} set', other: '{count} sets' }, only_en: 'Only here', 'body weight': 'Body weight' } }))
-  writeFileSync(join(dir, 'i18n/ru.json'), JSON.stringify({ hello: { title: 'Сегодня', sets: { one: '{count} подход', few: '{count} подхода', many: '{count} подходов', other: '{count} подхода' }, 'body weight': 'Собственный вес' } }))
+  writeFileSync(join(dir, 'i18n/en.json'), JSON.stringify({ hello: { title: 'Today', sets: { one: '{count} set', other: '{count} sets' }, only_en: 'Only here', 'body weight': 'Body weight', at: 'Showing what you can do at {place}: {count} exercises.' } }))
+  writeFileSync(join(dir, 'i18n/ru.json'), JSON.stringify({ hello: { title: 'Сегодня', sets: { one: '{count} подход', few: '{count} подхода', many: '{count} подходов', other: '{count} подхода' }, 'body weight': 'Собственный вес', at: 'Упражнения для {place}: {count}.' } }))
   const configFile = join(dir, 'stitch2.config.json')
   const config = JSON.parse(readFileSync(configFile, 'utf8'))
   config.i18n = { locales: ['en', 'ru'], messages: 'i18n/{locale}.json', check: ['ru'] }
@@ -104,7 +104,7 @@ test('languages: screens read the messages, and the report and check find what i
     .replace('content="screen-name"', 'content="hello"')
     .replace(
       /<af-header[^>]*><\/af-header>/,
-      '<af-header title="Today" data-t-title="hello.title"></af-header><p class="type-body" data-t="hello.sets" data-t-args="count=3">3 sets</p><p class="type-body" data-t="hello.only_en">Only here</p><p class="type-body" data-t="hello.nope">Nope</p><p class="type-body">Loose words</p><p class="type-body" translate="no">Bench Press</p><p class="type-body" data-t="{hello.sets|count=5} · {hello.title}">5 sets · Today</p><p class="type-body" data-t="{hello.body weight} · {@date|value=2026-10-04;weekday=short;day=numeric;month=short} · {@number|value=7920}">Body weight · Sun, 4 Oct · 7,920</p>',
+      '<af-header title="Today" data-t-title="hello.title"></af-header><p class="type-body" data-t="hello.sets" data-t-args="count=3">3 sets</p><p class="type-body" data-t="hello.only_en">Only here</p><p class="type-body" data-t="hello.nope">Nope</p><p class="type-body">Loose words</p><p class="type-body" translate="no">Bench Press</p><p class="type-body" data-t="{hello.sets|count=5} · {hello.title}">5 sets · Today</p><p class="type-body" data-t="{hello.body weight} · {@date|value=2026-10-04;weekday=short;day=numeric;month=short} · {@number|value=7920}">Body weight · Sun, 4 Oct · 7,920</p><p class="type-body" data-t="hello.at" data-t-args="count=312">Showing what you can do at <b data-t-slot="place" translate="no">Home gym</b>: 312 exercises.</p>',
     )
   writeFileSync(join(dir, 'design/screens/hello/mobile-v1.html'), screen)
 
@@ -151,6 +151,9 @@ test('languages: screens read the messages, and the report and check find what i
     assert.deepEqual(ru.texts.slice(0, 6), ['3 подхода', 'Only here', 'Nope', 'Loose words', 'Bench Press', '5 подходов · Сегодня'])
     // A key with a space, a date and a number, in the locale's own formats.
     assert.match(ru.texts[6]!, /^Собственный вес · вс, 4 окт\. · 7\s920$/)
+    // Rich text: the slot keeps its element inside the translated sentence.
+    assert.equal(ru.texts[7], 'Упражнения для Home gym: 312.')
+    assert.equal(await page.evaluate(() => document.querySelector('main p:nth-of-type(8) b')?.textContent), 'Home gym')
     assert.equal((await open('pseudo-rtl')).dir, 'rtl')
     assert.match((await open('pseudo')).h1!, /^\[Ţóðáý ·+\]$/)
   } finally {

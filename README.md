@@ -214,7 +214,9 @@ shows every locale and the screens use the same strings as the product:
 Messages are JSON or a JS/TS module (its default export, else its first exported object); nested objects become
 dotted keys, and plurals are objects keyed by CLDR category (`one`, `few`, `other`…). A value with braces is a
 template: each `{key|name=value;…}` becomes its message and the rest is kept, and `{@date|…}` and `{@number|…}`
-format with `Intl` in the screen's language. Two pseudo-languages need
+format with `Intl` in the screen's language. Styled parts inside a sentence (a name in bold) are slots:
+`<p data-t="library.showing">At <b data-t-slot="profile">Home gym</b></p>` keeps the `<b>` where the translation puts
+`{profile}`. Two pseudo-languages need
 no translations: **pseudo** makes every text about 40% longer, accented and bracketed, so cut text shows, and
 **pseudo-rtl** lays the page out right to left.
 
