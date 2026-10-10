@@ -1,10 +1,11 @@
 /**
- * The layout audit, shared by check (the design screens) and compare (the live app). Runs inside the page.
+ * The layout audit, shared by check (the design screens) and compare (the live app), and exported as
+ * stitch2/audit for projects' own tests. Runs inside the page.
  */
 import type { Issue } from './typecheck.ts'
 
 /** Layout errors that mean the same bug wherever they appear; compare reports these for the app too. */
-export const LAYOUT_ERRORS = ['overflow', 'fixed-overlap', 'control-overlap']
+export const LAYOUT_ERRORS = ['overflow', 'fixed-overlap', 'control-overlap', 'text-overlap']
 
 /** Runs inside the page. Plain JS on purpose: Playwright sends its source to the browser. */
 export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
@@ -105,10 +106,17 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
     const r = el.getBoundingClientRect()
     return (p === 'fixed' || p === 'sticky') && r.height <= 240 && r.width >= W * 0.6
   })
-  const outer = bars.filter((b) => !bars.some((o) => o !== b && o.contains(b)))
+  // Behind an open modal the page is inert and covered, so only the modal's own bars count.
+  // An open modal: the element may be 0px itself when everything in it is fixed (Headless UI's Dialog).
+  const modal = [...document.querySelectorAll('[aria-modal="true"]')].find((m) => {
+    const cs = getComputedStyle(m)
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && [m, ...m.querySelectorAll('*')].some(shown)
+  })
+  const outer = bars.filter((b) => !bars.some((o) => o !== b && o.contains(b)) && (!modal || modal.contains(b)))
   const content = all.filter(
     (el) =>
       !outer.some((b) => b.contains(el)) &&
+      (!modal || modal.contains(el)) &&
       (ownText(el) || el.matches('button, input, select, textarea, img, svg, canvas, video')) &&
       opacity(el) > 0.5,
   )
@@ -130,7 +138,7 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
             'error',
             `under-${edge}-bar`,
             el,
-            `Hidden under the fixed ${edge} bar when scrolled to the ${edge} (add padding)`,
+            `Hidden under the fixed ${edge} bar (“${text(bar).slice(0, 30) || bar.tagName.toLowerCase()}”) when scrolled to the ${edge} (add padding)`,
           )
       }
     }
@@ -211,8 +219,7 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
       if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return e
     return null
   }
-  // Behind an open modal the page is inert and the modal covers it, so only the modal's own controls count.
-  const modal = [...document.querySelectorAll('[aria-modal="true"]')].find(shown)
+  // Behind an open modal (found above) only the modal's own controls count.
   const solid = interactive.filter((el) => opacity(el) > 0.05 && (!modal || modal.contains(el)))
   for (const [i, a] of solid.entries())
     for (const b of solid.slice(i + 1)) {
@@ -222,6 +229,85 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
       if (Math.min(r.right, q.right) - Math.max(r.left, q.left) > 2 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 2)
         push('error', 'control-overlap', b, `Overlaps another control (“${text(a).slice(0, 30) || a.getAttribute('aria-label') || a.tagName.toLowerCase()}”): give them room`)
     }
+
+  // 4c. Text never collides with other text: labels of two controls overlapping (a long translation spilling into
+  // its neighbour in a tab bar) are errors; labels of two controls closer than 4px are warnings.
+  const owner = (el: Element) =>
+    el.closest('button, a, label, [role=tab], [role=button], [role=switch], [role=checkbox]') ?? el
+  const runs: { el: Element; own: Element; r: DOMRect }[] = []
+  {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const el = n.parentElement
+      if (!el || !n.textContent!.trim() || !shown(el) || inSvg(el) || opacity(el) < 0.5) continue
+      if (modal && !modal.contains(el)) continue
+      const range = document.createRange()
+      range.selectNodeContents(n)
+      // Only what shows: text cut off by a clipping parent (an ellipsis) still measures full width.
+      const clips = [] as DOMRect[]
+      for (let p: Element | null = el; p && p !== document.body; p = p.parentElement)
+        if (getComputedStyle(p).overflowX !== 'visible') clips.push(p.getBoundingClientRect())
+      for (const raw of range.getClientRects()) {
+        let [l, t, r, b] = [raw.left, raw.top, raw.right, raw.bottom]
+        for (const c of clips) [l, t, r, b] = [Math.max(l, c.left), Math.max(t, c.top), Math.min(r, c.right), Math.min(b, c.bottom)]
+        if (r - l > 1 && b - t > 1) runs.push({ el, own: owner(el), r: new DOMRect(l, t, r - l, b - t) })
+      }
+    }
+  }
+  const collided = new Set<Element>()
+  for (const [i, a] of runs.entries())
+    for (const b of runs.slice(i + 1)) {
+      if (a.own === b.own || a.own.contains(b.own) || b.own.contains(a.own) || layer(a.el) !== layer(b.el)) continue
+      if (collided.has(a.own) || collided.has(b.own)) continue
+      const x = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left)
+      const y = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top)
+      // Same row: stacked lines of a tight heading touch at their glyph boxes and are not a collision.
+      const sameRow = y > Math.min(a.r.height, b.r.height) * 0.5
+      if (x > 1 && sameRow) {
+        collided.add(b.own)
+        push('error', 'text-overlap', b.el, 'Text runs into “' + text(a.el).slice(0, 30) + '”: shorten it or give it room')
+      } else if (sameRow && x > -4 && a.own !== a.el && b.own !== b.el) {
+        collided.add(b.own)
+        push('warning', 'text-crowded', b.el, 'Touches “' + text(a.el).slice(0, 30) + '” with no gap: a longer word will collide')
+      }
+    }
+
+  // 4c'. Labels cut short with an ellipsis: fine for a long exercise name in a row, a translation problem in a tab,
+  // a button or a short label. Reported as warnings, for the eye to judge.
+  for (const el of all) {
+    if (!ownText(el) || getComputedStyle(el).textOverflow !== 'ellipsis') continue
+    const h = el as HTMLElement
+    if (h.scrollWidth > h.clientWidth + 1) push('warning', 'truncated', el, 'Cut short with an ellipsis (' + h.scrollWidth + 'px of text in ' + h.clientWidth + 'px)')
+  }
+
+  // 4d. Nothing sticks out sideways of the card or bar that holds it (a button pushed past its card's edge by a
+  // long label), even while still on screen. Clipping and scrolling containers end the search: what they hide
+  // is deliberate.
+  const paints = (el: Element) => {
+    const cs = getComputedStyle(el)
+    return !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) || Number.parseFloat(cs.borderLeftWidth) > 0
+  }
+  const outside = new Set<Element>()
+  for (const el of all) {
+    if (overflowing.has(el) || outside.has(el.parentElement!)) continue
+    if (['absolute', 'fixed'].includes(getComputedStyle(el).position)) continue
+    let box: Element | null = null
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      if (getComputedStyle(p).overflowX !== 'visible') break
+      if (paints(p)) {
+        box = p
+        break
+      }
+    }
+    if (!box) continue
+    const r = el.getBoundingClientRect()
+    const b = box.getBoundingClientRect()
+    const out = Math.max(r.right - b.right, b.left - r.left)
+    if (out > 2) {
+      outside.add(el)
+      push('error', 'overflow', el, 'Sticks out of its container by ' + Math.round(out) + 'px')
+    }
+  }
 
   // 5. Text contrast (WCAG AA): 4.5:1, or 3:1 for large text. Skips text over images and dimmed layers.
   const rgba = (c: string) => {

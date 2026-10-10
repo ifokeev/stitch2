@@ -40,7 +40,8 @@ file that already exists. From there the agent spends its effort on the design.
   Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
   `home mobile v1 (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`; Shift-click collects
   several to copy at once or add to the version's note.
-- **Checks** (`stitch2 check`): content past the frame edge, labels that wrap, content under fixed bars, fixed bars that overlap each other, tap
+- **Checks** (`stitch2 check`): content past the frame edge or out of its card, labels that wrap, text running into
+  other text, labels cut short with an ellipsis, content under fixed bars, fixed bars that overlap each other, tap
   targets (WCAG 2.2), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, components that differ between screens, and colours
   written as values instead of DESIGN.md tokens.
@@ -163,6 +164,24 @@ put a page into the state the design shows (open a sheet, start a workout). The 
 `data-<prefix>` markers, which they do when the screens use them too (see above). A `prepare` that throws becomes
 an error on that version and the run goes on. When it opens a modal, wait for something inside it (a marked
 component): dialog roots are often zero-sized wrappers, which Playwright reports as hidden.
+
+### In your own tests: every language, every width
+
+The layout rules are a plain function you can run on any page, so an app's own Playwright tests can check what
+mock-ups never show: long translations, right-to-left layouts, narrow phones.
+
+```ts
+import { audit } from 'stitch2/audit'
+
+for (const locale of ['de', 'ru', 'ar']) {
+  // …open the page in that language…
+  const issues = await page.evaluate(audit, { comfortable: 32 })
+  const errors = issues.filter((i) => i.severity === 'error') // overflow, text-overlap, label-wraps, …
+}
+```
+
+Warnings worth reading for translations: `truncated` (a label cut short with an ellipsis), `text-crowded` (two
+controls' labels nearly touching) and `clipped`.
 
 ## Commands
 

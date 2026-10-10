@@ -47,7 +47,9 @@ References, read before the first screen:
 5. **Check** `stitch2 check <path> --shots --strict`. Fix every error (overflow, wrapped labels, content under
    fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text) and every warning about type (`type-*`), hand-built
    components (`reuse`), components that differ from the catalog (`consistency`) and colour values (`color`).
-   When DESIGN.md has a light and a dark theme, every screen is checked in both: an issue marked with a theme
+   Text running into other text (`text-overlap`) or out of its card (`overflow`) is an error; a short label cut
+   short with an ellipsis (`truncated`) is a warning to fix with room, not a smaller size. When DESIGN.md has a
+   light and a dark theme, every screen is checked in both: an issue marked with a theme
    ("light theme: Low contrast…") is fixed in DESIGN.md's colours for that theme when it shows on many
    screens, or in the screen when it is one element. Look at both renders (`--light.png`).
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
