@@ -1,5 +1,5 @@
 /**
- * The stitch2 server: the canvas at /, DESIGN.md drawn at /design, the screen list at /api/screens
+ * The stitch2 server: the canvas at /, DESIGN.md drawn at /design, screens side by side per language at /languages, the screen list at /api/screens
  * (POST /api/screens/meta sets a version's status or note), check results at /api/checks, live-reload events
  * at /events, and every file under design/ by its path. Local only (127.0.0.1).
  * Usage: stitch2 canvas   (PORT=4400 by default)
@@ -10,7 +10,9 @@ import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CONFIG_FILE, config } from './config.ts'
 import { designThemes } from './design-md.ts'
+import { allLocales, localeScript, sourceLocale } from './i18n.ts'
 import { designPage } from './design-page.ts'
+import { languagesPage } from './languages-page.ts'
 import { annotate } from './pick.ts'
 
 /**
@@ -71,6 +73,10 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
       return res.end(designPage())
     }
+    if (url.pathname === '/languages') {
+      res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
+      return res.end(languagesPage(url.searchParams.get('screen') ?? undefined))
+    }
     if (url.pathname === '/compare/index.html' && !existsSync(join(ROOT, 'compare/index.html'))) {
       res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
       return res.end(
@@ -116,7 +122,8 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       })
       return
     }
-    if (url.pathname === '/api/config') return json({ ...config, themes: designThemes() })
+    if (url.pathname === '/api/config')
+      return json({ ...config, themes: designThemes(), locales: allLocales(), sourceLocale: sourceLocale() })
     if (url.pathname === '/api/screens') return json(listScreens())
     if (url.pathname === '/api/checks') {
       const file = join(ROOT, 'checks.json')
@@ -145,7 +152,15 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
     // The canvas loads screens with ?pick: their elements carry source lines for picking.
     if (extname(file) === '.html') {
       const html = inlineTailwind(readFileSync(file, 'utf8'), file)
-      res.end(url.searchParams.has('pick') ? annotate(html) : html)
+      const page = url.searchParams.has('pick') ? annotate(html) : html
+      const lang = url.searchParams.get('lang')
+      if (!lang || lang === sourceLocale()) return res.end(page)
+      // After the lines are numbered: the locale's script may span several lines.
+      void localeScript(lang).then(
+        (script) => res.end(page.replace(/<head(\s[^>]*)?>/i, (h) => h + script)),
+        (e: unknown) => res.end(page.replace(/<body([^>]*)>/i, (b) => b + '<pre style="color:#e5484d">stitch2: ' + String(e) + '</pre>')),
+      )
+      return
     } else res.end(readFileSync(file))
   })
 

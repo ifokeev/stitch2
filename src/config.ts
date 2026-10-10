@@ -42,6 +42,8 @@ export interface LabConfig {
     signIn?: string
     routes: Record<string, string | { path: string; prepare?: string }>
   }
+  /** Languages: message files the screens' data-t keys come from (see i18n.ts). */
+  i18n?: I18nConfig
   /** Token files stitch2 tokens also writes for the app (see exports.ts). */
   exports?: {
     format: 'css' | 'tailwind4' | 'dtcg'
@@ -49,6 +51,19 @@ export interface LabConfig {
     aliases?: Record<string, string>
     themes?: { dark?: string; light?: string }
   }[]
+}
+
+export interface I18nConfig {
+  /** Locales with translations, besides the source language. */
+  locales?: string[]
+  /** The language screens are written in (default en). */
+  source?: string
+  /** Where messages live, relative to the config: "src/i18n/{locale}.json", or per locale with "*" as the rest. */
+  messages?: string | Record<string, string>
+  /** Locales stitch2 check runs besides the pseudo-languages ("all" for every one). */
+  check?: string[] | 'all'
+  /** Right-to-left locales, if not the usual (ar, he, fa, ur, ps, yi). */
+  rtl?: string[]
 }
 
 const DEFAULTS: LabConfig = {

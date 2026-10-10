@@ -37,6 +37,8 @@ file that already exists. From there the agent spends its effort on the design.
   and status filters, your DESIGN.md drawn as tokens and rules, the component catalog, and an inspector to
   approve, archive or leave a note on a version. Live reload; copyable references to paste to an agent.
   With a light and a dark theme (DESIGN.md's `light-*` colours), a switch (`T`) shows every screen in either one.
+  With languages configured, a Language switch (`L`) shows every screen in one of them, and the Languages page
+  shows a screen side by side in each.
   Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
   `home mobile v1 (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`; Shift-click collects
   several to copy at once or add to the version's note.
@@ -44,7 +46,8 @@ file that already exists. From there the agent spends its effort on the design.
   other text, labels cut short with an ellipsis, content under fixed bars, fixed bars that overlap each other, tap
   targets (WCAG 2.2), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, components that differ between screens, and colours
-  written as values instead of DESIGN.md tokens.
+  written as values instead of DESIGN.md tokens. Each screen is also run in long and right-to-left
+  pseudo-languages and your locales (see below).
 - **Consistency report** (`stitch2 consistency`): every shared component (tab bar, header, buttons, chips, …)
   cropped from every screen, next to the catalog's version, with what differs (sizes, fonts, icon set, icons).
 - **Type audit** (`stitch2 type`): every text style a screen uses, and the level it matches.
@@ -73,7 +76,7 @@ file that already exists. From there the agent spends its effort on the design.
 - **Skills** for agents (`skills/`): `stitch2` (the design workflow, principles, typography, components,
   versions), `stitch2-design-md` (building the design system), `stitch2-variants` (fresh-eyes versions and
   testing skill changes), `stitch2-consistency` (verifying and fixing
-  consistency), `stitch2-app-sync` (keeping the app and the designs in step: design first, then the app) and,
+  consistency), `stitch2-i18n` (screens in every language), `stitch2-app-sync` (keeping the app and the designs in step: design first, then the app) and,
   optional, `stitch2-import-from-google-stitch` (drafting screens in Google Stitch through its MCP server).
 
 ## Setup
@@ -183,6 +186,44 @@ for (const locale of ['de', 'ru', 'ar']) {
 Warnings worth reading for translations: `truncated` (a label cut short with an ellipsis), `text-crowded` (two
 controls' labels nearly touching) and `clipped`.
 
+## Screens in every language
+
+A screen is written once, in the source language, with each product string marked by its message key from your
+app's own translation files. stitch2 swaps the text in when the screen is opened in another language, so one file
+shows every locale and the screens use the same strings as the product:
+
+```html
+<span data-t="nav.home">Home</span>
+<ex-header title="Settings" data-t-title="settings.title"></ex-header>
+<p data-t="workout.sets" data-t-args="count=16">16 sets</p>   <!-- plural form picked by count -->
+<p translate="no">Dumbbell Bench Press</p>                   <!-- sample content stays as written -->
+```
+
+```json
+"i18n": {
+  "source": "en",
+  "locales": ["en", "de", "ru", "ar"],
+  "messages": { "en": "src/i18n/en.ts", "*": "src/i18n/locales/{locale}.ts" },
+  "check": ["de", "ar"]
+}
+```
+
+Messages are JSON or a JS/TS module (its default export, else its first exported object); nested objects become
+dotted keys, and plurals are objects keyed by CLDR category (`one`, `few`, `other`…). Two pseudo-languages need
+no translations: **pseudo** makes every text about 40% longer, accented and bracketed, so cut text shows, and
+**pseudo-rtl** lays the page out right to left.
+
+- The canvas's Language switch (`L`) shows every screen in one language; the **Languages** page shows each
+  screen side by side in the check languages, or in all of them, with the number of missing translations.
+- `stitch2 check` runs every screen in pseudo, pseudo-rtl and the locales in `check`; an issue that only shows
+  in one language carries it ("pseudo: Text overflows…"). A key missing from the source messages is an error.
+- `stitch2 i18n` lists, per screen, keys the source or a locale lacks, translations whose `{placeholders}`
+  differ, and text with no key; `--suggest` names existing messages with the same text.
+- Components that draw their own labels read them with `translate(key, fallback)` from `stitch2/elements`.
+
+The `stitch2-i18n` skill teaches agents to write keyed screens and to fix text that does not fit: room in the
+layout first, then a shorter natural word, never a smaller type size.
+
 ## Commands
 
 | Command | What it does |
@@ -191,7 +232,8 @@ controls' labels nearly touching) and `clipped`.
 | `stitch2 init --name N --primary #hex [options]` | Writes a complete DESIGN.md from a few choices |
 | `stitch2 extract <url or file…>` | Writes a DESIGN.md measured from an existing site or screens |
 | `stitch2 canvas` | The canvas at http://localhost:4400 (`PORT` and `HOST` to change) |
-| `stitch2 check [filter] [--shots] [--strict]` | All checks, in every theme; `--shots` saves renders to `<design>/renders/` (`--light.png` for the other theme) |
+| `stitch2 check [filter] [--shots] [--strict] [--locales l,…]` | All checks, in every theme and check language; `--shots` saves renders to `<design>/renders/` (`--light.png`, `--pseudo.png`…) |
+| `stitch2 i18n [filter] [--locale l] [--suggest] [--json]` | Message keys the source or a locale lacks, and screen text with no key |
 | `stitch2 consistency [kind…]` | The consistency report, `<design>/consistency/index.html` |
 | `stitch2 type [filter] [--json]` | The type audit |
 | `stitch2 screens [name] [--status s] [--json]` | Versions, statuses and notes |

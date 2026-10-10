@@ -12,6 +12,8 @@ export interface Issue {
   text: string
   /** Set when the issue depends on the theme (contrast): the data-theme it was found in. */
   theme?: string
+  /** Set when the issue shows only in another language: the locale it was found in. */
+  locale?: string
 }
 
 export interface TextItem {

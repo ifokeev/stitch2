@@ -42,7 +42,8 @@ References, read before the first screen:
 4. **Build** the next version, `<screens>/<screen>/<device>-v<N>.html`, from the project's template (status
    `draft`; never edit an approved version). Assemble it from the components; plain markup only where none
    applies, with token classes, `.type-<level>` classes for text, the spacing scale, and the states DESIGN.md
-   defines. Never add classes to a component to change how it looks, and never write a colour value (hex,
+   defines. When the config has `i18n`, mark every product string with its message key (`data-t`, see
+   **stitch2-i18n**). Never add classes to a component to change how it looks, and never write a colour value (hex,
    `rgb()`, `hsl()`): only DESIGN.md's colours, as token classes or `var(--<prefix>-<name>)`.
 5. **Check** `stitch2 check <path> --shots --strict`. Fix every error (overflow, wrapped labels, content under
    fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text) and every warning about type (`type-*`), hand-built
@@ -51,7 +52,9 @@ References, read before the first screen:
    short with an ellipsis (`truncated`) is a warning to fix with room, not a smaller size. When DESIGN.md has a
    light and a dark theme, every screen is checked in both: an issue marked with a theme
    ("light theme: Low contrast…") is fixed in DESIGN.md's colours for that theme when it shows on many
-   screens, or in the screen when it is one element. Look at both renders (`--light.png`).
+   screens, or in the screen when it is one element. Look at both renders (`--light.png`). With `i18n`, check
+   also runs the screen in the pseudo-languages and the config's locales; fix what they flag as the
+   **stitch2-i18n** skill says.
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.
 7. **Hand over.** Set the version's status to `review`, point the user to it on the canvas, and report what
@@ -65,7 +68,8 @@ References, read before the first screen:
 |---|---|
 | `setup [--name N --primary #hex] [options]` | Sets a project up in one step; keeps every file that exists |
 | `canvas` | The canvas at http://localhost:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
-| `check [filter] [--shots] [--strict]` | Layout, type, reuse and consistency checks; `--shots` saves renders |
+| `check [filter] [--shots] [--strict] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme and check language; `--shots` saves renders |
+| `i18n [filter] [--locale l] [--suggest]` | Message keys screens use that the source or a locale lacks, and text with no key (stitch2-i18n) |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |
 | `screens [name] [--status s] [--json]` | Every version with its status and the user's note |

@@ -31,6 +31,21 @@ export interface ElementsOptions<C> {
   after?: () => void
 }
 
+/**
+ * A message in the locale the screen is shown in (the canvas's Language switch), for labels a component draws
+ * itself. Without one (the source language, or outside stitch2) it returns the fallback.
+ *
+ *   render: (C, props) => renderToStaticMarkup(createElement(C, { labels: { home: translate('nav.home', 'Home') }, ...props }))
+ */
+export function translate(key: string, fallback: string, args?: Record<string, string>): string {
+  const s = (globalThis as { __stitch2?: { t: (k: string, a?: Record<string, string>) => string | undefined } }).__stitch2
+  return s?.t(key, args) ?? fallback
+}
+
+/** The locale the screen is shown in ("en", "ru", "ar-XB" for the right-to-left pseudo-language), or undefined. */
+export const screenLocale = (): string | undefined =>
+  (globalThis as { __stitch2?: { lang: string } }).__stitch2?.lang
+
 const camel = (s: string) => s.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
 
 export function defineElements<C>(components: Record<string, C>, options: ElementsOptions<C>): void {

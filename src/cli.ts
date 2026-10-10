@@ -31,6 +31,10 @@ const COMMANDS: Record<string, [string, string]> = {
   compare: ['compare.ts', '[screen…] [--strict]  The live app against the approved screens ("app" in the config)'],
   elements: ['build-elements.ts', '<entry> [--out file]  Bundle the project\'s components (defineElements) for the screens'],
   lint: ['', "Google's DESIGN.md linter on the project's DESIGN.md"],
+  i18n: [
+    'i18n-report.ts',
+    '[filter] [--locale l] [--suggest] [--json]  Keys screens use that a locale lacks, and screen text with no key',
+  ],
   screens: ['list.ts', '[name] [--status s] [--json]  Screen versions, statuses and notes'],
   localize: ['assets.ts', '[filter]  Copy remote images a screen uses into its assets/ folder'],
   sandbox: [

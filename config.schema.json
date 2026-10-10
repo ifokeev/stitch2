@@ -67,6 +67,30 @@
       "items": { "type": "string" },
       "description": "The themes every screen must work in, by their data-theme value. Defaults to DESIGN.md's: dark (the plain colours), plus light when it has light-* colours. The canvas switches between them and check runs in each."
     },
+    "i18n": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Languages. Screens mark product text with message keys (data-t, data-t-<attr>, data-t-args); the canvas switches language and check runs each screen in the pseudo-languages and the locales in check.",
+      "properties": {
+        "source": { "type": "string", "default": "en", "description": "The language screens are written in." },
+        "locales": { "type": "array", "items": { "type": "string" }, "description": "Locales with translations, besides the source language." },
+        "messages": {
+          "description": "Message files, relative to this file: JSON or a JS/TS module (default export, else its first exported object). A pattern with {locale}, or a map per locale with * for the rest.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object", "additionalProperties": { "type": "string" } }
+          ]
+        },
+        "check": {
+          "description": "Locales stitch2 check runs besides pseudo and pseudo-rtl, or \"all\".",
+          "oneOf": [
+            { "type": "array", "items": { "type": "string" } },
+            { "const": "all" }
+          ]
+        },
+        "rtl": { "type": "array", "items": { "type": "string" }, "description": "Right-to-left locales, if not ar, he, fa, ur, ps and yi." }
+      }
+    },
     "skills": {
       "type": "array",
       "items": {

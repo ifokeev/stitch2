@@ -27,6 +27,7 @@
   .seg button { background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; flex: 1; padding: 4px 6px; white-space: nowrap; }
   .seg button.on { background: var(--panel2); color: var(--text); }
   .seg[hidden] { display: none; }
+  #langFilter { background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; color: var(--text); padding: 5px 8px; width: 100%; }
   #tree { flex: 1; overflow: auto; padding: 6px 8px 16px; }
   #tree h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 14px 6px 6px; text-transform: uppercase; }
   .item { align-items: center; background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 6px 8px; text-align: left; width: 100%; }
@@ -107,6 +108,7 @@
     <div class="seg" id="statusFilter"><button type="button" data-v="active" class="on" title="Everything except archived versions">Active</button><button type="button" data-v="approved" title="The reference versions agents build on">Approved</button><button type="button" data-v="review" title="Finished by an agent, waiting for your decision">Needs review</button><button type="button" data-v="all" title="Including archived versions">All</button></div>
     <div class="seg" id="deviceFilter"><button type="button" data-v="all" class="on">All devices</button><button type="button" data-v="mobile">Mobile</button><button type="button" data-v="desktop">Desktop</button></div>
     <div class="seg" id="themeFilter" hidden title="Show every screen in this theme (T)"></div>
+    <select id="langFilter" title="Show every screen in this language (L)" aria-label="Language"></select>
   </header>
   <nav id="tree"></nav>
   <footer>
@@ -140,8 +142,29 @@ let designDir = 'design'
 let THEMES = ['dark']
 let theme = localStorage.getItem('stitch2-theme') ?? 'dark'
 const themed = () => THEMES.length > 1
-const themeNote = () => (themed() && theme !== THEMES[0] ? ` in the ${theme} theme` : '')
-const forTheme = (issues) => (issues ?? []).filter((i) => !i.theme || !themed() || i.theme === theme)
+// Languages: screens reload in the one picked (?lang=…); the source language shows them as written.
+let LANGS = ['en']
+let SOURCE = 'en'
+let lang = localStorage.getItem('stitch2-lang') ?? 'en'
+const langQuery = () => (lang === SOURCE ? '' : `&lang=${encodeURIComponent(lang)}`)
+const themeNote = () =>
+  [themed() && theme !== THEMES[0] ? `in the ${theme} theme` : '', lang !== SOURCE ? `in ${lang}` : '']
+    .filter(Boolean)
+    .map((s) => ' ' + s)
+    .join(',')
+const forTheme = (issues) =>
+  (issues ?? []).filter((i) => (!i.theme || !themed() || i.theme === theme) && (!i.locale || i.locale === lang))
+const langName = (l) =>
+  l === 'pseudo' ? 'Pseudo: long text' : l === 'pseudo-rtl' ? 'Pseudo: right to left' : `${new Intl.DisplayNames([l], { type: 'language' }).of(l) ?? l} (${l})${l === SOURCE ? ', source' : ''}`
+function setLang(l) {
+  lang = l
+  localStorage.setItem('stitch2-lang', l)
+  document.getElementById('langFilter').value = l
+  for (const f of frames.values()) f.iframe.src = `/${f.screen.path}?pick${langQuery()}`
+  for (const f of frames.values()) badge(f)
+  if (selected) inspector(selected)
+  summary()
+}
 function applyTheme(f) {
   if (!themed()) return
   try { f.iframe.contentDocument.documentElement.dataset.theme = theme } catch {}
@@ -283,6 +306,7 @@ function tree() {
   item('DESIGN.md', 'tokens · rules', docOpen('/design'), () => openDoc('/design'))
   item('Consistency report', 'components × screens', docOpen('/consistency/index.html'), () => openDoc('/consistency/index.html'))
   item('App comparison', 'approved × live app', docOpen('/compare/index.html'), () => openDoc('/compare/index.html'))
+  item('Languages', 'screens × languages', docOpen('/languages'), () => openDoc('/languages'))
   const all = rows()
   const comp = all.find((r) => r.key === '~components')
   if (comp?.visible.length) {
@@ -379,7 +403,7 @@ function frameFor(s) {
   const iframe = el.querySelector('iframe')
   iframe.style.width = `${s.width}px`
   iframe.style.height = `${s.width > 700 ? 800 : 844}px`
-  iframe.src = `/${s.path}?pick`
+  iframe.src = `/${s.path}?pick${langQuery()}`
   const f = { el, iframe, screen: s, height: s.width > 700 ? 800 : 844 }
   iframe.addEventListener('load', () => { applyTheme(f); measure(f); setTimeout(() => measure(f), 800); setTimeout(() => measure(f), 2500) })
   el.querySelector('.shield').addEventListener('click', () => select(f, false))
@@ -410,7 +434,7 @@ function inspector(f) {
   const s = f.screen
   const issues = forTheme(checks.screens?.[s.path])
   box.innerHTML = `<h3><span class="dot ${s.status}"></span><span class="h"></span><button type="button" class="copy" title="Copy a reference to paste to an agent">Copy</button><button type="button" class="close" title="Close (Esc)">×</button></h3>
-    <div class="facts"><span class="f"></span> · <a target="_blank"></a></div>
+    <div class="facts"><span class="f"></span> · <a target="_blank"></a> · <a href="#" class="langs" title="This screen in every language, side by side">languages</a></div>
     ${s.kind === 'screen' ? `<div class="status">${['approved', 'review', 'draft', 'archived'].map((st) => `<button type="button" data-st="${st}" title="${STATUS_HINT[st]}" class="${s.status === st ? 'on' : ''}">${st === 'approved' ? 'Approve' : st === 'review' ? 'Needs review' : st === 'draft' ? 'Draft' : 'Archive'}</button>`).join('')}</div>
     <textarea placeholder="Note for the agent: what to keep, what to change"></textarea><button type="button" class="save">Save note</button>` : ''}
     <h4>Checks</h4><ul></ul>`
@@ -445,6 +469,7 @@ function inspector(f) {
   const a = box.querySelector('.facts a')
   a.href = `/${s.path}`
   a.textContent = s.path
+  box.querySelector('.facts .langs').onclick = (e) => { e.preventDefault(); openDoc(`/languages?screen=${encodeURIComponent(s.path)}`) }
   box.querySelector('h3 .close').onclick = () => select(null)
   box.querySelector('h3 .copy').onclick = () => copy(ref(s))
   for (const b of box.querySelectorAll('.status button')) b.onclick = () => setMeta(s.path, { status: b.dataset.st })
@@ -508,14 +533,15 @@ function elementAt(e) {
   return el ? { f, el } : null
 }
 function describe(el) {
+  const key = el.closest('[data-s2-key]')?.getAttribute('data-s2-key')
   const text = (el.innerText || el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('alt') || el.value || '').trim().replace(/\s+/g, ' ')
-  return { tag: el.getAttribute('data-s2-tag') ?? el.localName, line: el.getAttribute('data-s2-line'), text: text.length > 48 ? `${text.slice(0, 47)}…` : text }
+  return { tag: el.getAttribute('data-s2-tag') ?? el.localName, line: el.getAttribute('data-s2-line'), key, text: text.length > 48 ? `${text.slice(0, 47)}…` : text }
 }
 function elementRef(f, el) {
   const d = describe(el)
   const s = f.screen
   const who = s.kind === 'components' ? 'component catalog' : `${s.screen} ${s.device} ${s.version}`
-  return `${who}${themeNote()} (${designDir}/${s.path}:${d.line}) <${d.tag}>${d.text ? ` “${d.text}”` : ''}`
+  return `${who}${themeNote()} (${designDir}/${s.path}:${d.line}) <${d.tag}>${d.text ? ` “${d.text}”` : ''}${d.key ? ` [${d.key}]` : ''}`
 }
 function drawBox(f, el, cls, label) {
   const r = el.getBoundingClientRect()
@@ -682,6 +708,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeDoc(); select(null) }
   if (e.key === 'f' || e.key === 'F') fit()
   if ((e.key === 't' || e.key === 'T') && themed()) setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])
+  if (e.key === 'l' || e.key === 'L') setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length])
   if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
   if (e.key === '+' || e.key === '=') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z * 1.2)
   if (e.key === '-') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z / 1.2)
@@ -712,6 +739,13 @@ fetch('/api/config').then((r) => r.json()).then((c) => {
   seg.innerHTML = THEMES.map((t) => `<button type="button" data-v="${t}">${t[0].toUpperCase()}${t.slice(1)}</button>`).join('')
   for (const b of seg.querySelectorAll('button')) b.onclick = () => setTheme(b.dataset.v)
   setTheme(theme)
+  SOURCE = c.sourceLocale ?? 'en'
+  LANGS = c.locales?.length ? c.locales : [SOURCE]
+  if (!LANGS.includes(lang)) lang = SOURCE
+  const sel = document.getElementById('langFilter')
+  sel.innerHTML = LANGS.map((l) => `<option value="${l}">${langName(l)}</option>`).join('')
+  sel.value = lang
+  sel.onchange = () => setLang(sel.value)
   document.title = c.name
   load(true)
 })

@@ -5,7 +5,10 @@
  * the canvas shows as badges.
  * Every screen is checked in its own theme, then again in each other theme DESIGN.md defines (designThemes):
  * colours change there, so contrast is checked again, tagged with the theme.
- * Usage: stitch2 check [path filter…] [--shots] [--strict]
+ * Then again in each check language (i18n.ts: the pseudo-languages and the config's): layout problems that
+ * show only there (a label running into its neighbour, text cut off, a control drawn backwards right to left),
+ * and keys a locale has no translation for, tagged with the locale.
+ * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none]
  *   --shots   also save page-tall renders to design/renders/ (one per theme)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
  */
@@ -22,6 +25,7 @@ import {
   reuseIssues,
 } from './consistency.ts'
 import { designThemes, typeLevels } from './design-md.ts'
+import { checkLocales } from './i18n.ts'
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
 import { collectText, type Issue, typeIssues } from './typecheck.ts'
@@ -31,7 +35,9 @@ import { audit } from './audit.ts'
 const args = process.argv.slice(2)
 const shots = args.includes('--shots')
 const strict = args.includes('--strict')
-const filters = args.filter((a) => !a.startsWith('--'))
+const localesFlag = args.indexOf('--locales')
+const locales = checkLocales(localesFlag >= 0 ? args[localesFlag + 1] : undefined)
+const filters = args.filter((a, i) => !a.startsWith('--') && (localesFlag < 0 || i !== localesFlag + 1))
 const screens = listScreens().filter((s) => !filters.length || filters.some((f) => s.path.includes(f)))
 
 const levels = typeLevels()
@@ -66,14 +72,62 @@ for (const s of screens) {
     if (shots) await shoot(s, theme)
   }
   if (themes.length > 1) await setTheme(base)
+  const typed = typeIssues(levels, await page.evaluate(collectText))
+  if (shots) await shoot(s)
+  // The other languages, in the screen's own theme. Reported once per element and kind, in the first locale.
+  const unknownSeen = new Set<string>()
+  for (const locale of locales) {
+    await page
+      .goto(`http://127.0.0.1:${server.port}/${s.path}?lang=${encodeURIComponent(locale)}`, { waitUntil: 'networkidle', timeout: 30_000 })
+      .catch(() => {})
+    await page.waitForTimeout(600)
+    for (const i of await page.evaluate(audit, { comfortable: config.comfortableTarget })) {
+      const key = `${i.type} ${i.selector}`
+      if (i.type === 'contrast' || seen.has(key)) continue
+      seen.add(key)
+      themed.push({ ...i, locale, message: `${locale}: ${i.message}` })
+    }
+    const lost = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __stitch2?: { missing: { keys: string; all: string; text: string; unknown: string }[] }
+          }
+        ).__stitch2?.missing ?? [],
+    )
+    for (const m of lost) {
+      const selector = `[data-s2-key="${m.all}"]`
+      const unknown = m.unknown.split(' ').filter(Boolean)
+      const fresh = unknown.filter((k) => !unknownSeen.has(k))
+      fresh.forEach((k) => unknownSeen.add(k))
+      if (fresh.length)
+        themed.push({
+          severity: 'error',
+          type: 'i18n-unknown-key',
+          selector,
+          text: m.text,
+          message: `No message for ${fresh.join(' ')}: add it to the source language's messages`,
+        })
+      const lacks = m.keys.split(' ').filter((k) => !unknown.includes(k))
+      if (lacks.length)
+        themed.push({
+          severity: 'warning',
+          type: 'i18n-missing',
+          locale,
+          selector,
+          text: m.text,
+          message: `${locale}: no translation for ${lacks.join(' ')}`,
+        })
+    }
+    if (shots) await shoot(s, undefined, locale)
+  }
   results[s.path] = [
     ...layout,
     ...themed,
-    ...typeIssues(levels, await page.evaluate(collectText)),
+    ...typed,
     ...reuseIssues(s.path, found),
     ...colourIssues(s.path),
   ]
-  if (shots) await shoot(s)
 }
 await browser.close()
 server.close()
@@ -85,12 +139,13 @@ async function setTheme(theme: string) {
   await page.waitForTimeout(150)
 }
 
-/** A page-tall render; renders in another theme than the screen's own get a --<theme> suffix. */
-async function shoot(s: { path: string; width: number }, theme?: string) {
+/** A page-tall render; renders in another theme or language than the screen's own get a --<theme> suffix. */
+async function shoot(s: { path: string; width: number }, theme?: string, locale?: string) {
   const height = await page.evaluate(() => document.documentElement.scrollHeight)
   await page.setViewportSize({ width: s.width, height: Math.max(844, Math.min(height, 6000)) })
   mkdirSync(join(ROOT, 'renders'), { recursive: true })
-  const name = s.path.replaceAll('/', '__').replace(/\.html$/, theme ? `--${theme}.png` : '.png')
+  const suffix = theme ?? locale
+  const name = s.path.replaceAll('/', '__').replace(/\.html$/, suffix ? `--${suffix}.png` : '.png')
   await page.screenshot({ path: join(ROOT, 'renders', name) })
   await page.setViewportSize({ width: s.width, height: 844 })
 }
