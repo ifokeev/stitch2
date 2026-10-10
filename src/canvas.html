@@ -26,6 +26,7 @@
   .seg { background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; display: flex; gap: 2px; padding: 2px; }
   .seg button { background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; flex: 1; padding: 4px 6px; white-space: nowrap; }
   .seg button.on { background: var(--panel2); color: var(--text); }
+  .seg[hidden] { display: none; }
   #tree { flex: 1; overflow: auto; padding: 6px 8px 16px; }
   #tree h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 14px 6px 6px; text-transform: uppercase; }
   .item { align-items: center; background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 6px 8px; text-align: left; width: 100%; }
@@ -105,6 +106,7 @@
     <input id="search" placeholder="Search screens… ( / )" />
     <div class="seg" id="statusFilter"><button type="button" data-v="active" class="on" title="Everything except archived versions">Active</button><button type="button" data-v="approved" title="The reference versions agents build on">Approved</button><button type="button" data-v="review" title="Finished by an agent, waiting for your decision">Needs review</button><button type="button" data-v="all" title="Including archived versions">All</button></div>
     <div class="seg" id="deviceFilter"><button type="button" data-v="all" class="on">All devices</button><button type="button" data-v="mobile">Mobile</button><button type="button" data-v="desktop">Desktop</button></div>
+    <div class="seg" id="themeFilter" hidden title="Show every screen in this theme (T)"></div>
   </header>
   <nav id="tree"></nav>
   <footer>
@@ -134,7 +136,26 @@ const STATUS_HINT = {
 }
 /** What to paste to an agent: the screen, device and version, and the file. */
 let designDir = 'design'
-const ref = (s) => (s.kind === 'components' ? `component catalog (${designDir}/${s.path})` : `${s.screen} ${s.device} ${s.version} (${designDir}/${s.path})`)
+// Themes: every screen is shown in the one picked here (data-theme on its document); checks follow it.
+let THEMES = ['dark']
+let theme = localStorage.getItem('stitch2-theme') ?? 'dark'
+const themed = () => THEMES.length > 1
+const themeNote = () => (themed() && theme !== THEMES[0] ? ` in the ${theme} theme` : '')
+const forTheme = (issues) => (issues ?? []).filter((i) => !i.theme || !themed() || i.theme === theme)
+function applyTheme(f) {
+  if (!themed()) return
+  try { f.iframe.contentDocument.documentElement.dataset.theme = theme } catch {}
+}
+function setTheme(t) {
+  theme = t
+  localStorage.setItem('stitch2-theme', t)
+  for (const b of document.querySelectorAll('#themeFilter button')) b.classList.toggle('on', b.dataset.v === t)
+  for (const f of frames.values()) applyTheme(f)
+  for (const f of frames.values()) badge(f)
+  if (selected) inspector(selected)
+  summary()
+}
+const ref = (s) => (s.kind === 'components' ? `component catalog (${designDir}/${s.path})` : `${s.screen} ${s.device} ${s.version}${themeNote()} (${designDir}/${s.path})`)
 let toastTimer
 async function copy(text) {
   try {
@@ -321,8 +342,8 @@ function measure(f) {
 
 function badge(f) {
   const b = f.el.querySelector('.badge')
-  const issues = checks.screens?.[f.screen.path]
-  if (!issues) { b.className = 'badge'; b.textContent = 'not checked'; return }
+  if (!checks.screens?.[f.screen.path]) { b.className = 'badge'; b.textContent = 'not checked'; return }
+  const issues = forTheme(checks.screens[f.screen.path])
   const errors = issues.filter((i) => i.severity === 'error').length
   const warnings = issues.length - errors
   b.className = `badge ${errors ? 'bad' : warnings ? 'warn' : 'ok'}`
@@ -346,7 +367,7 @@ function summary() {
   const review = versions.filter((s) => s.status === 'review').length
   const approved = new Set(versions.filter((s) => s.status === 'approved').map((s) => s.screen)).size
   const names = new Set(versions.map((s) => s.screen)).size
-  const bad = versions.filter((s) => checks.screens?.[s.path]?.some((i) => i.severity === 'error')).length
+  const bad = versions.filter((s) => forTheme(checks.screens?.[s.path]).some((i) => i.severity === 'error')).length
   document.getElementById('summary').textContent = `${names} screens · ${approved} approved · ${review} need review${bad ? ` · ${bad} with errors` : ''}`
 }
 
@@ -360,7 +381,7 @@ function frameFor(s) {
   iframe.style.height = `${s.width > 700 ? 800 : 844}px`
   iframe.src = `/${s.path}?pick`
   const f = { el, iframe, screen: s, height: s.width > 700 ? 800 : 844 }
-  iframe.addEventListener('load', () => { measure(f); setTimeout(() => measure(f), 800); setTimeout(() => measure(f), 2500) })
+  iframe.addEventListener('load', () => { applyTheme(f); measure(f); setTimeout(() => measure(f), 800); setTimeout(() => measure(f), 2500) })
   el.querySelector('.shield').addEventListener('click', () => select(f, false))
   el.querySelector('.shield').addEventListener('dblclick', () => { select(f, false); f.el.classList.add('live') })
   el.querySelector('.label').addEventListener('click', () => select(f, true))
@@ -387,7 +408,7 @@ function select(f, zoom) {
 function inspector(f) {
   const box = document.getElementById('inspector')
   const s = f.screen
-  const issues = checks.screens?.[s.path] ?? []
+  const issues = forTheme(checks.screens?.[s.path])
   box.innerHTML = `<h3><span class="dot ${s.status}"></span><span class="h"></span><button type="button" class="copy" title="Copy a reference to paste to an agent">Copy</button><button type="button" class="close" title="Close (Esc)">×</button></h3>
     <div class="facts"><span class="f"></span> · <a target="_blank"></a></div>
     ${s.kind === 'screen' ? `<div class="status">${['approved', 'review', 'draft', 'archived'].map((st) => `<button type="button" data-st="${st}" title="${STATUS_HINT[st]}" class="${s.status === st ? 'on' : ''}">${st === 'approved' ? 'Approve' : st === 'review' ? 'Needs review' : st === 'draft' ? 'Draft' : 'Archive'}</button>`).join('')}</div>
@@ -494,7 +515,7 @@ function elementRef(f, el) {
   const d = describe(el)
   const s = f.screen
   const who = s.kind === 'components' ? 'component catalog' : `${s.screen} ${s.device} ${s.version}`
-  return `${who} (${designDir}/${s.path}:${d.line}) <${d.tag}>${d.text ? ` “${d.text}”` : ''}`
+  return `${who}${themeNote()} (${designDir}/${s.path}:${d.line}) <${d.tag}>${d.text ? ` “${d.text}”` : ''}`
 }
 function drawBox(f, el, cls, label) {
   const r = el.getBoundingClientRect()
@@ -660,6 +681,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'p' || e.key === 'P') setPicking(!picking)
   if (e.key === 'Escape') { closeDoc(); select(null) }
   if (e.key === 'f' || e.key === 'F') fit()
+  if ((e.key === 't' || e.key === 'T') && themed()) setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])
   if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
   if (e.key === '+' || e.key === '=') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z * 1.2)
   if (e.key === '-') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z / 1.2)
@@ -683,6 +705,13 @@ fetch('/api/config').then((r) => r.json()).then((c) => {
   ORDER = c.order ?? []
   designDir = c.designDir ?? 'design'
   document.getElementById('labName').textContent = c.name
+  THEMES = c.themes?.length ? c.themes : ['dark']
+  if (!THEMES.includes(theme)) theme = THEMES[0]
+  const seg = document.getElementById('themeFilter')
+  seg.hidden = !themed()
+  seg.innerHTML = THEMES.map((t) => `<button type="button" data-v="${t}">${t[0].toUpperCase()}${t.slice(1)}</button>`).join('')
+  for (const b of seg.querySelectorAll('button')) b.onclick = () => setTheme(b.dataset.v)
+  setTheme(theme)
   document.title = c.name
   load(true)
 })

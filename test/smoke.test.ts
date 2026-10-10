@@ -57,6 +57,15 @@ test('the starter catalog and screen pass the checks', () => {
   assert.match(out, /0 errors\./)
 })
 
+test('with a light theme, check also runs the screens in it', () => {
+  // setup --primary writes both themes; the renders show the second one with a suffix.
+  assert.match(readFileSync(join(dir, 'design/DESIGN.md'), 'utf8'), /\n  light-/)
+  stitch2('check', '--shots')
+  const checks = JSON.parse(readFileSync(join(dir, 'design/checks.json'), 'utf8'))
+  assert.ok(Object.keys(checks.screens).length >= 2)
+  assert.ok(existsSync(join(dir, 'design/renders/screens__home__mobile-v1--light.png')))
+})
+
 test('setup again keeps every existing file', () => {
   const before = readFileSync(join(dir, 'design/components/af.js'), 'utf8')
   const out = stitch2('setup', '--name', 'Something else', '--primary', '#FF0000')

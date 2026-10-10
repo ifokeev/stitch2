@@ -36,11 +36,12 @@ file that already exists. From there the agent spends its effort on the design.
 - **Canvas** (`stitch2 canvas`): every screen and its versions on a pan-and-zoom board, a sidebar with search
   and status filters, your DESIGN.md drawn as tokens and rules, the component catalog, and an inspector to
   approve, archive or leave a note on a version. Live reload; copyable references to paste to an agent.
+  With a light and a dark theme (DESIGN.md's `light-*` colours), a switch (`T`) shows every screen in either one.
   Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
   `home mobile v1 (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`; Shift-click collects
   several to copy at once or add to the version's note.
 - **Checks** (`stitch2 check`): content past the frame edge, labels that wrap, content under fixed bars, fixed bars that overlap each other, tap
-  targets (WCAG 2.2), text contrast, text that is not one of DESIGN.md's type levels, capitals without tracking,
+  targets (WCAG 2.2), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, components that differ between screens, and colours
   written as values instead of DESIGN.md tokens.
 - **Consistency report** (`stitch2 consistency`): every shared component (tab bar, header, buttons, chips, …)
@@ -171,7 +172,7 @@ component): dialog roots are often zero-sized wrappers, which Playwright reports
 | `stitch2 init --name N --primary #hex [options]` | Writes a complete DESIGN.md from a few choices |
 | `stitch2 extract <url or file…>` | Writes a DESIGN.md measured from an existing site or screens |
 | `stitch2 canvas` | The canvas at http://localhost:4400 (`PORT` and `HOST` to change) |
-| `stitch2 check [filter] [--shots] [--strict]` | All checks; `--shots` saves renders to `<design>/renders/` |
+| `stitch2 check [filter] [--shots] [--strict]` | All checks, in every theme; `--shots` saves renders to `<design>/renders/` (`--light.png` for the other theme) |
 | `stitch2 consistency [kind…]` | The consistency report, `<design>/consistency/index.html` |
 | `stitch2 type [filter] [--json]` | The type audit |
 | `stitch2 screens [name] [--status s] [--json]` | Versions, statuses and notes |

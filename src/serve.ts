@@ -9,6 +9,7 @@ import { createServer, type ServerResponse } from 'node:http'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CONFIG_FILE, config } from './config.ts'
+import { designThemes } from './design-md.ts'
 import { designPage } from './design-page.ts'
 import { annotate } from './pick.ts'
 
@@ -115,7 +116,7 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       })
       return
     }
-    if (url.pathname === '/api/config') return json(config)
+    if (url.pathname === '/api/config') return json({ ...config, themes: designThemes() })
     if (url.pathname === '/api/screens') return json(listScreens())
     if (url.pathname === '/api/checks') {
       const file = join(ROOT, 'checks.json')

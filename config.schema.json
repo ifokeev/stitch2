@@ -62,6 +62,11 @@
       "description": "Tap targets smaller than this (px) get a warning.",
       "default": 32
     },
+    "themes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The themes every screen must work in, by their data-theme value. Defaults to DESIGN.md's: dark (the plain colours), plus light when it has light-* colours. The canvas switches between them and check runs in each."
+    },
     "skills": {
       "type": "array",
       "items": {

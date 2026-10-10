@@ -3,8 +3,10 @@
  * edge, labels wrapping onto two lines, content hidden under fixed bars, tiny tap targets, low text
  * contrast, and text styles that are not one of DESIGN.md's type levels. Writes design/checks.json, which
  * the canvas shows as badges.
+ * Every screen is checked in its own theme, then again in each other theme DESIGN.md defines (designThemes):
+ * colours change there, so contrast is checked again, tagged with the theme.
  * Usage: stitch2 check [path filter…] [--shots] [--strict]
- *   --shots   also save page-tall renders to design/renders/
+ *   --shots   also save page-tall renders to design/renders/ (one per theme)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -19,7 +21,7 @@ import {
   consistencyIssues,
   reuseIssues,
 } from './consistency.ts'
-import { typeLevels } from './design-md.ts'
+import { designThemes, typeLevels } from './design-md.ts'
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
 import { collectText, type Issue, typeIssues } from './typecheck.ts'
@@ -33,6 +35,7 @@ const filters = args.filter((a) => !a.startsWith('--'))
 const screens = listScreens().filter((s) => !filters.length || filters.some((f) => s.path.includes(f)))
 
 const levels = typeLevels()
+const themes = designThemes()
 const collect = collectOptions()
 const server = await startServer(0)
 const browser = await chromium.launch()
@@ -48,23 +51,49 @@ for (const s of screens) {
   await page.waitForTimeout(600)
   const found = await page.evaluate(collectComponents, collect)
   components[s.path] = found.components
+  const own = await page.evaluate(() => document.documentElement.dataset.theme || '')
+  const base = own || themes[0]!
+  const layout = await page.evaluate(audit, { comfortable: config.comfortableTarget })
+  for (const i of layout) if (i.type === 'contrast') i.theme = base
+  // The other themes: what the colours change (contrast), plus anything that only shows there.
+  const seen = new Set(layout.map((i) => `${i.type} ${i.selector}`))
+  const themed: Issue[] = []
+  for (const theme of themes.filter((t) => t !== base)) {
+    await setTheme(theme)
+    for (const i of await page.evaluate(audit, { comfortable: config.comfortableTarget }))
+      if (i.type === 'contrast' || !seen.has(`${i.type} ${i.selector}`))
+        themed.push({ ...i, theme, message: `${theme} theme: ${i.message}` })
+    if (shots) await shoot(s, theme)
+  }
+  if (themes.length > 1) await setTheme(base)
   results[s.path] = [
-    ...(await page.evaluate(audit, { comfortable: config.comfortableTarget })),
+    ...layout,
+    ...themed,
     ...typeIssues(levels, await page.evaluate(collectText)),
     ...reuseIssues(s.path, found),
     ...colourIssues(s.path),
   ]
-  if (shots) {
-    const height = await page.evaluate(() => document.documentElement.scrollHeight)
-    await page.setViewportSize({ width: s.width, height: Math.max(844, Math.min(height, 6000)) })
-    mkdirSync(join(ROOT, 'renders'), { recursive: true })
-    await page.screenshot({
-      path: join(ROOT, 'renders', s.path.replaceAll('/', '__').replace(/\.html$/, '.png')),
-    })
-  }
+  if (shots) await shoot(s)
 }
 await browser.close()
 server.close()
+
+async function setTheme(theme: string) {
+  await page.evaluate((t) => {
+    document.documentElement.dataset.theme = t
+  }, theme)
+  await page.waitForTimeout(150)
+}
+
+/** A page-tall render; renders in another theme than the screen's own get a --<theme> suffix. */
+async function shoot(s: { path: string; width: number }, theme?: string) {
+  const height = await page.evaluate(() => document.documentElement.scrollHeight)
+  await page.setViewportSize({ width: s.width, height: Math.max(844, Math.min(height, 6000)) })
+  mkdirSync(join(ROOT, 'renders'), { recursive: true })
+  const name = s.path.replaceAll('/', '__').replace(/\.html$/, theme ? `--${theme}.png` : '.png')
+  await page.screenshot({ path: join(ROOT, 'renders', name) })
+  await page.setViewportSize({ width: s.width, height: 844 })
+}
 
 // Merge with the last results, so a filtered run still compares components with every other screen.
 let previous: { screens?: Record<string, Issue[]>; components?: Record<string, Components> } = {}

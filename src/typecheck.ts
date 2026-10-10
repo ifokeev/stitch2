@@ -10,6 +10,8 @@ export interface Issue {
   message: string
   selector: string
   text: string
+  /** Set when the issue depends on the theme (contrast): the data-theme it was found in. */
+  theme?: string
 }
 
 export interface TextItem {

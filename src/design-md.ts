@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
+import { config } from './config.ts'
 import { ROOT } from './screens.ts'
 
 export interface TypeLevel {
@@ -45,6 +46,19 @@ export function readDesign(file = join(ROOT, 'DESIGN.md')): Design {
     rounded: raw.rounded ?? {},
     spacing: raw.spacing ?? {},
     components: raw.components ?? {},
+  }
+}
+
+/**
+ * The themes screens must work in (their data-theme values): the config's, or DESIGN.md's own, where the plain
+ * colours are the dark theme and light-* colours make a light one.
+ */
+export function designThemes(): string[] {
+  if (config.themes?.length) return config.themes
+  try {
+    return Object.keys(readDesign().colors).some((k) => k.startsWith('light-')) ? ['dark', 'light'] : ['dark']
+  } catch {
+    return ['dark']
   }
 }
 

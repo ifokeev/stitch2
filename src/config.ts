@@ -27,6 +27,11 @@ export interface LabConfig {
   order: string[]
   /** Tap targets smaller than this (px) get a warning; under WCAG's 24px they are errors when crowded. */
   comfortableTarget: number
+  /**
+   * The themes every screen must work in, by their data-theme value. Defaults to DESIGN.md's: "dark" (the plain
+   * colours) and "light" when it has light-* colours. The canvas switches between them; check runs in each.
+   */
+  themes?: string[]
   /** Skill folders a blind-trial sandbox copies. */
   skills: string[]
   /** Paths under designDir a sandbox leaves out besides screens (notes that would give the trial away). */
