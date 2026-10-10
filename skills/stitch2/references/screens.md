@@ -60,6 +60,11 @@ frame width 1280, the same components and type levels, the layout from DESIGN.md
 of a tab bar, a content max width, two columns where it helps). Shared components get their desktop form in the
 component, before the first desktop screen.
 
+Widths follow Google's window size classes ([google.md](google.md)): compact under 600 px (the phone frame),
+medium 600–839, expanded 840–1199, large from 1200 (the desktop frame). A desktop screen is a layout for the
+width class, not a stretched phone: a side navigation instead of the bar, list-detail with both panes, extra
+columns for feeds. When a project needs a tablet, it is a medium-width device of the same screen.
+
 ## The canvas
 
 `stitch2 canvas` → http://localhost:4400. The sidebar lists DESIGN.md (drawn as tokens and rules), the

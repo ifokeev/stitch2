@@ -18,3 +18,7 @@ are restated in principles.md.
 | Vercel Geist typography (vercel.com/geist/typography) | yes | The type scale made for Geist by its authors: sizes, line heights and the tracking that suits it (and fonts like it) |
 | Apple HIG, Typography (developer.apple.com/design/human-interface-guidelines/typography) | yes | iOS Dynamic Type sizes, the SF Pro tracking table, minimum sizes (11pt), watchOS sizes |
 | Material 3 type scale (m3.material.io/styles/typography/type-scale-tokens) | yes | Role names (display, headline, title, body, label) and how labels open up at small sizes |
+| Google's guidance, restated as rules ([google.md](google.md)) | — | Window size classes, canonical layouts, Material's type, shape, state and motion numbers, 48 px targets, line length, forms |
+| Android app quality guidelines (developer.android.com/docs/quality-guidelines) | yes | What Google Play calls a quality app: 48dp targets, contrast, line length 45–75, light and dark, adaptive layouts |
+| web.dev Learn Design and Learn Forms (web.dev/learn/design, web.dev/learn/forms) | yes | Responsive layout, typography, navigation patterns, interaction (pointer, hover), accessibility, forms |
+| Lighthouse audits (developer.chrome.com/docs/lighthouse) | yes | The exact rules behind tap target spacing and legible font sizes |

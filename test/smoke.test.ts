@@ -180,3 +180,70 @@ test('audit: a wrapped button label is an error, a row with a title and a wrappe
     await browser.close()
   }
 })
+
+test("audit: Google's rules (type size, margins, line length, targets, labels, names, navigation, focus)", async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 700 } })
+    const long = 'Every rep last time, so the next session adds a small step to the weight and keeps the same reps. '.repeat(4)
+    await page.setContent(
+      '<style>body{margin:0;font:16px sans-serif} .ok:focus-visible{outline:2px solid blue} main{padding:0 16px}</style>' +
+        '<p style="margin:0;padding-left:4px;font-size:16px">Too close to the edge</p><main>' +
+        '<p style="font-size:9px">Tiny print</p>' +
+        '<div><button style="width:40px;height:40px;outline:none" aria-label="Less">-</button>' +
+        '<button style="width:40px;height:40px;outline:none" aria-label="More">+</button></div>' +
+        '<input placeholder="Your name">' +
+        '<label for="n">Name</label><input id="n" placeholder="Ivan" class="ok">' +
+        '<button class="ok" style="width:48px;height:48px"><svg width="24" height="24"></svg></button>' +
+        '<button class="ok" aria-label="Share" style="width:48px;height:48px"><svg width="24" height="24"></svg></button>' +
+        '</main><nav style="position:fixed;bottom:0;left:0;right:0;display:flex">' +
+        ['Home', 'Plan', 'Start', 'Library', 'Stats', 'More'].map((l) => '<a class="ok" href="#" style="flex:1;padding:16px 0;text-align:center">' + l + '</a>').join('') +
+        '</nav>',
+    )
+    const issues = await page.evaluate(audit, { comfortable: 32 })
+    const of = (type: string) => issues.filter((i) => i.type === type).map((i) => i.text)
+    assert.deepEqual(of('edge-margin'), ['Too close to the edge'])
+    assert.deepEqual(of('text-small'), ['Tiny print'])
+    assert.ok(of('tap-spacing').length >= 1, JSON.stringify(issues))
+    assert.equal(of('placeholder-label').length, 1)
+    assert.equal(of('unnamed-control').length, 1)
+    assert.equal(of('nav-destinations').length, 1)
+    // The two plain buttons have outline:none and nothing else on focus; the .ok ones have a ring, inputs the browser's.
+    assert.equal(issues.filter((i) => i.type === 'focus-visible').length, 2, JSON.stringify(issues.filter((i) => i.type === 'focus-visible')))
+    // Line length, on a desktop-wide page: the uncapped paragraph runs past 75 characters, the capped one does not.
+    await page.setViewportSize({ width: 1280, height: 700 })
+    await page.setContent('<body style="margin:0;padding:0 24px;font:16px sans-serif"><p id="wide">' + long + '</p><p style="max-width:32em">' + long + '</p></body>')
+    const wide = (await page.evaluate(audit, { comfortable: 32 })).filter((i) => i.type === 'measure')
+    assert.equal(wide.length, 1, JSON.stringify(wide))
+    assert.equal(wide[0]!.selector, '#wide')
+  } finally {
+    await browser.close()
+  }
+})
+
+test('elements: ids repeated by separately rendered components are renamed, with their labels', async () => {
+  const { build } = await import('esbuild')
+  const entry = fileURLToPath(new URL('../src/elements.ts', import.meta.url))
+  const bundle = await build({
+    stdin: {
+      contents:
+        'import { defineElements } from ' + JSON.stringify(entry) + '\n' +
+        "defineElements({ field: 1 }, { prefix: 'x', render: (_c, p) => '<div><label for=\"f\">' + p.label + '</label><input id=\"f\"></div>' })",
+      resolveDir: process.cwd(),
+      loader: 'ts',
+    },
+    bundle: true,
+    write: false,
+    format: 'iife',
+  })
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    await page.setContent('<x-field label="Reps"></x-field><x-field label="Notes"></x-field>')
+    await page.addScriptTag({ content: bundle.outputFiles[0]!.text })
+    const labels = await page.evaluate(() => [...document.querySelectorAll('input')].map((i) => i.labels?.[0]?.textContent))
+    assert.deepEqual(labels, ['Reps', 'Notes'])
+  } finally {
+    await browser.close()
+  }
+})

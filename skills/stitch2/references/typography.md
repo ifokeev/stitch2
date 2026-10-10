@@ -30,6 +30,9 @@ together. A typical app set (sizes for a 390 px phone):
   utilities on text: that is how screens drift into twenty slightly different styles.
 - Add a level only when a real use appears on two screens and nothing fits. Never solve a one-off with an
   in-between size.
+- Nothing under 11 px, body text from 12 px, reading text 14–16 px **(check: text-small)**; prose at 45–75
+  characters a line, a max width of about `32em` **(check: measure)**. Material's fifteen-level scale and its sizes are in
+  [google.md](google.md).
 
 ## 2. Hierarchy recipes
 

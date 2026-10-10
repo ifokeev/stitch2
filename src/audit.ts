@@ -383,5 +383,150 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
         `Low contrast ${ratio.toFixed(2)}:1 (needs ${need}:1)`,
       )
   }
+
+  // 6. Google's guidelines (Material 3, Android's app quality guidelines, web.dev, Lighthouse). Warnings: each names
+  // the rule it comes from, so a screen can break one on purpose (see skills/stitch2/references/google.md).
+  const textRects = (el: Element) => {
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    return [...range.getClientRects()].filter((r) => r.width > 1 && r.height > 1)
+  }
+  const scrollsSideways = (el: Element) => {
+    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+      const ox = getComputedStyle(e).overflowX
+      if (ox === 'auto' || ox === 'scroll') return true
+    }
+    return false
+  }
+  const margin = W < 600 ? 16 : 24
+  for (const el of all) {
+    if (!ownText(el) || opacity(el) < 0.1) continue
+    const cs = getComputedStyle(el)
+    const size = parseFloat(cs.fontSize)
+    // 6a. Material's smallest type level is 11 (label small); body text starts at 12, which Lighthouse asks of
+    // most text on a page.
+    if (size < 11)
+      push('warning', 'text-small', el, 'Text at ' + size + "px: Material's smallest level is 11px, and body text starts at 12px")
+    const rects = textRects(el)
+    if (!rects.length) continue
+    // 6b. Margins: Material keeps content 16dp from the edge of a compact window, 24dp from medium ones up.
+    // Navigation bars and tab strips spread their items across the full width; the margin is for content.
+    if (!scrollsSideways(el) && !el.closest('nav, [role=navigation], [role=tablist]')) {
+      const left = Math.min(...rects.map((r) => r.left))
+      const right = Math.max(...rects.map((r) => r.right))
+      const gap = Math.min(left, W - right)
+      if (gap >= 0 && gap < margin - 0.5)
+        push('warning', 'edge-margin', el, 'Text ' + Math.round(gap) + "px from the screen edge (Material's margin is " + margin + 'px at this width)')
+    }
+    // 6c. Line length: 45–75 characters a line, in every language (Android's app quality guidelines, web.dev).
+    if (el.querySelector('p, div, li, ul, ol, section, article, br, h1, h2, h3, h4')) continue
+    // Measured word by word: each word's line, then the longest full line (the last one may be short).
+    if (rects.length < 2) continue
+    const lineChars: { top: number; n: number }[] = []
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    for (let t = walker.nextNode(); t; t = walker.nextNode())
+      for (const m of t.textContent!.matchAll(/\S+\s*/g)) {
+        const range = document.createRange()
+        range.setStart(t, m.index!)
+        range.setEnd(t, m.index! + m[0].trimEnd().length)
+        const top = range.getBoundingClientRect().top
+        const line = lineChars.find((l) => Math.abs(l.top - top) < size * 0.6)
+        if (line) line.n += m[0].replace(/\s+/g, ' ').length
+        else lineChars.push({ top, n: m[0].replace(/\s+/g, ' ').length })
+      }
+    if (lineChars.length < 2) continue
+    const longest = Math.max(...lineChars.sort((a, b) => a.top - b.top).slice(0, -1).map((l) => l.n))
+    if (longest > 80)
+      push('warning', 'measure', el, 'Lines of up to ' + longest + ' characters: keep prose to 45–75 (a max width of about 32em)')
+  }
+
+  // 6d. Touch targets: Material and Lighthouse want 48×48; a smaller one fails when the 48px square around its
+  // centre covers a quarter of its area of another target (about 8px apart is enough). Touch-sized windows only.
+  const named = (el: Element) => text(el) || el.getAttribute('aria-label') || el.tagName.toLowerCase()
+  // Compared like overlaps (4b): behind an open modal only its own controls, and within one layer.
+  if (W < 600)
+    for (const el of solid) {
+      if (solid.some((o) => o !== el && o.contains(el)) || (el.matches('a') && el.closest('p'))) continue
+      const r = el.getBoundingClientRect()
+      if (r.width >= 48 && r.height >= 48) continue
+      if (out.some((i) => i.type === 'tap-target' && i.selector === sel(el))) continue
+      const cx = r.left + r.width / 2
+      const cy = r.top + r.height / 2
+      const hit = solid.find((o) => {
+        if (o === el || o.contains(el) || el.contains(o) || layer(o) !== layer(el)) return false
+        const q = o.getBoundingClientRect()
+        const ox = Math.max(0, Math.min(cx + 24, q.right) - Math.max(cx - 24, q.left))
+        const oy = Math.max(0, Math.min(cy + 24, q.bottom) - Math.max(cy - 24, q.top))
+        return ox * oy > 48
+      })
+      if (hit)
+        push('warning', 'tap-spacing', el, Math.round(r.width) + '×' + Math.round(r.height) + 'px and close to “' + named(hit).slice(0, 24) + '”: make it 48px or leave about 8px around it (Material, Lighthouse)')
+    }
+
+  // 6e. Forms (web.dev): a placeholder is a hint, not a label; it disappears as soon as someone types.
+  const visibleText = (n: Element | null) => !!n && shown(n) && !!(n.textContent ?? '').trim()
+  for (const el of all) {
+    if (!el.matches('input, textarea')) continue
+    if (el.matches('[type=hidden], [type=checkbox], [type=radio], [type=submit], [type=button], [type=range], [type=search], [role=searchbox]')) continue
+    if (el.closest('[role=search], search')) continue
+    const f = el as HTMLInputElement
+    if (!f.placeholder) continue
+    const labelled =
+      [...(f.labels ?? [])].some(visibleText) ||
+      (f.getAttribute('aria-labelledby') ?? '').split(/\s+/).some((id) => visibleText(document.getElementById(id)))
+    if (!labelled)
+      push('warning', 'placeholder-label', el, 'Its placeholder is its only label, and it disappears while typing: add a visible label (web.dev)')
+  }
+
+  // 6f. Every control has a name (Android's content descriptions, WCAG 4.1.2): an icon-only button needs a label.
+  for (const el of interactive) {
+    if (el.matches('input, select, textarea')) continue
+    const name =
+      (el.textContent ?? '').trim() ||
+      el.getAttribute('aria-label') ||
+      el.getAttribute('title') ||
+      [...el.querySelectorAll('img[alt], svg title')].map((i) => i.getAttribute('alt') ?? i.textContent).join('').trim() ||
+      (el.getAttribute('aria-labelledby') ?? '').split(/\s+/).map((id) => document.getElementById(id)?.textContent ?? '').join('').trim()
+    if (!name) push('warning', 'unnamed-control', el, 'An icon-only control with no name: screen readers announce nothing (add aria-label)')
+  }
+
+  // 6g. Material's navigation bar holds three to five destinations; more belong in a rail, a drawer or a page.
+  for (const el of all) {
+    if (!['fixed', 'sticky'].includes(getComputedStyle(el).position)) continue
+    const r = el.getBoundingClientRect()
+    if (r.bottom < innerHeight - 2 || r.width < W * 0.8) continue
+    if (!el.matches('nav, [role=navigation], [role=tablist]') && !el.querySelector('nav, [role=navigation], [role=tablist]')) continue
+    const items = [...el.querySelectorAll('a[href], button, [role=tab]')].filter(
+      (i) => shown(i) && !i.parentElement?.closest('a[href], button, [role=tab]'),
+    )
+    if (items.length > 5)
+      push('warning', 'nav-destinations', el, items.length + " destinations in the bottom navigation: Material's navigation bar holds 3–5")
+  }
+
+  // 6h. Keyboard focus is visible (Material's focus state, web.dev, WCAG 2.4.7): focusing a control changes how
+  // it or its frame looks. Transitions are paused so a ring that fades in still counts.
+  const still = document.createElement('style')
+  still.textContent = '*, *::before, *::after { transition: none !important; animation: none !important }'
+  document.head.append(still)
+  const look = (e: Element | null) => {
+    if (!e) return ''
+    const c = getComputedStyle(e)
+    return [c.outlineStyle === 'none' ? '' : c.outlineStyle + c.outlineWidth + c.outlineColor, c.boxShadow, c.backgroundColor, c.borderColor, c.color, c.textDecorationLine].join('|')
+  }
+  const frameOf = (e: HTMLElement) => [e, e.parentElement, e.parentElement?.parentElement ?? null].map(look).join('#')
+  const before = document.activeElement as HTMLElement | null
+  for (const el of interactive) {
+    const h = el as HTMLElement
+    if ((h as HTMLButtonElement).disabled || opacity(h) < 0.05) continue
+    const was = frameOf(h)
+    h.focus({ preventScroll: true, focusVisible: true } as FocusOptions)
+    if (document.activeElement !== h) continue
+    const now = frameOf(h)
+    h.blur()
+    if (was === now) push('warning', 'focus-visible', el, 'No visible focus: someone using a keyboard cannot see where they are (add a :focus-visible ring)')
+  }
+  before?.focus?.({ preventScroll: true })
+  still.remove()
+
   return out.sort((x, y) => (x.severity === y.severity ? 0 : x.severity === 'error' ? -1 : 1))
 }

@@ -46,6 +46,29 @@ export function translate(key: string, fallback: string, args?: Record<string, s
 export const screenLocale = (): string | undefined =>
   (globalThis as { __stitch2?: { lang: string } }).__stitch2?.lang
 
+/**
+ * Each element renders on its own, so ids a framework generates (React's useId) repeat from one element to the
+ * next, and a label's for= finds the first field on the page. An id already on the page is renamed, with the
+ * attributes inside the element that point to it.
+ */
+let idCount = 0
+const ID_REFS = ['for', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-owns', 'aria-activedescendant', 'list']
+function uniqueIds(content: DocumentFragment) {
+  const renamed = new Map<string, string>()
+  for (const el of Array.from(content.querySelectorAll('[id]'))) {
+    if (!document.getElementById(el.id)) continue
+    const next = el.id + '-s2-' + ++idCount
+    renamed.set(el.id, next)
+    el.id = next
+  }
+  if (!renamed.size) return
+  for (const el of Array.from(content.querySelectorAll('*')))
+    for (const attr of ID_REFS) {
+      const v = el.getAttribute(attr)
+      if (v) el.setAttribute(attr, v.split(/\s+/).map((id) => renamed.get(id) ?? id).join(' '))
+    }
+}
+
 const camel = (s: string) => s.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
 
 export function defineElements<C>(components: Record<string, C>, options: ElementsOptions<C>): void {
@@ -82,6 +105,7 @@ export function defineElements<C>(components: Record<string, C>, options: Elemen
               if (typeof props[key] === 'string' && !root.hasAttribute(`data-${key}`))
                 root.setAttribute(`data-${key}`, props[key] as string)
           }
+          uniqueIds(t.content)
           this.replaceWith(t.content)
           if (options.after && !pending++)
             queueMicrotask(() => {

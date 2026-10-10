@@ -46,7 +46,11 @@ file that already exists. From there the agent spends its effort on the design.
   other text, labels cut short with an ellipsis, content under fixed bars, fixed bars that overlap each other, tap
   targets (WCAG 2.2), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, components that differ between screens, and colours
-  written as values instead of DESIGN.md tokens. Each screen is also run in long and right-to-left
+  written as values instead of DESIGN.md tokens. Google's guidelines (Material 3, Android's app quality
+  guidelines, web.dev, Lighthouse) add warnings for text under 11 px, text closer than 16 px (24 px from 600 px)
+  to the edge, lines over 75 characters, targets under 48 px without room around them, placeholder-only labels,
+  icon-only controls without a name, more than five bottom-navigation destinations and controls without visible
+  focus. Each screen is also run in long and right-to-left
   pseudo-languages and your locales (see below).
 - **Consistency report** (`stitch2 consistency`): every shared component (tab bar, header, buttons, chips, …)
   cropped from every screen, next to the catalog's version, with what differs (sizes, fonts, icon set, icons).

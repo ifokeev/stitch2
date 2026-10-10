@@ -2,7 +2,8 @@
 
 In our own words; the ideas are common practice in interface design, drawn from Refactoring UI (Wathan &
 Schoger), Material 3, Apple's Human Interface Guidelines, WCAG 2.2 and the Laws of UX (see
-[guides.md](guides.md)); no text is copied from them. Items marked **(check)** are measured by `stitch2 check`;
+[guides.md](guides.md)); no text is copied from them. Google's guidance (Material, Android's app quality
+guidelines, web.dev, Lighthouse) is gathered with its numbers in [google.md](google.md). Items marked **(check)** are measured by `stitch2 check`;
 the rest are judged from the render. Colour names below are roles: the project's DESIGN.md names the actual
 colours (its accent, its primary and secondary text, its surface steps).
 
@@ -28,7 +29,8 @@ colours (its accent, its primary and secondary text, its surface steps).
 - Align to a few vertical lines: the page edge, the card's inner edge, one column for numbers. Numbers in lists
   are right-aligned so their digits line up.
 - Fewer borders. Separate with spacing or a surface step first, a hairline second, never a card inside a card.
-- Do not fill the width because it is there; prose reads best at about 60 characters a line.
+- Do not fill the width because it is there; prose reads best at 45–75 characters a line, in every language
+  the product ships (**check: measure**).
 
 ## Type
 
@@ -58,7 +60,11 @@ short labels never wrap **(check)**.
 
 ## Touch and mobile
 
-- Tap targets at least 44 px for buttons; smaller ones only with spacing **(check)**.
+- Tap targets 48 px (Google: Material, Android, Lighthouse; Apple's minimum is 44); smaller ones only with
+  about 8 px of space around them **(check: tap-target, tap-spacing)**.
+- Content keeps 16 px from the screen edge on phones, 24 px from 600 px up **(check: edge-margin)**.
+- Every control shows keyboard focus and every icon-only control has a name **(check: focus-visible,
+  unnamed-control)**; form fields have visible labels, not placeholders **(check: placeholder-label)**.
 - The primary action sits in the thumb zone (lower half or a docked bar); destructive actions far from it.
 - Fixed bars never cover content: the scroll ends with enough bottom padding **(check)**.
 - Nothing wider than the frame; only chip rows and tab strips scroll sideways **(check)**.
