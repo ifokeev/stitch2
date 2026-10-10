@@ -197,6 +197,9 @@ shows every locale and the screens use the same strings as the product:
 <ex-header title="Settings" data-t-title="settings.title"></ex-header>
 <p data-t="workout.sets" data-t-args="count=16">16 sets</p>   <!-- plural form picked by count -->
 <p translate="no">Dumbbell Bench Press</p>                   <!-- sample content stays as written -->
+<ex-row meta="5 exercises · Linear" data-t-meta="{plan.exercises|count=5} · {plan.linear}"></ex-row>  <!-- a template -->
+<ex-row meta="Sun, 4 Oct · 7,920 kg"
+  data-t-meta="{@date|value=2026-10-04;weekday=short;day=numeric;month=short} · {@number|value=7920} {unit.kg}"></ex-row>
 ```
 
 ```json
@@ -209,7 +212,9 @@ shows every locale and the screens use the same strings as the product:
 ```
 
 Messages are JSON or a JS/TS module (its default export, else its first exported object); nested objects become
-dotted keys, and plurals are objects keyed by CLDR category (`one`, `few`, `other`…). Two pseudo-languages need
+dotted keys, and plurals are objects keyed by CLDR category (`one`, `few`, `other`…). A value with braces is a
+template: each `{key|name=value;…}` becomes its message and the rest is kept, and `{@date|…}` and `{@number|…}`
+format with `Intl` in the screen's language. Two pseudo-languages need
 no translations: **pseudo** makes every text about 40% longer, accented and bracketed, so cut text shows, and
 **pseudo-rtl** lays the page out right to left.
 

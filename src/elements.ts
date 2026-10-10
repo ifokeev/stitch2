@@ -60,7 +60,8 @@ export function defineElements<C>(components: Record<string, C>, options: Elemen
         connectedCallback() {
           const props: Record<string, unknown> = {}
           for (const a of Array.from(this.attributes)) {
-            if (a.name.startsWith('data-s2-')) continue
+            // stitch2's own markers and the message keys (i18n.ts translated them already) are not props.
+            if (a.name.startsWith('data-s2-') || a.name === 'data-t' || a.name.startsWith('data-t-')) continue
             props[camel(a.name)] = a.value === '' ? true : a.value
           }
           const inner = this.innerHTML.trim()

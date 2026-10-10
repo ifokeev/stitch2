@@ -40,7 +40,18 @@ Use the app's own files. Never copy messages into the design folder: two copies 
 <input placeholder="Search" data-t-placeholder="exercises.search" />
 <p data-t="workout.sets" data-t-args="count=16">16 sets</p>     <!-- {count} filled in, plural form by count -->
 <p translate="no">Dumbbell Bench Press</p>                      <!-- sample content: names, user input, numbers -->
+<s2-row meta="5 exercises · Linear" data-t-meta="{plan.exercises|count=5} · {plan.linear}">
 ```
+
+A value with braces is a **template**: each `{key}` or `{key|name=value;name=value}` becomes its message and
+the rest stays as written. Use it for lines the app builds from several messages and data (a meta line, a
+list of `label=url` links: `data-t-links="{site.features}=#features,{site.docs}=/docs"`); sample data inside
+it stays literal. Without braces, `data-t-<attr>` on a comma list takes one key per item.
+
+Dates and numbers are written by the locale too: `{@date|value=2026-10-04;weekday=short;day=numeric;month=short}`
+("Sun, 4 Oct", "вс, 4 окт.") and `{@number|value=7920}` ("7,920", "7 920"); the options are `Intl.DateTimeFormat`'s and
+`Intl.NumberFormat`'s, and dates are read and shown in UTC. Pair a number with the unit's message:
+`{@number|value=82.5} {unit.kg}`.
 
 - Keep the source text in the markup: the screen reads correctly without stitch2, and a missing key shows it.
 - Key every string the product owns: labels, buttons, headings, empty states, hints, units, tab names, the

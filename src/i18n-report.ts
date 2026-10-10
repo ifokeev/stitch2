@@ -66,9 +66,12 @@ export function scan(html: string): { uses: Use[]; loose: Loose[] } {
     const plural = 'data-t-args' in a && /(^|,)\s*count\s*=/.test(a['data-t-args']!)
     const skip = !!top?.skip || 'data-t-skip' in a || a.translate === 'no'
     for (const [name, value] of Object.entries(a)) {
-      if (name === 'data-t') uses.push({ key: value, line, plural })
-      else if (name.startsWith('data-t-') && name !== 'data-t-args' && name !== 'data-t-skip')
-        for (const k of value.split(',')) uses.push({ key: k.trim(), line, plural })
+      const keyed = name === 'data-t' || (name.startsWith('data-t-') && name !== 'data-t-args' && name !== 'data-t-skip')
+      if (keyed && value.includes('{'))
+        for (const m of value.matchAll(/\{([^{}|@][^{}|]*)(?:\|([^}]*))?\}/g))
+          uses.push({ key: m[1]!, line, plural: plural || /(^|;)\s*count\s*=/.test(m[2] ?? '') })
+      else if (name === 'data-t') uses.push({ key: value, line, plural })
+      else if (keyed) for (const k of value.split(',')) uses.push({ key: k.trim(), line, plural })
       else if (!skip && !name.startsWith('data-') && !NOT_TEXT.test(name) && !('data-t-' + name in a)) {
         const textual = TEXT_ATTRS.has(name) ? words(value) : tag.includes('-') && readsAsText(value)
         if (textual) loose.push({ text: value, line, attr: name })

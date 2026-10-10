@@ -5,6 +5,10 @@
  *   <span data-t="nav.library">Exercises</span>                 the element's text
  *   <gg-header title="Settings" data-t-title="settings.title">  an attribute (also comma lists: data-t-options)
  *   <p data-t="count.sets" data-t-args="count=16">16 sets</p>   {count} filled in, plural form picked by count
+ *   <x-row meta="5 exercises · Linear" data-t-meta="{plan.count|count=5} · {plan.linear}">
+ *                                                                a template: messages in braces, the rest kept
+ *   <x-row meta="Sun, 4 Oct" data-t-meta="{@date|value=2026-10-04;weekday=short;day=numeric;month=short}">
+ *                                                                dates and numbers ({@number|value=7920}) by Intl
  *
  * Opened with ?lang=<locale> (the canvas's Language switch, and check), the page's text is replaced from that
  * locale's messages before its components render, and the page gets lang and dir. Two pseudo-languages need no
@@ -101,7 +105,24 @@ export async function pagePayload(locale: string) {
 function runtime(p: Awaited<ReturnType<typeof pagePayload>>) {
   const missing = new Set(p.missing)
   const plural = new Intl.PluralRules(p.lang)
+  // {@date|value=…;weekday=short…} and {@number|value=…;maximumFractionDigits=1…}: Intl's options, in the locale.
+  const intl = (key: string, args: Record<string, string>) => {
+    const opts: Record<string, string | number | boolean> = {}
+    for (const [k, v] of Object.entries(args))
+      if (k !== 'value') opts[k] = v === 'true' ? true : v === 'false' ? false : /^\d+$/.test(v) ? Number(v) : v
+    try {
+      return key === '@date'
+        ? // As written, whatever the viewer's time zone: the value is read and shown in UTC.
+          new Intl.DateTimeFormat(p.lang, { timeZone: 'UTC', ...opts }).format(
+            new Date(/T.*(Z|[+-]\d\d:?\d\d)$/.test(args.value ?? '') || !/T/.test(args.value ?? '') ? (args.value ?? '') : args.value + 'Z'),
+          )
+        : new Intl.NumberFormat(p.lang, opts).format(Number(args.value))
+    } catch {
+      return undefined
+    }
+  }
   const t = (key: string, args?: Record<string, string>) => {
+    if (key === '@date' || key === '@number') return intl(key, args ?? {})
     let msg: string | undefined
     if (args && args.count !== undefined) {
       const n = Number(args.count)
@@ -112,11 +133,11 @@ function runtime(p: Awaited<ReturnType<typeof pagePayload>>) {
     return msg.replace(/\{(\w+)\}/g, (m: string, k: string) => (args && args[k] !== undefined ? args[k]! : m))
   }
   const known = (key: string) =>
-    key in p.messages || key + '.other' in p.messages
+    key.startsWith('@') || key in p.messages || key + '.other' in p.messages
   const lacks = (key: string) => missing.has(key) || missing.has(key + '.other') || !known(key)
-  const parseArgs = (s: string | null) => {
+  const parseArgs = (s: string | null | undefined, sep = ',') => {
     const out: Record<string, string> = {}
-    for (const part of (s ?? '').split(',')) {
+    for (const part of (s ?? '').split(sep)) {
       const i = part.indexOf('=')
       if (i > 0) out[part.slice(0, i).trim()] = part.slice(i + 1).trim()
     }
@@ -135,18 +156,32 @@ function runtime(p: Awaited<ReturnType<typeof pagePayload>>) {
       const keys: string[] = []
       for (const a of Array.from(el.attributes)) {
         if (a.name !== 'data-t' && !a.name.startsWith('data-t-')) continue
+        if (a.name === 'data-t-args' || a.name === 'data-t-skip') continue
         const args = parseArgs(el.getAttribute('data-t-args'))
-        if (a.name === 'data-t') {
-          const v = t(a.value, args)
-          if (v !== undefined) el.textContent = v
+        let v: string | undefined
+        if (a.value.includes('{')) {
+          // A template: each {key} or {key|name=value;name=value} becomes its message, the rest stays as written.
+          let whole = true
+          v = a.value.replace(/\{([^{}|]+)(?:\|([^}]*))?\}/g, (_m: string, key: string, inline?: string) => {
+            keys.push(key)
+            const r = t(key, { ...args, ...parseArgs(inline, ';') })
+            if (r === undefined) whole = false
+            return r ?? ''
+          })
+          if (!whole) v = undefined
+        } else if (a.name === 'data-t') {
+          v = t(a.value, args)
           keys.push(a.value)
-        } else if (a.name !== 'data-t-args' && a.name !== 'data-t-skip') {
-          const attr = a.name.slice(7)
+        } else {
+          // A list attribute (options="A,B"): one key per item.
           const parts = a.value.split(',').map((k) => k.trim())
           const vals = parts.map((k) => t(k, args))
-          if (vals.every((v) => v !== undefined)) el.setAttribute(attr, vals.join(','))
+          if (vals.every((x) => x !== undefined)) v = vals.join(',')
           keys.push(...parts)
         }
+        if (v === undefined) continue
+        if (a.name === 'data-t') el.textContent = v
+        else el.setAttribute(a.name.slice(7), v)
       }
       if (!keys.length) continue
       el.setAttribute('data-s2-key', keys.join(' '))
