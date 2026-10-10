@@ -85,6 +85,13 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
     /(^|\s)(chip|badge|pill|tag)|rounded-full/.test(String((el as HTMLElement).className ?? ''))
   for (const el of all) {
     if (!isLabel(el) || text(el).length > 40 || el.querySelector('p, div, li, ul, br')) continue
+    // A control whose text sits in two or more elements (a list row's title and its meta line) is a composite
+    // control, not a label: its lines are laid out on purpose.
+    const holders = new Set<Element>()
+    const textWalker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    for (let n = textWalker.nextNode(); n; n = textWalker.nextNode())
+      if (n.textContent!.trim() && n.parentElement) holders.add(n.parentElement)
+    if (holders.size > 1) continue
     // A wrap is one text node breaking across lines; an icon above its label is layout, not a wrap.
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {

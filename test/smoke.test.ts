@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
 import { chromium } from '@playwright/test'
+import { audit } from '../src/audit.ts'
 import { fileURLToPath } from 'node:url'
 
 const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url))
@@ -159,5 +160,23 @@ test('languages: screens read the messages, and the report and check find what i
   } finally {
     await browser.close()
     server.kill()
+  }
+})
+
+test('audit: a wrapped button label is an error, a row with a title and a wrapped meta line is not', async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 600 } })
+    await page.setContent(
+      '<body style="margin:0;font:16px sans-serif">' +
+        '<button id="label" style="width:80px">Start the workout now</button>' +
+        '<button id="row" style="display:block;width:160px;text-align:start"><span style="display:block">Push</span>' +
+        '<span style="display:block">5 упражнений · Линейная прогрессия</span></button></body>',
+    )
+    const issues = await page.evaluate(audit, { comfortable: 32 })
+    const wraps = issues.filter((i) => i.type === 'label-wraps').map((i) => i.text)
+    assert.deepEqual(wraps, ['Start the workout now'])
+  } finally {
+    await browser.close()
   }
 })
