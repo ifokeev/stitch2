@@ -237,13 +237,33 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
       if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return e
     return null
   }
+  // The part of a control its scrolling or clipping ancestors show: a link scrolled out of a nav strip is not drawn
+  // where its box would be.
+  const visibleBox = (el: Element) => {
+    const r = el.getBoundingClientRect()
+    let { left, top, right, bottom } = r
+    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+      const cs = getComputedStyle(e)
+      if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue
+      const c = e.getBoundingClientRect()
+      if (cs.overflowX !== 'visible') {
+        left = Math.max(left, c.left)
+        right = Math.min(right, c.right)
+      }
+      if (cs.overflowY !== 'visible') {
+        top = Math.max(top, c.top)
+        bottom = Math.min(bottom, c.bottom)
+      }
+    }
+    return { left, top, right, bottom }
+  }
   // Behind an open modal (found above) only the modal's own controls count.
   const solid = interactive.filter((el) => opacity(el) > 0.05 && (!modal || modal.contains(el)))
   for (const [i, a] of solid.entries())
     for (const b of solid.slice(i + 1)) {
       if (a.contains(b) || b.contains(a) || layer(a) !== layer(b)) continue
-      const r = a.getBoundingClientRect()
-      const q = b.getBoundingClientRect()
+      const r = visibleBox(a)
+      const q = visibleBox(b)
       if (Math.min(r.right, q.right) - Math.max(r.left, q.left) > 2 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 2)
         push('error', 'control-overlap', b, `Overlaps another control (“${text(a).slice(0, 30) || a.getAttribute('aria-label') || a.tagName.toLowerCase()}”): give them room`)
     }

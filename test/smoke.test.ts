@@ -247,3 +247,21 @@ test('elements: ids repeated by separately rendered components are renamed, with
     await browser.close()
   }
 })
+
+test('audit: a control scrolled out of a strip does not overlap what sits beside the strip', async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 600, height: 300 } })
+    await page.setContent(
+      '<body style="margin:0;font:16px sans-serif"><header style="display:flex;width:400px">' +
+        '<nav style="display:flex;flex:1;min-width:0;overflow-x:auto;gap:8px">' +
+        ['Features', 'Screens', 'Assistants', 'Documentation', 'GitHub'].map((l) => '<a href="#" style="flex:none;padding:12px">' + l + '</a>').join('') +
+        '</nav><button style="flex:none;width:44px;height:44px" aria-label="Theme">☼</button></header>' +
+        '<div style="display:flex"><button style="width:120px;height:44px">One</button><button style="width:120px;height:44px;margin-left:-40px">Two</button></div></body>',
+    )
+    const overlaps = (await page.evaluate(audit, { comfortable: 32 })).filter((i) => i.type === 'control-overlap')
+    assert.deepEqual(overlaps.map((i) => i.text), ['Two'])
+  } finally {
+    await browser.close()
+  }
+})
