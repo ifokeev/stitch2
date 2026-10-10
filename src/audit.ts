@@ -169,6 +169,17 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
       if (hit) push('error', 'fixed-overlap', b, `Overlaps another fixed bar (“${text(a).slice(0, 30)}”): move one clear of the other`)
     }
 
+  // 3c. A fixed bar shows all of itself: a row of it pushed past the bottom (or top) of the screen is unreachable.
+  for (const bar of fixedBars)
+    for (const e of [bar, ...bar.querySelectorAll('*')]) {
+      if (!shown(e) || inSvg(e) || !(ownText(e) || e.matches('svg, img, button, a, input'))) continue
+      const r = e.getBoundingClientRect()
+      if (r.bottom > window.innerHeight + 1 || r.top < -1) {
+        push('error', 'overflow', e, 'Part of a fixed bar is cut off by the screen edge: it lays out on more rows than the bar shows')
+        break
+      }
+    }
+
   await covered('bottom')
   await covered('top')
   window.scrollTo(0, 0)
