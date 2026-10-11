@@ -45,6 +45,9 @@ const levels = typeLevels()
 const themes = designThemes()
 const collect = collectOptions()
 const server = await startServer(0)
+/** The tallest render, in CSS px: a long landing page is shot whole (the canvas draws frames up to the same height). */
+const MAX_RENDER_HEIGHT = 20000
+
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 const results: Record<string, Issue[]> = {}
@@ -159,7 +162,7 @@ async function setTheme(theme: string) {
 /** A page-tall render; renders in another theme or language than the screen's own get a --<theme> suffix. */
 async function shoot(s: { path: string; width: number }, theme?: string, locale?: string, at?: string) {
   const height = await page.evaluate(() => document.documentElement.scrollHeight)
-  await page.setViewportSize({ width: s.width, height: Math.max(844, Math.min(height, 6000)) })
+  await page.setViewportSize({ width: s.width, height: Math.max(844, Math.min(height, MAX_RENDER_HEIGHT)) })
   mkdirSync(join(ROOT, 'renders'), { recursive: true })
   const suffix = theme ?? locale ?? at
   const name = s.path.replaceAll('/', '__').replace(/\.html$/, suffix ? `--${suffix}.png` : '.png')

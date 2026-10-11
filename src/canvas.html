@@ -483,11 +483,15 @@ function zoomTo(f) {
   apply()
 }
 
+/** The tallest a frame is drawn, in CSS px (the same limit as check's renders). */
+const MAX_FRAME_HEIGHT = 20000
+
 function measure(f) {
   try {
     const doc = f.iframe.contentDocument
     const min = bigFrame(f.screen) ? 800 : 844
-    const h = Math.min(6000, Math.max(min, doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0))
+    // As tall as the page, up to MAX_FRAME_HEIGHT: long landing pages are drawn whole.
+    const h = Math.min(MAX_FRAME_HEIGHT, Math.max(min, doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0))
     if (Math.abs(h - f.height) > 2) {
       f.height = h
       f.iframe.style.height = `${h}px`
