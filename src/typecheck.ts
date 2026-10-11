@@ -14,6 +14,8 @@ export interface Issue {
   theme?: string
   /** Set when the issue shows only in another language: the locale it was found in. */
   locale?: string
+  /** Set when the issue shows only at another window width: the edge of its variant's range (config widths). */
+  width?: number
 }
 
 export interface TextItem {

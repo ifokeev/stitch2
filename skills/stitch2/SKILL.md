@@ -24,8 +24,8 @@ References, read before the first screen:
 - [principles.md](references/principles.md): what makes a screen read well, and the review rubric.
 - [typography.md](references/typography.md): type levels and how to combine them; most polish is here.
 - [components.md](references/components.md): build from the shared components; the reuse ladder.
-- [screens.md](references/screens.md): screen names, versions and their variants (mobile, desktop), statuses,
-  the user's approval and notes.
+- [screens.md](references/screens.md): screen names, versions and their variants (mobile, desktop), the widths
+  each variant covers, statuses, the user's approval and notes.
 - [google.md](references/google.md): Google's guidance (Material, Android, web.dev) as rules with numbers.
 - [guides.md](references/guides.md): the public sources behind the rules.
 
@@ -60,6 +60,8 @@ References, read before the first screen:
    screens, or in the screen when it is one element. Look at both renders (`--light.png`). With `i18n`, check
    also runs the screen in the pseudo-languages and the config's locales; fix what they flag as the
    **stitch2-i18n** skill says.
+   An issue tagged with a width ("at 1024px: …") breaks at an edge of the windows the variant covers: fix it with a
+   responsive rule in the screen, or a new variant when the layout's structure has to change (screens.md, Widths).
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.
 7. **Hand over.** Set the version's status to `review`, point the user to it on the canvas, and report what
@@ -73,7 +75,7 @@ References, read before the first screen:
 |---|---|
 | `setup [--name N --primary #hex] [options]` | Sets a project up in one step; keeps every file that exists |
 | `canvas` | The canvas at http://localhost:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
-| `check [filter] [--shots] [--strict] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme and check language; `--shots` saves renders |
+| `check [filter] [--shots] [--strict] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme and check language, and at both ends of each variant's widths; `--shots` saves renders |
 | `i18n [filter] [--locale l] [--suggest]` | Message keys screens use that the source or a locale lacks, and text with no key (stitch2-i18n) |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |

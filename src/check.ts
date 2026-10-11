@@ -7,16 +7,17 @@
  * colours change there, so contrast is checked again, tagged with the theme.
  * Then again in each check language (i18n.ts: the pseudo-languages and the config's): layout problems that
  * show only there (a label running into its neighbour, text cut off, a control drawn backwards right to left),
- * and keys a locale has no translation for, tagged with the locale.
+ * and keys a locale has no translation for, tagged with the locale. Last, each variant at both ends of the widths
+ * it covers (config widths: mobile 360–599, desktop 1024–1920 by default), tagged with the width.
  * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none]
- *   --shots   also save page-tall renders to design/renders/ (one per theme)
+ *   --shots   also save page-tall renders to design/renders/ (one per theme, language and width edge)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
 import { colourIssues } from './colours.ts'
-import { config } from './config.ts'
+import { config, widthRange } from './config.ts'
 import {
   type Components,
   collectComponents,
@@ -121,6 +122,22 @@ for (const s of screens) {
     }
     if (shots) await shoot(s, undefined, locale)
   }
+  // The edges of the widths this variant covers (config widths), in its own theme and language: what breaks
+  // only when the window is narrower or wider than the frame it was drawn in.
+  const range = s.kind === 'screen' ? widthRange(s.device) : undefined
+  for (const width of range ? [...new Set(range)].filter((w) => w !== s.width) : []) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
+    await page.waitForTimeout(600)
+    for (const i of await page.evaluate(audit, { comfortable: config.comfortableTarget })) {
+      const key = `${i.type} ${i.selector}`
+      if (i.type === 'contrast' || seen.has(key)) continue
+      seen.add(key)
+      themed.push({ ...i, width, message: `at ${width}px: ${i.message}` })
+    }
+    if (shots) await shoot({ ...s, width }, undefined, undefined, `${width}px`)
+  }
+  await page.setViewportSize({ width: s.width, height: 844 })
   results[s.path] = [
     ...layout,
     ...themed,
@@ -140,11 +157,11 @@ async function setTheme(theme: string) {
 }
 
 /** A page-tall render; renders in another theme or language than the screen's own get a --<theme> suffix. */
-async function shoot(s: { path: string; width: number }, theme?: string, locale?: string) {
+async function shoot(s: { path: string; width: number }, theme?: string, locale?: string, at?: string) {
   const height = await page.evaluate(() => document.documentElement.scrollHeight)
   await page.setViewportSize({ width: s.width, height: Math.max(844, Math.min(height, 6000)) })
   mkdirSync(join(ROOT, 'renders'), { recursive: true })
-  const suffix = theme ?? locale
+  const suffix = theme ?? locale ?? at
   const name = s.path.replaceAll('/', '__').replace(/\.html$/, suffix ? `--${suffix}.png` : '.png')
   await page.screenshot({ path: join(ROOT, 'renders', name) })
   await page.setViewportSize({ width: s.width, height: 844 })

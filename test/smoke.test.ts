@@ -68,6 +68,25 @@ test('with a light theme, check also runs the screens in it', () => {
   assert.ok(existsSync(join(dir, 'design/renders/screens__home__mobile-v1--light.png')))
 })
 
+
+test('check renders each variant at both ends of the widths it covers', () => {
+  // A 350 px block fits the 390 px phone frame (16 px margins) but not a 360 px window, the narrowest a phone covers.
+  const home = readFileSync(join(dir, 'design/screens/home/mobile-v1.html'), 'utf8')
+  mkdirSync(join(dir, 'design/screens/wide'), { recursive: true })
+  writeFileSync(
+    join(dir, 'design/screens/wide/mobile-v1.html'),
+    home.replace('</main>', '<p style="width: 350px">A fixed-width line that is wider than a small phone</p></main>'),
+  )
+  stitch2('check', 'wide', '--shots')
+  const issues = JSON.parse(readFileSync(join(dir, 'design/checks.json'), 'utf8')).screens['screens/wide/mobile-v1.html']
+  const narrow = issues.filter((i: { width?: number }) => i.width === 360)
+  assert.ok(narrow.length > 0, JSON.stringify(issues))
+  assert.match(narrow[0].message, /^at 360px: /)
+  assert.ok(!issues.some((i: { width?: number; type: string }) => !i.width && i.type === 'overflow'), 'fits as drawn')
+  for (const w of [360, 599]) assert.ok(existsSync(join(dir, `design/renders/screens__wide__mobile-v1--${w}px.png`)), String(w))
+  rmSync(join(dir, 'design/screens/wide'), { recursive: true })
+})
+
 test('setup again keeps every existing file', () => {
   const before = readFileSync(join(dir, 'design/components/af.js'), 'utf8')
   const out = stitch2('setup', '--name', 'Something else', '--primary', '#FF0000')

@@ -32,6 +32,12 @@ export interface LabConfig {
    * colours) and "light" when it has light-* colours. The canvas switches between them; check runs in each.
    */
   themes?: string[]
+  /**
+   * The window widths each variant covers, [narrowest, widest] in px, by device. A variant is drawn at its frame
+   * width; stitch2 check also renders it at both ends of its range, and the canvas can show it there. Defaults
+   * follow Google's window size classes: mobile 360–599 (compact), tablet 600–1023 (medium), desktop 1024–1920.
+   */
+  widths?: Record<string, [number, number]>
   /** Skill folders a blind-trial sandbox copies. */
   skills: string[]
   /** Paths under designDir a sandbox leaves out besides screens (notes that would give the trial away). */
@@ -96,5 +102,9 @@ export const config: LabConfig = {
   ...DEFAULTS,
   ...(CONFIG_FILE ? (JSON.parse(readFileSync(CONFIG_FILE, 'utf8')) as Partial<LabConfig>) : {}),
 }
+/** The widths a variant covers: [narrowest, widest] for its device, from the config or the defaults. */
+export const WIDTH_DEFAULTS: Record<string, [number, number]> = { mobile: [360, 599], tablet: [600, 1023], desktop: [1024, 1920] }
+export const widthRanges = (): Record<string, [number, number]> => ({ ...WIDTH_DEFAULTS, ...config.widths })
+export const widthRange = (device: string): [number, number] | undefined => widthRanges()[device]
 /** The design folder, with a trailing slash. */
 export const ROOT = join(resolve(BASE, config.designDir), '/')

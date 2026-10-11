@@ -129,6 +129,7 @@
     <details id="versionFilter" class="multi" hidden title="Show only the versions you pick (several at once), or all of them"><summary>All versions</summary><div class="menu"></div></details>
     <details id="variantFilter" class="multi" hidden title="Show only the variants you pick: mobile, desktop (several at once), or all of them"><summary>All variants</summary><div class="menu"></div></details>
     <select id="themeFilter" class="pick" hidden title="Show every screen in this theme (T)" aria-label="Theme"></select>
+    <select id="widthFilter" class="pick" title="Show every screen at the narrowest or widest window its variant covers (W)" aria-label="Width"></select>
     <select id="langFilter" class="pick" title="Show every screen in this language (L)" aria-label="Language"></select>
   </header>
   <nav id="tree"></nav>
@@ -186,6 +187,34 @@ function setLang(l) {
   if (selected) inspector(selected)
   summary()
 }
+// Widths: each variant covers a range of windows (config widths); frames show it drawn, at the narrowest or the widest.
+let WIDTHS = {}
+let widthMode = localStorage.getItem('stitch2-width') ?? 'drawn'
+const rangeOf = (s) => WIDTHS[s.device]
+const widthFor = (s) => { const r = rangeOf(s); return !r || widthMode === 'drawn' ? s.drawn : widthMode === 'narrow' ? r[0] : r[1] }
+const bigFrame = (s) => (s.drawn ?? s.width) > 700
+function setWidth(mode) {
+  widthMode = mode
+  localStorage.setItem('stitch2-width', mode)
+  document.getElementById('widthFilter').value = mode
+  for (const f of frames.values()) {
+    f.screen.width = widthFor(f.screen)
+    f.el.style.width = `${f.screen.width}px`
+    f.iframe.style.width = `${f.screen.width}px`
+    setTimeout(() => measure(f), 300)
+    setTimeout(() => measure(f), 1200)
+  }
+  layout()
+  if (selected) inspector(selected)
+}
+/** The width dropdown names the edges of the devices the screens use: "Narrowest: mobile 360, desktop 1024". */
+function widthOptions() {
+  const used = [...new Set(screens.map((s) => s.device))].filter((d) => WIDTHS[d]).sort((a, b) => WIDTHS[a][0] - WIDTHS[b][0])
+  const edge = (k) => used.map((d) => `${d} ${WIDTHS[d][k]}`).join(', ')
+  const wsel = document.getElementById('widthFilter')
+  wsel.innerHTML = `<option value="drawn">Drawn width</option><option value="narrow">Narrowest: ${edge(0)}</option><option value="wide">Widest: ${edge(1)}</option>`
+  wsel.value = widthMode
+}
 function applyTheme(f) {
   if (!themed()) return
   try { f.iframe.contentDocument.documentElement.dataset.theme = theme } catch {}
@@ -199,7 +228,8 @@ function setTheme(t) {
   if (selected) inspector(selected)
   summary()
 }
-const ref = (s) => (s.kind === 'components' ? `component catalog (${designDir}/${s.path})` : `${s.screen} ${s.device} ${s.version}${themeNote()} (${designDir}/${s.path})`)
+const widthNote = (s) => (s.width !== s.drawn ? ` at ${s.width}px` : '')
+const ref = (s) => (s.kind === 'components' ? `component catalog (${designDir}/${s.path})` : `${s.screen} ${s.device} ${s.version}${themeNote()}${widthNote(s)} (${designDir}/${s.path})`)
 let toastTimer
 async function copy(text) {
   try {
@@ -409,7 +439,7 @@ function zoomTo(f) {
 function measure(f) {
   try {
     const doc = f.iframe.contentDocument
-    const min = f.screen.width > 700 ? 800 : 844
+    const min = bigFrame(f.screen) ? 800 : 844
     const h = Math.min(6000, Math.max(min, doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0))
     if (Math.abs(h - f.height) > 2) {
       f.height = h
@@ -457,9 +487,9 @@ function frameFor(s) {
   el.innerHTML = `<div class="label"><span class="name"></span><span class="pill"></span><span class="title"></span><button class="copy" type="button" title="Copy a reference to paste to an agent">Copy</button><button class="badge" type="button"></button></div><div class="device"><iframe loading="lazy" scrolling="no"></iframe><div class="shield"></div></div>`
   const iframe = el.querySelector('iframe')
   iframe.style.width = `${s.width}px`
-  iframe.style.height = `${s.width > 700 ? 800 : 844}px`
+  iframe.style.height = `${bigFrame(s) ? 800 : 844}px`
   iframe.src = `/${s.path}?pick${langQuery()}`
-  const f = { el, iframe, screen: s, height: s.width > 700 ? 800 : 844 }
+  const f = { el, iframe, screen: s, height: bigFrame(s) ? 800 : 844 }
   iframe.addEventListener('load', () => { applyTheme(f); measure(f); setTimeout(() => measure(f), 800); setTimeout(() => measure(f), 2500) })
   el.querySelector('.shield').addEventListener('click', () => select(f, false))
   el.querySelector('.shield').addEventListener('dblclick', () => { select(f, false); f.el.classList.add('live') })
@@ -552,7 +582,11 @@ function inspector(f) {
     li.querySelector('.sev').textContent = i.severity
     li.querySelector('.msg').textContent = i.message + (i.text ? ` — “${i.text}”` : '')
     li.querySelector('code').textContent = i.selector
-    li.onclick = () => locate(f, i.selector)
+    li.onclick = () => {
+      const r = rangeOf(s)
+      if (i.width && r && i.width !== s.width) { setWidth(i.width === r[0] ? 'narrow' : 'wide'); setTimeout(() => locate(f, i.selector), 900) }
+      else locate(f, i.selector)
+    }
     ul.append(li)
   }
   box.classList.add('open')
@@ -677,6 +711,7 @@ async function loadChecks() {
 
 async function load(first, given) {
   const next = given ?? (await fetch('/api/screens').then((r) => r.json()))
+  for (const s of next) { s.drawn = s.width; s.width = widthFor(s) }
   const keep = new Set(next.map((s) => s.path))
   for (const [p, f] of frames) if (!keep.has(p)) { f.el.remove(); frames.delete(p); if (selected === f) selected = null }
   for (const s of next) {
@@ -684,6 +719,7 @@ async function load(first, given) {
     if (f) { f.screen = s; paintLabel(f) } else frameFor(s)
   }
   screens = next
+  widthOptions()
   versionFilter()
   variantFilter()
   layout()
@@ -826,6 +862,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') fit()
   if ((e.key === 't' || e.key === 'T') && themed()) setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])
   if (e.key === 'l' || e.key === 'L') setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length])
+  if (e.key === 'w' || e.key === 'W') setWidth(['drawn', 'narrow', 'wide'][(['drawn', 'narrow', 'wide'].indexOf(widthMode) + 1) % 3])
   if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
   if (e.key === '+' || e.key === '=') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z * 1.2)
   if (e.key === '-') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z / 1.2)
@@ -856,6 +893,9 @@ fetch('/api/config').then((r) => r.json()).then((c) => {
   pick.innerHTML = THEMES.map((t) => `<option value="${t}">${t[0].toUpperCase()}${t.slice(1)} theme</option>`).join('')
   pick.onchange = () => setTheme(pick.value)
   setTheme(theme)
+  WIDTHS = c.widths ?? {}
+  const wsel = document.getElementById('widthFilter')
+  wsel.onchange = () => setWidth(wsel.value)
   SOURCE = c.sourceLocale ?? 'en'
   LANGS = c.locales?.length ? c.locales : [SOURCE]
   if (!LANGS.includes(lang)) lang = SOURCE

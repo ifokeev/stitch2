@@ -37,6 +37,7 @@ file that already exists. From there the agent spends its effort on the design.
   and status filters, your DESIGN.md drawn as tokens and rules, the component catalog, and an inspector to
   approve, archive or leave a note on a version. Live reload; copyable references to paste to an agent.
   With a light and a dark theme (DESIGN.md's `light-*` colours), a switch (`T`) shows every screen in either one.
+  A width switch (`W`) shows every screen at the narrowest or widest window its layout covers.
   With languages configured, a Language switch (`L`) shows every screen in one of them, and the Languages page
   shows a screen side by side in each.
   Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
@@ -44,7 +45,8 @@ file that already exists. From there the agent spends its effort on the design.
   several to copy at once or add to the version's note.
 - **Checks** (`stitch2 check`): content past the frame edge or out of its card, labels that wrap, text running into
   other text, labels cut short with an ellipsis, content under fixed bars, fixed bars that overlap each other, tap
-  targets (WCAG 2.2), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
+  targets (WCAG 2.2), all of it again at both ends of the window widths each layout covers (360 and 599 px for a
+  phone, 1024 and 1920 for desktop, or your own ranges), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, components that differ between screens, and colours
   written as values instead of DESIGN.md tokens. Google's guidelines (Material 3, Android's app quality
   guidelines, web.dev, Lighthouse) add warnings for text under 11 px, text closer than 16 px (24 px from 600 px)

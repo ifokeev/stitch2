@@ -70,10 +70,24 @@ with the mobile's N, frame width 1280, the same components and type levels, the 
 of a tab bar, a content max width, two columns where it helps). Shared components get their desktop form in the
 component, before the first desktop screen.
 
-Widths follow Google's window size classes ([google.md](google.md)): compact under 600 px (the phone frame),
-medium 600–839, expanded 840–1199, large from 1200 (the desktop frame). A desktop screen is a layout for the
-width class, not a stretched phone: a side navigation instead of the bar, list-detail with both panes, extra
-columns for feeds. When a project needs a tablet, it is one more variant, at a medium width.
+## Widths
+
+A variant is drawn at one frame width but covers a range of windows: `widths` in `stitch2.config.json`, by
+device, `[narrowest, widest]` in px. The defaults follow Google's window size classes ([google.md](google.md)):
+mobile 360–599 (compact), tablet 600–1023 (medium), desktop 1024–1920 (expanded and up); a project sets the
+width where its app actually changes layout (gymgym: mobile up to 1023, desktop from 1024).
+
+Widths are a dimension like themes and languages, not more files: `stitch2 check` also renders every variant at
+both ends of its range and reports what breaks there ("at 1024px: …"), and the canvas shows every frame at its
+narrowest or widest (the width dropdown, W).
+
+- A screen that breaks at an edge gets a **responsive rule inside the same variant**: a two-column grid that drops
+  to one, three cards across that become two, a side column that moves under the main one. Use the project's
+  breakpoints (Tailwind's `md:`, `lg:`, `xl:`), so the screen keeps one layout that adapts.
+- Only when the **structure** has to change (a bar becomes a side navigation, one pane becomes list-detail) is it a
+  new variant: `tablet-v<N>` for 600–1023, with its own frame width (768) and range, the same N as the version.
+- A desktop screen is a layout for its range, not a stretched phone: a side navigation instead of the bar,
+  list-detail with both panes, extra columns for feeds.
 
 ## The canvas
 

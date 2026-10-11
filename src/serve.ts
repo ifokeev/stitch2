@@ -8,7 +8,7 @@ import { existsSync, readFileSync, statSync, watch } from 'node:fs'
 import { createServer, type ServerResponse } from 'node:http'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { CONFIG_FILE, config } from './config.ts'
+import { CONFIG_FILE, config, widthRanges } from './config.ts'
 import { designThemes } from './design-md.ts'
 import { allLocales, localeScript, sourceLocale } from './i18n.ts'
 import { designPage } from './design-page.ts'
@@ -123,7 +123,7 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       return
     }
     if (url.pathname === '/api/config')
-      return json({ ...config, themes: designThemes(), locales: allLocales(), sourceLocale: sourceLocale() })
+      return json({ ...config, themes: designThemes(), locales: allLocales(), sourceLocale: sourceLocale(), widths: widthRanges() })
     if (url.pathname === '/api/screens') return json(listScreens())
     if (url.pathname === '/api/checks') {
       const file = join(ROOT, 'checks.json')
