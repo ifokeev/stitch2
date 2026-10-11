@@ -26,6 +26,8 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
 - **Edit in place** only to finish your own draft, or to answer a note on a version still in `review` or
   `draft`.
 - **Never edit** an `approved` or `archived` variant: copy the version to the next number and change the copy.
+  The exception is the user's own request: a fix they ask for on a version they name ("it had to be on v3")
+  goes into that version, which keeps its status; say what changed.
 
 ## Statuses
 
