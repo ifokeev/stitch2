@@ -5,7 +5,7 @@
  */
 import assert from 'node:assert/strict'
 import { execFileSync, spawn } from 'node:child_process'
-import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
@@ -94,7 +94,7 @@ test('setup again keeps every existing file', () => {
   assert.equal(readFileSync(join(dir, 'design/components/af.js'), 'utf8'), before)
 })
 
-test('the canvas serves the screen list', async () => {
+test('the canvas serves the screen list, and says when a report is older than the screens it covers', async () => {
   const port = String(4500 + Math.floor(Math.random() * 400))
   const server = spawn(process.execPath, [cli, 'canvas'], { cwd: dir, env: { ...process.env, PORT: port } })
   try {
@@ -106,6 +106,16 @@ test('the canvas serves the screen list', async () => {
         .catch(() => undefined)
     }
     assert.ok(Array.isArray(list) && list.length >= 2, JSON.stringify(list))
+    const reports = () => fetch(`http://127.0.0.1:${port}/api/reports`).then((r) => r.json())
+    assert.equal((await reports()).consistency, null)
+    const report = join(dir, 'design/consistency/index.html')
+    mkdirSync(join(dir, 'design/consistency'), { recursive: true })
+    writeFileSync(report, '<p>report</p>')
+    assert.deepEqual((await reports()).consistency.changed, [])
+    const old = new Date(Date.now() - 3_600_000)
+    utimesSync(report, old, old)
+    assert.ok((await reports()).consistency.changed.includes('screens/components/catalog.html'))
+    rmSync(join(dir, 'design/consistency'), { recursive: true })
   } finally {
     server.kill()
   }
@@ -305,4 +315,3 @@ test('audit: a fixed bar shown inside a transformed box (a catalog) is not a scr
     await browser.close()
   }
 })
-

@@ -94,7 +94,8 @@ narrowest or widest (the width dropdown, W).
 ## The canvas
 
 `stitch2 canvas` → http://localhost:4400. The sidebar lists DESIGN.md (drawn as tokens and rules), the
-consistency report, the component catalog and every screen with its versions; filters for active, approved,
+consistency report and app comparison (each with when it last ran, or how many covered screens changed
+since), the component catalog and every screen with its versions; filters for active, approved,
 needs review or all, and mobile or desktop. Selecting a version opens the inspector: status, note, checks, and
 Copy for its reference. Pick mode (`p`) highlights the element under the pointer; a click copies its reference,
 Shift-click collects several (Copy all, Add to note). Keys: `/` search, `j`/`k` next and previous, `a` approve,

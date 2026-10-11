@@ -1,10 +1,11 @@
 /**
  * The stitch2 server: the canvas at /, DESIGN.md drawn at /design, screens side by side per language at /languages, the screen list at /api/screens
- * (POST /api/screens/meta sets a version's status or note), check results at /api/checks, live-reload events
- * at /events, and every file under design/ by its path. Local only (127.0.0.1).
+ * (POST /api/screens/meta sets a version's status or note), check results at /api/checks, when the reports were
+ * made and what changed since at /api/reports, live-reload events at /events, and every file under design/ by its
+ * path. Local only (127.0.0.1).
  * Usage: stitch2 canvas   (PORT=4400 by default)
  */
-import { existsSync, readFileSync, statSync, watch } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync, watch } from 'node:fs'
 import { createServer, type ServerResponse } from 'node:http'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,6 +29,38 @@ function inlineTailwind(html: string, file: string): string {
   })
 }
 import { listScreens, ROOT, STATUSES, type Status, tag, writeMeta } from './screens.ts'
+
+/** When a report was made and which of the files it covers changed after it; null when it has never run. */
+export interface ReportState {
+  at: number
+  changed: string[]
+}
+
+/**
+ * The consistency report covers every screen that is not archived and the components; the app comparison covers
+ * the approved screens. A report is stale once one of those files is newer than it (a status change counts: it
+ * changes what the report covers). Only the design side is known: changes in the app itself don't show here.
+ */
+export function reportStates(): { consistency: ReportState | null; compare: ReportState | null } {
+  const screens = listScreens()
+  const components = (() => {
+    const dir = join(ROOT, 'components')
+    if (!existsSync(dir)) return []
+    return readdirSync(dir)
+      .filter((f) => /\.(js|mjs|css)$/.test(f))
+      .map((f) => ({ path: `components/${f}`, mtime: statSync(join(dir, f)).mtimeMs }))
+  })()
+  const state = (file: string, covered: { path: string; mtime: number }[]): ReportState | null => {
+    const report = join(ROOT, file)
+    if (!existsSync(report)) return null
+    const at = statSync(report).mtimeMs
+    return { at, changed: covered.filter((f) => f.mtime > at).map((f) => f.path) }
+  }
+  return {
+    consistency: state('consistency/index.html', [...screens.filter((s) => s.status !== 'archived'), ...components]),
+    compare: state('compare/index.html', screens.filter((s) => s.kind === 'screen' && s.status === 'approved')),
+  }
+}
 
 const CANVAS = fileURLToPath(new URL('./canvas.html', import.meta.url))
 const TYPES: Record<string, string> = {
@@ -125,6 +158,7 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
     if (url.pathname === '/api/config')
       return json({ ...config, themes: designThemes(), locales: allLocales(), sourceLocale: sourceLocale(), widths: widthRanges() })
     if (url.pathname === '/api/screens') return json(listScreens())
+    if (url.pathname === '/api/reports') return json(reportStates())
     if (url.pathname === '/api/checks') {
       const file = join(ROOT, 'checks.json')
       return json(existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { screens: {} })

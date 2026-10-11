@@ -44,7 +44,10 @@ Slots are for wiring. If what goes into a slot changes how the component looks, 
   other, **controls overlapping each other**, small tap targets, contrast, type levels, reuse and consistency.
 - `stitch2 compare` (the live app, against every approved version with a route): which components appear, in
   what order, how the measured ones look, **and the same layout errors as check** (overflow, fixed-overlap,
-  control-overlap), so a control squeezed in the app shows up even when no screen drew it.
+  control-overlap), so a control squeezed in the app shows up even when no screen drew it. Each version runs at
+  its drawn width and at both edges of its width range; a finding seen only at an edge starts with "at <width>px:".
+- Both reports are snapshots that run only when called. The canvas sidebar says "N changed since" once the
+  screens they cover have changed; run them again before relying on them.
 - Give every approved screen a route, and every state a `prepare` module that puts the app into it (a sheet
   open, a timer running, a form half filled). An unrouted screen is not compared at all.
 

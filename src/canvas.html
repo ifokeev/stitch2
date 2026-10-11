@@ -51,6 +51,7 @@
   .item.on { background: #2a1a12; color: var(--text); }
   .item .meta { color: var(--faint); font-size: 11px; margin-left: auto; white-space: nowrap; }
   .item.variant { padding-left: 30px; }
+  .item.stale .meta { color: var(--warn); }
   #inspector .version-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
   #inspector .version-actions span { color: var(--muted); }
   #inspector .version-actions button { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; padding: 3px 8px; }
@@ -262,6 +263,7 @@ const filters = JSON.parse(localStorage.getItem('stitch2-filters') ?? 'null') ??
 if (typeof filters.device === 'string') { filters.devices = filters.device === 'all' ? [] : [filters.device]; delete filters.device }
 let screens = []
 let checks = { screens: {} }
+let reports = { consistency: null, compare: null }
 let selected = null
 const frames = new Map() // path -> { el, iframe, screen, height }
 
@@ -383,8 +385,17 @@ function tree() {
   head('Design system')
   const docOpen = (url) => document.getElementById('doc').classList.contains('open') && docUrl === url
   item('DESIGN.md', 'tokens · rules', docOpen('/design'), () => openDoc('/design'))
-  item('Consistency report', 'components × screens', docOpen('/consistency/index.html'), () => openDoc('/consistency/index.html'))
-  item('App comparison', 'approved × live app', docOpen('/compare/index.html'), () => openDoc('/compare/index.html'))
+  // Each report says when it ran and how many of the files it covers changed since (then it's stale: run it again).
+  const report = (label, url, state, command) => {
+    const n = state?.changed.length ?? 0
+    const meta = !state ? 'not run yet' : n ? `${n} changed since` : ago(state.at)
+    const b = item(label, meta, docOpen(url), () => openDoc(url), '', n || !state ? 'stale' : '')
+    b.title = !state
+      ? `Run ${command}`
+      : `Made ${new Date(state.at).toLocaleString()}${n ? `. Changed since, run ${command} again:\n${state.changed.slice(0, 12).join('\n')}${n > 12 ? `\n… and ${n - 12} more` : ''}` : ', up to date'}`
+  }
+  report('Consistency report', '/consistency/index.html', reports.consistency, 'stitch2 consistency')
+  report('App comparison', '/compare/index.html', reports.compare, 'stitch2 compare')
   item('Languages', 'screens × languages', docOpen('/languages'), () => openDoc('/languages'))
   const all = rows()
   const comp = all.find((r) => r.key === '~components')
@@ -708,6 +719,18 @@ async function loadChecks() {
   if (selected) inspector(selected)
   summary()
 }
+async function loadReports() {
+  reports = await fetch('/api/reports').then((r) => r.json()).catch(() => reports)
+  tree()
+}
+setInterval(loadReports, 60_000) // keeps "5 min ago" honest
+function ago(t) {
+  const m = Math.round((Date.now() - t) / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m} min ago`
+  const h = Math.round(m / 60)
+  return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} days ago`
+}
 
 async function load(first, given) {
   const next = given ?? (await fetch('/api/screens').then((r) => r.json()))
@@ -724,6 +747,7 @@ async function load(first, given) {
   variantFilter()
   layout()
   await loadChecks()
+  await loadReports()
   if (selected) inspector(selected)
   if (first && !localStorage.getItem('stitch2-view')) setTimeout(fit, 1500)
 }
@@ -801,6 +825,7 @@ events.onmessage = async (e) => {
   if (paths.some((p) => p === 'checks.json')) await loadChecks()
   const html = paths.filter((p) => p.endsWith('.html'))
   if (html.length) await load(false)
+  else if (paths.some((p) => p.startsWith('components/') || p === 'compare.json')) await loadReports()
   if (paths.includes('DESIGN.md') && document.getElementById('doc').classList.contains('open')) document.querySelector('#doc iframe').contentWindow.location.reload()
   // Stylesheets and scripts are shared: tokens.css, tailwind.tokens.js, token exports the screens link
   // (tokens.tailwind.css), the components.

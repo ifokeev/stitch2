@@ -155,7 +155,10 @@ what differs in structure: shared components the design has and the app lacks (o
 order, and how the measured ones look. Mock-ups and the app hold different data, so the screenshots are shown side
 by side in `design/compare/index.html` (the canvas links it) rather than diffed. It also runs check's layout
 rules on the app (content past the edge, fixed bars or controls overlapping), which catches a control the app
-squeezed in although no screen drew it. The `stitch2-app-sync` skill describes the workflow around it: a visible
+squeezed in although no screen drew it. Each version is then compared again at both edges of its variant’s width
+range (`widths` in the config), so a layout that holds at 390 px but breaks at 1023 px shows up as "at 1023px: …".
+Compare and the consistency report run only when you call them; the canvas sidebar shows when each last ran and,
+once screens it covers have changed since, how many (hover for the list). The `stitch2-app-sync` skill describes the workflow around it: a visible
 change goes component, canvas, approval, then app. Configure it in the config:
 
 ```json
