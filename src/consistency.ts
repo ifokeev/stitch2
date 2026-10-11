@@ -166,8 +166,15 @@ export function collectComponents(opts: CollectOptions): PageComponents {
   for (const el of document.querySelectorAll(`[${marker}]`)) {
     if (!visible(el)) continue
     const g = el.getAttribute(marker)!
+    // A variant (data-variant, from the component's variant prop) is compared with the same variant only: the
+    // simple tab bar with the simple one, a folder section with folder sections.
+    const variant = el.getAttribute('data-variant')
     const kind =
-      g === 'button' ? `button:${el.getAttribute('data-variant') ?? 'primary'}:${el.getAttribute('data-size') ?? 'md'}` : g
+      g === 'button'
+        ? `button:${variant ?? 'primary'}:${el.getAttribute('data-size') ?? 'md'}`
+        : variant
+          ? `${g}:${variant}`
+          : g
     if (!(g === 'button' && el.hasAttribute('disabled'))) add(kind, el)
   }
   // 2. Everything else is recognised by how it looks.
