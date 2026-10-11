@@ -33,17 +33,17 @@
   .seg[hidden] { display: none; }
   .multi { position: relative; }
   .multi[hidden] { display: none; }
-  .multi summary { align-items: center; background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; display: flex; gap: 8px; list-style: none; padding: 5px 8px; }
+  .multi summary { align-items: center; background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23a1a1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 12px 8px; border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; display: flex; gap: 8px; list-style: none; padding: 5px 30px 5px 8px; }
   .multi summary::-webkit-details-marker { display: none; }
-  .multi summary::after { border: solid var(--muted); border-width: 0 1.5px 1.5px 0; content: ''; height: 6px; margin: -3px 2px 0 auto; transform: rotate(45deg); width: 6px; }
-  .multi[open] summary::after { margin-top: 3px; transform: rotate(-135deg); }
   .multi .menu { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5); left: 0; max-height: 280px; overflow: auto; padding: 4px; position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; }
   .multi label { align-items: center; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 5px 8px; }
   .multi label:hover { background: var(--panel2); color: var(--text); }
   .multi label.all { border-bottom: 1px solid var(--edge); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
   .multi input { accent-color: var(--accent); margin: 0; }
   .multi .n { color: var(--faint); margin-left: auto; }
-  #langFilter { background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; color: var(--text); padding: 5px 8px; width: 100%; }
+  /* Theme and language: native dropdowns drawn like the versions and variants ones. */
+  .pick { appearance: none; background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23a1a1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 12px 8px; border: 1px solid var(--edge); border-radius: 8px; color: var(--text); cursor: pointer; font: inherit; padding: 5px 30px 5px 8px; width: 100%; }
+  .pick[hidden] { display: none; }
   #tree { flex: 1; overflow: auto; padding: 6px 8px 16px; }
   #tree h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 14px 6px 6px; text-transform: uppercase; }
   .item { align-items: center; background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 6px 8px; text-align: left; width: 100%; }
@@ -128,8 +128,8 @@
     <div class="seg" id="statusFilter"><button type="button" data-v="active" class="on" title="Everything except archived versions">Active</button><button type="button" data-v="approved" title="The reference versions agents build on">Approved</button><button type="button" data-v="review" title="Finished by an agent, waiting for your decision">Needs review</button><button type="button" data-v="all" title="Including archived versions">All</button></div>
     <details id="versionFilter" class="multi" hidden title="Show only the versions you pick (several at once), or all of them"><summary>All versions</summary><div class="menu"></div></details>
     <details id="variantFilter" class="multi" hidden title="Show only the variants you pick: mobile, desktop (several at once), or all of them"><summary>All variants</summary><div class="menu"></div></details>
-    <div class="seg" id="themeFilter" hidden title="Show every screen in this theme (T)"></div>
-    <select id="langFilter" title="Show every screen in this language (L)" aria-label="Language"></select>
+    <select id="themeFilter" class="pick" hidden title="Show every screen in this theme (T)" aria-label="Theme"></select>
+    <select id="langFilter" class="pick" title="Show every screen in this language (L)" aria-label="Language"></select>
   </header>
   <nav id="tree"></nav>
   <footer>
@@ -193,7 +193,7 @@ function applyTheme(f) {
 function setTheme(t) {
   theme = t
   localStorage.setItem('stitch2-theme', t)
-  for (const b of document.querySelectorAll('#themeFilter button')) b.classList.toggle('on', b.dataset.v === t)
+  document.getElementById('themeFilter').value = t
   for (const f of frames.values()) applyTheme(f)
   for (const f of frames.values()) badge(f)
   if (selected) inspector(selected)
@@ -851,10 +851,10 @@ fetch('/api/config').then((r) => r.json()).then((c) => {
   document.getElementById('labName').textContent = c.name
   THEMES = c.themes?.length ? c.themes : ['dark']
   if (!THEMES.includes(theme)) theme = THEMES[0]
-  const seg = document.getElementById('themeFilter')
-  seg.hidden = !themed()
-  seg.innerHTML = THEMES.map((t) => `<button type="button" data-v="${t}">${t[0].toUpperCase()}${t.slice(1)}</button>`).join('')
-  for (const b of seg.querySelectorAll('button')) b.onclick = () => setTheme(b.dataset.v)
+  const pick = document.getElementById('themeFilter')
+  pick.hidden = !themed()
+  pick.innerHTML = THEMES.map((t) => `<option value="${t}">${t[0].toUpperCase()}${t.slice(1)} theme</option>`).join('')
+  pick.onchange = () => setTheme(pick.value)
   setTheme(theme)
   SOURCE = c.sourceLocale ?? 'en'
   LANGS = c.locales?.length ? c.locales : [SOURCE]
