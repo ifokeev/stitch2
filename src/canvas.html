@@ -27,9 +27,18 @@
   .seg button { background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; flex: 1; padding: 4px 6px; white-space: nowrap; }
   .seg button.on { background: var(--panel2); color: var(--text); }
   .seg[hidden] { display: none; }
-  #versionFilter { flex-wrap: wrap; }
-  #versionFilter button { flex: 0 1 auto; min-width: 36px; }
-  #versionFilter button[data-v="all"] { flex: 1 0 auto; }
+  #versionFilter { position: relative; }
+  #versionFilter[hidden] { display: none; }
+  #versionFilter summary { align-items: center; background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; display: flex; gap: 8px; list-style: none; padding: 5px 8px; }
+  #versionFilter summary::-webkit-details-marker { display: none; }
+  #versionFilter summary::after { border: solid var(--muted); border-width: 0 1.5px 1.5px 0; content: ''; height: 6px; margin: -3px 2px 0 auto; transform: rotate(45deg); width: 6px; }
+  #versionFilter[open] summary::after { margin-top: 3px; transform: rotate(-135deg); }
+  #versionFilter .menu { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5); left: 0; max-height: 280px; overflow: auto; padding: 4px; position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; }
+  #versionFilter label { align-items: center; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 5px 8px; }
+  #versionFilter label:hover { background: var(--panel2); color: var(--text); }
+  #versionFilter label.all { border-bottom: 1px solid var(--edge); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
+  #versionFilter input { accent-color: var(--accent); margin: 0; }
+  #versionFilter .n { color: var(--faint); margin-left: auto; }
   #langFilter { background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; color: var(--text); padding: 5px 8px; width: 100%; }
   #tree { flex: 1; overflow: auto; padding: 6px 8px 16px; }
   #tree h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 14px 6px 6px; text-transform: uppercase; }
@@ -110,7 +119,7 @@
     <input id="search" placeholder="Search screens… ( / )" />
     <div class="seg" id="statusFilter"><button type="button" data-v="active" class="on" title="Everything except archived versions">Active</button><button type="button" data-v="approved" title="The reference versions agents build on">Approved</button><button type="button" data-v="review" title="Finished by an agent, waiting for your decision">Needs review</button><button type="button" data-v="all" title="Including archived versions">All</button></div>
     <div class="seg" id="deviceFilter"><button type="button" data-v="all" class="on">All devices</button><button type="button" data-v="mobile">Mobile</button><button type="button" data-v="desktop">Desktop</button></div>
-    <div class="seg" id="versionFilter" hidden title="Show only the versions you pick (several at once), or all of them"></div>
+    <details id="versionFilter" hidden title="Show only the versions you pick (several at once), or all of them"><summary>All versions</summary><div class="menu"></div></details>
     <div class="seg" id="themeFilter" hidden title="Show every screen in this theme (T)"></div>
     <select id="langFilter" title="Show every screen in this language (L)" aria-label="Language"></select>
   </header>
@@ -647,32 +656,49 @@ for (const [id, key] of [['statusFilter', 'status'], ['deviceFilter', 'device']]
 }
 document.getElementById('search').oninput = layout
 
-// Versions: one button per version label the screens use (v1, v2, …, and imports such as "Stitch"), several at
-// once; "All versions" clears the choice. The catalog is always shown.
+// Versions: a multi-select of every version label the screens use (v1 … v12, and imports such as "Stitch"), with
+// how many screen versions carry each; none ticked means all. The catalog is always shown.
+const versionBox = document.getElementById('versionFilter')
+document.addEventListener('click', (e) => { if (versionBox.open && !versionBox.contains(e.target)) versionBox.open = false })
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && versionBox.open) { versionBox.open = false; e.stopPropagation() } }, true)
 function versionFilter() {
-  const seg = document.getElementById('versionFilter')
-  const labels = [...new Set(screens.filter((s) => s.kind === 'screen').map((s) => s.version))].sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true }),
-  )
+  const counts = new Map()
+  for (const s of screens) if (s.kind === 'screen') counts.set(s.version, (counts.get(s.version) ?? 0) + 1)
+  const labels = [...counts.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
   filters.versions = (filters.versions ?? []).filter((v) => labels.includes(v))
-  seg.hidden = labels.length < 2
-  const save = () => localStorage.setItem('stitch2-filters', JSON.stringify(filters))
-  seg.replaceChildren(
-    ...['all', ...labels].map((v) => {
-      const b = document.createElement('button')
-      b.type = 'button'
-      b.dataset.v = v
-      b.textContent = v === 'all' ? 'All versions' : v
-      b.classList.toggle('on', v === 'all' ? !filters.versions.length : filters.versions.includes(v))
-      b.onclick = () => {
-        filters.versions =
-          v === 'all' ? [] : filters.versions.includes(v) ? filters.versions.filter((x) => x !== v) : [...filters.versions, v]
-        save()
-        versionFilter()
-        layout()
-      }
-      return b
-    }),
+  versionBox.hidden = labels.length < 2
+  const picked = filters.versions
+  versionBox.querySelector('summary').textContent = !picked.length
+    ? 'All versions'
+    : picked.length <= 3
+      ? [...picked].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(', ')
+      : picked.length + ' versions'
+  const change = (next) => {
+    filters.versions = next
+    localStorage.setItem('stitch2-filters', JSON.stringify(filters))
+    versionFilter()
+    layout()
+  }
+  const option = (label, checked, n, onChange, cls = '') => {
+    const l = document.createElement('label')
+    l.className = cls
+    const box = document.createElement('input')
+    box.type = 'checkbox'
+    box.checked = checked
+    box.onchange = onChange
+    const name = document.createElement('span')
+    name.textContent = label
+    const count = document.createElement('span')
+    count.className = 'n'
+    count.textContent = n
+    l.append(box, name, count)
+    return l
+  }
+  versionBox.querySelector('.menu').replaceChildren(
+    option('All versions', !picked.length, screens.filter((s) => s.kind === 'screen').length, () => change([]), 'all'),
+    ...labels.map((v) =>
+      option(v, picked.includes(v), counts.get(v), () => change(picked.includes(v) ? picked.filter((x) => x !== v) : [...picked, v])),
+    ),
   )
 }
 
