@@ -228,6 +228,7 @@ function setTheme(t) {
   for (const f of frames.values()) badge(f)
   if (selected) inspector(selected)
   summary()
+  sendFilter()
 }
 const widthNote = (s) => (s.width !== s.drawn ? ` at ${s.width}px` : '')
 const ref = (s) => (s.kind === 'components' ? `component catalog (${designDir}/${s.path})` : `${s.screen} ${s.device} ${s.version}${themeNote()}${widthNote(s)} (${designDir}/${s.path})`)
@@ -303,7 +304,7 @@ const VERSION_H = 44, VERSION_GAP = 120
 function shown(s) {
   const q = document.getElementById('search').value.trim().toLowerCase()
   if (q && !`${s.screen} ${s.title} ${s.path} ${s.version} ${s.source}`.toLowerCase().includes(q)) return false
-  if (filters.devices?.length && s.kind === 'screen' && !filters.devices.includes(s.device)) return false
+  if (filters.devices?.length && !filters.devices.includes(s.device)) return false
   if (filters.versions?.length && s.kind === 'screen' && !filters.versions.includes(s.version)) return false
   if (s.kind === 'components') return filters.status !== 'review' && filters.status !== 'approved'
   if (filters.status === 'active') return s.status !== 'archived'
@@ -362,7 +363,36 @@ function layout() {
     x += groupW + GROUP_GAP
   }
   tree()
+  sendFilter()
 }
+
+// ---- reports follow the filters: the open report (consistency, app comparison, languages) gets the files the
+// canvas shows and hides the rest; the catalog follows only the variant filter there, as the reference ----
+function reportPaths() {
+  return screens.filter((s) => (s.kind === 'components' ? !filters.devices?.length || filters.devices.includes(s.device) : shown(s))).map((s) => s.path)
+}
+function filterLabel() {
+  const q = document.getElementById('search').value.trim()
+  return [
+    ...(filters.versions ?? []),
+    ...(filters.devices ?? []),
+    filters.status === 'approved' ? 'approved' : filters.status === 'review' ? 'needs review' : '',
+    q ? `“${q}”` : '',
+  ].filter(Boolean).join(' · ')
+}
+var sentFilter = ''
+function sendFilter(force) {
+  const doc = document.getElementById('doc')
+  if (!doc.classList.contains('open') || !['/consistency/index.html', '/compare/index.html', '/languages'].includes(docUrl)) return
+  const message = { stitch2Filter: { paths: reportPaths(), label: filterLabel(), theme: themed() ? theme : '' } }
+  const key = JSON.stringify(message)
+  if (!force && key === sentFilter) return
+  sentFilter = key
+  doc.querySelector('iframe').contentWindow?.postMessage(message, location.origin)
+}
+// A report asks for the filters as soon as its script runs (its load event waits for every frame inside it).
+addEventListener('message', (e) => { if (e.origin === location.origin && e.data?.stitch2Ready) sendFilter(true) })
+document.querySelector('#doc iframe').addEventListener('load', () => sendFilter(true)) // reports made before stitch2Ready
 
 function tree() {
   const nav = document.getElementById('tree')
@@ -385,24 +415,30 @@ function tree() {
   head('Design system')
   const docOpen = (url) => document.getElementById('doc').classList.contains('open') && docUrl === url
   item('DESIGN.md', 'tokens · rules', docOpen('/design'), () => openDoc('/design'))
-  // Each report says when it ran and how many of the files it covers changed since (then it's stale: run it again).
+  // One entry for the catalog: the variant filter picks which ones (mobile, desktop); a click steps through them.
+  const catalogs = rows().find((r) => r.key === '~components')?.visible ?? []
+  const onCatalog = selected?.screen.kind === 'components'
+  item('Components', catalogs.length ? `catalog · ${catalogs.map((s) => s.device).join(', ')}` : 'hidden by the filters', onCatalog, () => {
+    if (!catalogs.length) return
+    const i = catalogs.findIndex((s) => s.path === selected?.screen.path)
+    select(frames.get(catalogs[(i + 1) % catalogs.length].path), true)
+  }, '', '', onCatalog ? ref(selected.screen) : catalogs[0] ? ref(catalogs[0]) : '')
+  // Each report says when it ran and how many of the files it covers, among those the filters show, changed
+  // since (then it's stale: run it again).
+  const keep = new Set(reportPaths())
   const report = (label, url, state, command) => {
-    const n = state?.changed.length ?? 0
+    const changed = state?.changed.filter((p) => keep.has(p) || p.startsWith('components/')) ?? []
+    const n = changed.length
     const meta = !state ? 'not run yet' : n ? `${n} changed since` : ago(state.at)
     const b = item(label, meta, docOpen(url), () => openDoc(url), '', n || !state ? 'stale' : '')
     b.title = !state
       ? `Run ${command}`
-      : `Made ${new Date(state.at).toLocaleString()}${n ? `. Changed since, run ${command} again:\n${state.changed.slice(0, 12).join('\n')}${n > 12 ? `\n… and ${n - 12} more` : ''}` : ', up to date'}`
+      : `Made ${new Date(state.at).toLocaleString()}${n ? `. Changed since, run ${command} again:\n${changed.slice(0, 12).join('\n')}${n > 12 ? `\n… and ${n - 12} more` : ''}` : ', up to date'}`
   }
   report('Consistency report', '/consistency/index.html', reports.consistency, 'stitch2 consistency')
   report('App comparison', '/compare/index.html', reports.compare, 'stitch2 compare')
   item('Languages', 'screens × languages', docOpen('/languages'), () => openDoc('/languages'))
   const all = rows()
-  const comp = all.find((r) => r.key === '~components')
-  if (comp?.visible.length) {
-    head('Components')
-    for (const s of comp.visible) item(s.title.replace(/^[^—]+ — /, ''), 'catalog', selected?.screen.path === s.path, () => select(frames.get(s.path), true), '', '', ref(s))
-  }
   head('Screens')
   for (const row of all) {
     if (row.key === '~components' || !row.visible.length) continue
@@ -768,7 +804,7 @@ for (const [id, key] of [['statusFilter', 'status']]) {
 document.getElementById('search').oninput = layout
 
 // Versions and variants: multi-selects of every label the screens use (v1 … v12 and imports such as "Stitch";
-// mobile, tablet, desktop), with how many screens carry each; none ticked means all. The catalog always shows.
+// mobile, tablet, desktop), with how many screens carry each; none ticked means all. The catalog follows the variant filter only.
 const MULTI = []
 for (const id of ['versionFilter', 'variantFilter']) {
   const box = document.getElementById(id)

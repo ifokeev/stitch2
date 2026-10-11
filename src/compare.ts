@@ -28,6 +28,7 @@ import { audit, LAYOUT_ERRORS } from './audit.ts'
 import { BASE, config, widthRange } from './config.ts'
 import { type Components, collectComponents, collectOptions } from './consistency.ts'
 import { listScreens, ROOT } from './screens.ts'
+import { filterSnippet } from './report-filter.ts'
 import { startServer } from './serve.ts'
 
 type Route = string | { path: string; prepare?: string; signedOut?: boolean }
@@ -210,12 +211,12 @@ const rows = results
     const list = r.findings.length
       ? r.findings.map((f) => `<li class="${f.severity}"><b>${f.type}</b> ${esc(f.message)}</li>`).join('')
       : '<li class="ok">Matches the design’s structure.</li>'
-    return `<section><h2>${esc(r.screen)} · ${r.device} · ${r.version} <span>${r.match}%</span></h2><p><code>${esc(r.design)}</code> ↔ <a href="${esc(r.url)}">${esc(r.url)}</a></p><ul>${list}</ul><div class="imgs"><figure><figcaption>Approved design</figcaption><img src="${base}-design.png" alt=""></figure><figure><figcaption>App</figcaption><img src="${base}-app.png" alt=""></figure></div></section>`
+    return `<section data-path="${esc(r.design)}"><h2>${esc(r.screen)} · ${r.device} · ${r.version} <span>${r.match}%</span></h2><p><code>${esc(r.design)}</code> ↔ <a href="${esc(r.url)}">${esc(r.url)}</a></p><ul>${list}</ul><div class="imgs"><figure><figcaption>Approved design</figcaption><img src="${base}-design.png" alt=""></figure><figure><figcaption>App</figcaption><img src="${base}-app.png" alt=""></figure></div></section>`
   })
   .join('')
 writeFileSync(
   join(out, 'index.html'),
-  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>App comparison</title><style>body{background:#0b0b0d;color:#f4f4f5;font:14px/1.5 system-ui,sans-serif;margin:0}main{margin:0 auto;max-width:1400px;padding:32px}h1{font-size:22px}h2{font-size:17px;margin:32px 0 4px}h2 span{color:#a1a1aa;font-weight:400;margin-left:8px}code,a{color:#a1a1aa}ul{margin:8px 0;padding-left:18px}li.error b{color:#e5484d}li.warning b{color:#e5b54a}li.ok{color:#3fb27f}.imgs{display:flex;gap:16px;align-items:flex-start}figure{margin:0}figcaption{color:#a1a1aa;font-size:12px;margin-bottom:4px}img{border:1px solid #2e2e33;border-radius:8px;max-width:640px;width:100%}</style></head><body><main><h1>App comparison</h1><p>${new Date().toISOString()} · ${results.length} approved versions against ${esc(app.url)}${unmapped.length ? ` · no route for: ${esc(unmapped.join(', '))}` : ''}</p>${rows}</main></body></html>\n`,
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>App comparison</title><style>body{background:#0b0b0d;color:#f4f4f5;font:14px/1.5 system-ui,sans-serif;margin:0}main{margin:0 auto;max-width:1400px;padding:32px}h1{font-size:22px}h2{font-size:17px;margin:32px 0 4px}h2 span{color:#a1a1aa;font-weight:400;margin-left:8px}code,a{color:#a1a1aa}ul{margin:8px 0;padding-left:18px}li.error b{color:#e5484d}li.warning b{color:#e5b54a}li.ok{color:#3fb27f}.imgs{display:flex;gap:16px;align-items:flex-start}figure{margin:0}figcaption{color:#a1a1aa;font-size:12px;margin-bottom:4px}img{border:1px solid #2e2e33;border-radius:8px;max-width:640px;width:100%}</style></head><body><main><h1>App comparison</h1><p>${new Date().toISOString()} · ${results.length} approved versions against ${esc(app.url)}${unmapped.length ? ` · no route for: ${esc(unmapped.join(', '))}` : ''}</p><p id="stitch2-filter" hidden></p>${rows}</main>${filterSnippet}</body></html>\n`,
 )
 writeFileSync(join(ROOT, 'compare.json'), `${JSON.stringify({ comparedAt: new Date().toISOString(), url: app.url, results, unmapped }, null, 2)}\n`)
 const total = results.reduce((n, r) => n + r.findings.filter((f) => f.severity === 'error').length, 0)

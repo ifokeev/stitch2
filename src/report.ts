@@ -14,6 +14,7 @@ import {
   consistencyIssues,
   nameOf,
 } from './consistency.ts'
+import { filterSnippet } from './report-filter.ts'
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
 
@@ -103,10 +104,11 @@ const sections = Object.keys(crops)
           : note.length
             ? note.map((i) => `<p class="bad">${esc(i.message)}</p>`).join('')
             : '<b class="ok">matches</b>'
-        return `<div class="row"><div class="who"><b>${esc(s.kind === 'components' ? 'Component catalog' : `${s.screen} · ${s.device} · ${s.version}`)}</b><code>${esc(path)}</code>${verdict}</div><div class="imgs">${files.map((f) => `<img src="${esc(f)}" alt="" />`).join('')}</div></div>`
+        const ref = path.startsWith(config.catalogDir) ? ' data-ref' : ''
+        return `<div class="row" data-path="${esc(path)}"${ref}><div class="who"><b>${esc(s.kind === 'components' ? 'Component catalog' : `${s.screen} · ${s.device} · ${s.version}`)}</b><code>${esc(path)}</code>${verdict}</div><div class="imgs">${files.map((f) => `<img src="${esc(f)}" alt="" />`).join('')}</div></div>`
       })
       .join('')
-    return `<section><h2>${esc(nameOf(kind))} <span>${esc(kind)}</span></h2>${rows}</section>`
+    return `<section data-group><h2>${esc(nameOf(kind))} <span>${esc(kind)}</span></h2>${rows}</section>`
   })
   .join('')
 writeFileSync(
@@ -119,7 +121,7 @@ writeFileSync(
   .who { display: grid; gap: 4px; align-content: start; min-width: 0; overflow-wrap: anywhere; } .imgs { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; min-width: 0; }
   img { background: #000; border: 1px solid #2e2e33; border-radius: 8px; max-width: 100%; width: 390px; }
   .ok { color: #3fb27f; } .ref { color: #a1a1aa; } .bad { color: #e5b54a; margin: 0; font-size: 13px; }
-</style></head><body><main><h1>Consistency report</h1><code>${new Date().toISOString()} · ${screens.length} active screens · reference: ${esc(config.catalogDir)}</code>${sections}</main></body></html>\n`,
+</style></head><body><main><h1>Consistency report</h1><code>${new Date().toISOString()} · ${screens.length} active screens · reference: ${esc(config.catalogDir)}</code><p id="stitch2-filter" hidden></p>${sections}</main>${filterSnippet}</body></html>\n`,
 )
 console.log(
   `consistency report: ${join(out, 'index.html')} (${Object.keys(crops).length} components, ${screens.length} screens)`,

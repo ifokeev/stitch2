@@ -10,7 +10,7 @@ export function languagesPage(only?: string): string {
   const screens = listScreens()
     .filter((s) => (only ? s.path === only : s.kind === 'screen' && s.status !== 'archived'))
     .map((s) => ({ path: s.path, label: s.kind === 'components' ? 'Component catalog' : s.screen + ' ' + s.device + ' ' + s.version, width: s.width }))
-  const data = { screens, source: sourceLocale(), check: [sourceLocale(), ...checkLocales()], all: allLocales() }
+  const data = { only: !!only, screens, source: sourceLocale(), check: [sourceLocale(), ...checkLocales()], all: allLocales() }
   return `<!doctype html><html><head><meta charset="utf-8"><title>Languages</title><style>
   body { background: #0f0f11; color: #e4e4e7; font: 13px/1.4 system-ui, sans-serif; margin: 0; }
   header { align-items: center; background: #0f0f11; border-bottom: 1px solid #26262b; display: flex; gap: 12px; padding: 12px 140px 12px 20px; position: sticky; top: 0; z-index: 1; }
@@ -40,7 +40,20 @@ export function languagesPage(only?: string): string {
   <main></main>
   <script>
   const D = ${JSON.stringify(data).replaceAll('<', '\\u003c')}
-  const theme = localStorage.getItem('stitch2-theme')
+  let theme = localStorage.getItem('stitch2-theme')
+  // The canvas posts its filters: only the screens it shows, in its theme (see report-filter.ts).
+  let keep = null
+  let sent = ''
+  addEventListener('message', (e) => {
+    const f = e.origin === location.origin && e.data && e.data.stitch2Filter
+    if (!f || D.only || JSON.stringify(f) === sent) return
+    sent = JSON.stringify(f)
+    keep = new Set(f.paths)
+    theme = f.theme || theme
+    document.querySelector('h1').textContent = f.label ? 'Languages · ' + f.label : 'Languages'
+    render()
+  })
+  if (parent !== window) parent.postMessage({ stitch2Ready: true }, location.origin)
   let set = localStorage.getItem('stitch2-lang-set') ?? 'check'
   let zoom = Number(localStorage.getItem('stitch2-lang-zoom') ?? 0.4)
   const name = (l) => l === 'pseudo' ? 'Pseudo: long text' : l === 'pseudo-rtl' ? 'Pseudo: right to left' : (new Intl.DisplayNames([l], { type: 'language' }).of(l) ?? l) + (l === D.source ? ', source' : '')
@@ -53,8 +66,9 @@ export function languagesPage(only?: string): string {
     const langs = set === 'all' ? D.all : D.check
     const main = document.querySelector('main')
     main.innerHTML = ''
-    if (!D.screens.length) main.innerHTML = '<section><h2>No screens.</h2></section>'
-    for (const s of D.screens) {
+    const list = D.screens.filter((s) => !keep || keep.has(s.path))
+    if (!list.length) main.innerHTML = '<section><h2>' + (keep ? 'No screens match the canvas filters.' : 'No screens.') + '</h2></section>'
+    for (const s of list) {
       const sec = document.createElement('section')
       sec.innerHTML = '<h2></h2><div class="row"></div>'
       sec.querySelector('h2').textContent = s.label
