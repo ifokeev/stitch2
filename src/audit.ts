@@ -108,10 +108,20 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
   }
 
   // 3. Fixed bars (tab bar, rest timer, headers) never cover content: check at both scroll ends.
+  // A fixed element inside a transformed (or filtered, or contained) box is placed in that box, not on the
+  // screen: a catalog showing a tab bar in place, for one. Only bars pinned to the screen count.
+  const pinned = (el: Element) => {
+    for (let a = el.parentElement; a; a = a.parentElement) {
+      const cs = getComputedStyle(a)
+      if (cs.transform !== 'none' || cs.filter !== 'none' || cs.perspective !== 'none' || /paint|layout|strict|content/.test(cs.contain))
+        return false
+    }
+    return true
+  }
   const bars = all.filter((el) => {
     const p = getComputedStyle(el).position
     const r = el.getBoundingClientRect()
-    return (p === 'fixed' || p === 'sticky') && r.height <= 240 && r.width >= W * 0.6
+    return (p === 'sticky' || (p === 'fixed' && pinned(el))) && r.height <= 240 && r.width >= W * 0.6
   })
   // Behind an open modal the page is inert and covered, so only the modal's own bars count.
   // An open modal: the element may be 0px itself when everything in it is fixed (Headless UI's Dialog).

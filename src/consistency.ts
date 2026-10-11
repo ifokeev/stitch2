@@ -272,7 +272,8 @@ export function consistencyIssues(
     out[path] = issues
     const peers = (families.get(familyOf(path)) ?? []).filter((p) => p !== path)
     for (const [kind, sigs] of Object.entries(known[path] ?? {})) {
-      if (sigs.length > 1 && MEASURED.has(kind.split(':')[0]!))
+      // The catalog shows every variant of a component side by side; a screen shows one.
+      if (sigs.length > 1 && MEASURED.has(kind.split(':')[0]!) && !catalogs.includes(path))
         issues.push({
           severity: 'warning',
           type: 'consistency',

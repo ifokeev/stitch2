@@ -265,3 +265,25 @@ test('audit: a control scrolled out of a strip does not overlap what sits beside
     await browser.close()
   }
 })
+
+test('audit: a fixed bar shown inside a transformed box (a catalog) is not a screen bar', async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 300 } })
+    const bar = (label: string) =>
+      '<nav style="position:fixed;left:0;right:0;bottom:0;height:64px;display:flex">' +
+      ['A', 'B', 'C'].map((l) => '<button style="flex:1">' + label + l + '</button>').join('') +
+      '</nav>'
+    await page.setContent(
+      '<body style="margin:0;font:16px sans-serif"><div style="height:900px"></div>' +
+        '<div style="position:relative;height:80px;transform:translateZ(0)">' + bar('In box ') + '</div>' +
+        '<div style="height:200px"></div>' + bar('Screen ') + '</body>',
+    )
+    const issues = await page.evaluate(audit, { comfortable: 32 })
+    const cut = issues.filter((i) => i.type === 'overflow' && /fixed bar/.test(i.message))
+    assert.deepEqual(cut, [])
+  } finally {
+    await browser.close()
+  }
+})
+
