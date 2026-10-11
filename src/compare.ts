@@ -114,19 +114,25 @@ const signedOut = await (await browser.newContext({ deviceScaleFactor: 2 })).new
 const results: Result[] = []
 const opts = collectOptions()
 
-/** One version against its app page at one width. */
-async function compareAt(s: (typeof versions)[number], width: number) {
+/**
+ * One version against its app page at one width. The first call opens both pages (and runs prepare); the edges
+ * then only resize them, which reflows the layout, keeps the prepared state (a sheet open) and saves the reloads.
+ */
+async function compareAt(s: (typeof versions)[number], width: number, open: boolean) {
   const route = routeOf(s.screen)!
   const live = route.signedOut ? signedOut : signedIn
   const url = new URL(route.path, app!.url).href
   const height = width > 700 ? 800 : 844
   for (const p of [design, live]) await p.setViewportSize({ width, height })
-  await design.goto(`http://127.0.0.1:${server.port}/${s.path}`).catch(() => {})
-  await settle(design)
-  await live.goto(url).catch(() => {})
-  await settle(live)
   const findings: Finding[] = []
-  if (route.prepare) {
+  if (!open) await live.waitForTimeout(500)
+  else {
+    await design.goto(`http://127.0.0.1:${server.port}/${s.path}`).catch(() => {})
+    await settle(design)
+    await live.goto(url).catch(() => {})
+    await settle(live)
+  }
+  if (open && route.prepare) {
     // A failing prepare is this version's error; the run goes on with the others.
     try {
       await (await load(route.prepare))({ page: live, url: app!.url })
@@ -175,14 +181,14 @@ async function compareAt(s: (typeof versions)[number], width: number) {
 }
 
 for (const s of versions) {
-  const { findings, match, url, live } = await compareAt(s, s.width)
+  const { findings, match, url, live } = await compareAt(s, s.width, true)
   const base = `${s.screen}-${s.device}`
   await design.screenshot({ path: join(out, `${base}-design.png`), fullPage: true })
   await live.screenshot({ path: join(out, `${base}-app.png`), fullPage: true })
   const seen = new Set(findings.map((f) => `${f.type} ${f.message}`))
   for (const width of widthRange(s.device) ?? []) {
     if (width === s.width) continue
-    for (const f of (await compareAt(s, width)).findings) {
+    for (const f of (await compareAt(s, width, false)).findings) {
       const key = `${f.type} ${f.message}`
       if (seen.has(key)) continue
       seen.add(key)
