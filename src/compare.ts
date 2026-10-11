@@ -3,6 +3,9 @@
  * "app" section, it opens the approved version and the app page at the same width and compares their structure:
  * which shared components appear (by their data-<prefix> marker), how many, in what order, and how the measured
  * ones look. Data differs between a mock-up and the app, so pixels are shown side by side, not diffed.
+ * Each version is compared at the width it is drawn at, then at both edges of its variant's width range (the
+ * config's "widths"): a layout that holds at 390px can still break at 1023px. Findings that only show at an edge
+ * carry that width ("at 1023px: …"); screenshots are taken at the drawn width.
  * Writes <design>/compare/index.html (the canvas opens it from its sidebar) and <design>/compare.json.
  *
  *   "app": {
@@ -22,7 +25,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { chromium, type Page } from '@playwright/test'
 import { audit, LAYOUT_ERRORS } from './audit.ts'
-import { BASE, config } from './config.ts'
+import { BASE, config, widthRange } from './config.ts'
 import { type Components, collectComponents, collectOptions } from './consistency.ts'
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
@@ -77,6 +80,8 @@ interface Finding {
   severity: 'error' | 'warning'
   type: string
   message: string
+  /** Set when the finding shows only at an edge of the width range, not at the drawn width. */
+  width?: number
 }
 interface Result {
   screen: string
@@ -108,12 +113,14 @@ const signedIn = await context.newPage()
 const signedOut = await (await browser.newContext({ deviceScaleFactor: 2 })).newPage()
 const results: Result[] = []
 const opts = collectOptions()
-for (const s of versions) {
+
+/** One version against its app page at one width. */
+async function compareAt(s: (typeof versions)[number], width: number) {
   const route = routeOf(s.screen)!
   const live = route.signedOut ? signedOut : signedIn
-  const url = new URL(route.path, app.url).href
-  const height = s.width > 700 ? 800 : 844
-  for (const p of [design, live]) await p.setViewportSize({ width: s.width, height })
+  const url = new URL(route.path, app!.url).href
+  const height = width > 700 ? 800 : 844
+  for (const p of [design, live]) await p.setViewportSize({ width, height })
   await design.goto(`http://127.0.0.1:${server.port}/${s.path}`).catch(() => {})
   await settle(design)
   await live.goto(url).catch(() => {})
@@ -122,7 +129,7 @@ for (const s of versions) {
   if (route.prepare) {
     // A failing prepare is this version's error; the run goes on with the others.
     try {
-      await (await load(route.prepare))({ page: live, url: app.url })
+      await (await load(route.prepare))({ page: live, url: app!.url })
     } catch (e) {
       const message = (e instanceof Error ? e.message : String(e)).split('\n')[0]
       findings.push({ severity: 'error', type: 'prepare', message: `${route.prepare} failed: ${message}` })
@@ -164,9 +171,24 @@ for (const s of versions) {
       findings.push({ severity: 'error', type: i.type, message: `${i.message} (“${i.text}”)` })
   const kinds = Object.keys(d.counts)
   const match = kinds.length ? Math.round((100 * kinds.filter((k) => a.counts[k]).length) / kinds.length) : 100
+  return { findings, match, url, live }
+}
+
+for (const s of versions) {
+  const { findings, match, url, live } = await compareAt(s, s.width)
   const base = `${s.screen}-${s.device}`
   await design.screenshot({ path: join(out, `${base}-design.png`), fullPage: true })
   await live.screenshot({ path: join(out, `${base}-app.png`), fullPage: true })
+  const seen = new Set(findings.map((f) => `${f.type} ${f.message}`))
+  for (const width of widthRange(s.device) ?? []) {
+    if (width === s.width) continue
+    for (const f of (await compareAt(s, width)).findings) {
+      const key = `${f.type} ${f.message}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      findings.push({ ...f, width, message: `at ${width}px: ${f.message}` })
+    }
+  }
   results.push({ screen: s.screen, device: s.device, version: s.version, design: s.path, url, findings, match })
   const errors = findings.filter((f) => f.severity === 'error').length
   console.log(`${errors ? '✗' : '✓'} ${base.padEnd(30)} ${String(match).padStart(3)}% of the design's components · ${errors} errors, ${findings.length - errors} warnings`)
