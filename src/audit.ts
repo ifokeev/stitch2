@@ -5,7 +5,7 @@
 import type { Issue } from './typecheck.ts'
 
 /** Layout errors that mean the same bug wherever they appear; compare reports these for the app too. */
-export const LAYOUT_ERRORS = ['overflow', 'fixed-overlap', 'control-overlap', 'text-overlap']
+export const LAYOUT_ERRORS = ['overflow', 'nav-overflow', 'fixed-overlap', 'control-overlap', 'text-overlap']
 
 /** Runs inside the page. Plain JS on purpose: Playwright sends its source to the browser. */
 export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
@@ -35,6 +35,9 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
   const shown = (el: Element) => {
     const cs = getComputedStyle(el)
     if (cs.display === 'none' || cs.visibility === 'hidden') return false
+    // A closed <details> shows only its summary (a menu's links until it opens).
+    const closed = el.closest('details:not([open])')
+    if (closed && !closed.querySelector(':scope > summary')?.contains(el)) return false
     const r = el.getBoundingClientRect()
     return r.width > 0 && r.height > 0
   }
@@ -77,6 +80,33 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
     if (clip) {
       if (ownText(el)) push('warning', 'clipped', el, 'Text is cut off at the screen edge')
     } else push('error', 'overflow', el, `Sticks out past the screen edge (${Math.round(r.right - W)}px)`)
+  }
+
+  // 1b. Navigation fits: a nav's links never hide in a sideways scroll or run past its edge (in a longer language
+  // they go into a menu instead). Only chip rows scroll sideways.
+  for (const el of all) {
+    if (!el.matches('nav, [role=navigation]') && !(el.closest('header') && el.querySelector(':scope > a'))) continue
+    const ox = getComputedStyle(el).overflowX
+    if (ox === 'visible') continue
+    const box = el.getBoundingClientRect()
+    const cut = [...el.querySelectorAll('a')].filter((a) => {
+      if (!shown(a)) return false
+      const r = a.getBoundingClientRect()
+      // Wholly outside (wrapped away into a menu's overflow) is a choice; partly outside is a cut link.
+      const inside = r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1
+      const outside = r.right <= box.left || r.left >= box.right || r.bottom <= box.top || r.top >= box.bottom
+      return !inside && (!outside || ox === 'auto' || ox === 'scroll')
+    })
+    if (cut.length)
+      push(
+        'error',
+        'nav-overflow',
+        el,
+        `Navigation does not fit: ${cut.length} link${cut.length > 1 ? 's' : ''} cut off or scrolled out of view (${cut
+          .map(text)
+          .slice(0, 3)
+          .join(', ')})`,
+      )
   }
 
   // 2. Short labels (buttons, chips, tabs) stay on one line.

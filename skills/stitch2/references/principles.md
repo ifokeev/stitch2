@@ -68,6 +68,8 @@ short labels never wrap **(check)**.
 - The primary action sits in the thumb zone (lower half or a docked bar); destructive actions far from it.
 - Fixed bars never cover content: the scroll ends with enough bottom padding **(check)**.
 - Nothing wider than the frame; only chip rows and tab strips scroll sideways **(check)**.
+- Navigation fits in every language: a header shows the links that fit on one row and keeps all of them in a menu;
+  a link never scrolls sideways or gets cut **(check: nav-overflow)**.
 
 ## Review rubric (step 6)
 

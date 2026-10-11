@@ -43,7 +43,7 @@ file that already exists. From there the agent spends its effort on the design.
   Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
   `home mobile v1 (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`; Shift-click collects
   several to copy at once or add to the version's note.
-- **Checks** (`stitch2 check`): content past the frame edge or out of its card, labels that wrap, text running into
+- **Checks** (`stitch2 check`): content past the frame edge or out of its card, navigation whose links scroll or are cut (in any language), labels that wrap, text running into
   other text, labels cut short with an ellipsis, content under fixed bars, fixed bars that overlap each other, tap
   targets (WCAG 2.2), all of it again at both ends of the window widths each layout covers (360 and 599 px for a
   phone, 1024 and 1920 for desktop, or your own ranges), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,

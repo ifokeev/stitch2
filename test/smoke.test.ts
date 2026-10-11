@@ -317,3 +317,27 @@ test('audit: a fixed bar shown inside a transformed box (a catalog) is not a scr
     await browser.close()
   }
 })
+
+test('audit: a nav whose links scroll or are cut is an error; links wrapped out of sight, or in a closed menu, are not', async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 600, height: 400 } })
+    const links = ['Features', 'Screens', 'Assistants', 'Documentation', 'GitHub']
+      .map((l) => '<a href="#" style="flex:none;padding:12px">' + l + '</a>')
+      .join('')
+    const nav = (style: string) =>
+      '<body style="margin:0;font:16px sans-serif"><header style="display:flex;width:400px">' +
+      '<nav style="display:flex;flex:1;min-width:0;gap:8px;' + style + '">' + links + '</nav>' +
+      '<details><summary aria-label="Menu" style="width:44px;height:44px">≡</summary>' +
+      '<nav style="position:absolute;top:50px;left:0">' + links + '</nav></details></header>' +
+      '<p style="margin-top:20px">Know what to lift. Log it in seconds.</p></body>'
+    await page.setContent(nav('overflow-x:auto'))
+    const scrolled = (await page.evaluate(audit, { comfortable: 32 })).filter((i) => i.type === 'nav-overflow')
+    assert.equal(scrolled.length, 1)
+    await page.setContent(nav('flex-wrap:wrap;height:44px;overflow:hidden'))
+    const wrapped = await page.evaluate(audit, { comfortable: 32 })
+    assert.deepEqual(wrapped.filter((i) => i.type === 'nav-overflow' || i.type === 'text-overlap'), [])
+  } finally {
+    await browser.close()
+  }
+})
