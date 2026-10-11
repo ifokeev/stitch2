@@ -6,7 +6,7 @@
  * --name and --primary, DESIGN.md and its tokens. Existing files are never overwritten, so it is safe to re-run.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CONFIG_FILE, CONFIG_NAME, config as current } from './config.ts'
@@ -46,6 +46,14 @@ const skills = readdirSync(join(pkg, 'skills'))
 const linked: string[] = []
 for (const dir of skillDirs) {
   mkdirSync(resolve(project, dir), { recursive: true })
+  // A skill renamed or removed in a newer stitch2 leaves a link to nothing: remove it.
+  for (const s of readdirSync(resolve(project, dir))) {
+    const at = resolve(project, dir, s)
+    if (!lstatSync(at).isSymbolicLink() || existsSync(at)) continue
+    if (!/(^|[\\/])stitch2[\\/]skills[\\/]/.test(readlinkSync(at))) continue
+    unlinkSync(at)
+    done.push(`removed ${join(dir, s)} (no longer in stitch2)`)
+  }
   for (const s of skills) {
     const at = join(dir, s)
     linked.push(at)

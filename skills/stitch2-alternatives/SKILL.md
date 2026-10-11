@@ -1,9 +1,9 @@
 ---
-name: stitch2-variants
+name: stitch2-alternatives
 description: Get fresh-eyes versions of a screen from agents that see no other versions (stitch2 sandbox), so alternatives are not anchored to what exists; or test a change to the skills on output only the rules produced. Use when the user wants alternatives or a new direction, feels stuck with a design, wants several options to choose from, or when a skill or DESIGN.md rule changed and you need evidence it helps.
 ---
 
-# Fresh-eyes variants with stitch2 sandboxes
+# Fresh-eyes alternatives with stitch2 sandboxes
 
 An agent that can see a screen's existing versions copies them, even when asked for something new. A sandbox
 is a folder with the project's design system, components, catalog, template and skills, and none of its screens,
@@ -16,8 +16,8 @@ the user to compare on the canvas.
    and structure only: colours, fonts and shapes come from DESIGN.md. Name the file after the screen
    (`history.md` designs `history`). For several directions, write one brief per direction with one sentence
    on what differs (`history.md` in sandbox A: "a calendar first"; in sandbox B: "a list first").
-2. **Create one sandbox per variant**: `stitch2 sandbox create /tmp/<project>-<screen>-a <brief.md>`.
-   `--context home stats` adds the approved versions of other screens, so the variant stays consistent with
+2. **Create one sandbox per alternative**: `stitch2 sandbox create /tmp/<project>-<screen>-a <brief.md>`.
+   `--context home stats` adds the approved versions of other screens, so the alternative stays consistent with
    them; `--device desktop` for desktop.
 3. **Run a fresh agent in each**, with no shared conversation: a sub-agent started without forked history,
    working only in that folder, told to read its AGENTS.md and follow the skills there. Without sub-agents, give

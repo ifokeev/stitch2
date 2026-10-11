@@ -15,6 +15,10 @@
   .row-label { align-items: baseline; display: flex; gap: 12px; overflow: hidden; position: absolute; white-space: nowrap; }
   .row-label b { color: var(--text); font-size: 24px; }
   .row-label span { color: var(--muted); font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+  .version-label { align-items: baseline; border-top: 2px solid var(--edge); display: flex; gap: 10px; overflow: hidden; padding-top: 8px; position: absolute; white-space: nowrap; }
+  .version-label b { color: var(--text); font-size: 18px; }
+  .version-label span { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+  .version-label.review { border-color: var(--warn); } .version-label.approved { border-color: var(--good); }
   #doc { background: var(--bg); display: none; inset: 0 0 0 var(--side); position: fixed; z-index: 19; }
   #doc.open { display: block; }
   .doc-frame { border: 0; height: 100%; width: 100%; }
@@ -46,6 +50,10 @@
   .item:hover { background: var(--panel2); color: var(--text); }
   .item.on { background: #2a1a12; color: var(--text); }
   .item .meta { color: var(--faint); font-size: 11px; margin-left: auto; white-space: nowrap; }
+  .item.variant { padding-left: 30px; }
+  #inspector .version-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+  #inspector .version-actions span { color: var(--muted); }
+  #inspector .version-actions button { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; padding: 3px 8px; }
   .screen-name { align-items: center; border-radius: 6px; color: var(--text); cursor: pointer; display: flex; font-weight: 600; gap: 6px; padding: 8px 8px 2px; }
   .screen-name:hover { background: var(--panel2); }
   .screen-name .meta { color: var(--faint); font-size: 11px; font-weight: 400; margin-left: auto; }
@@ -243,12 +251,22 @@ const zoomAt = (cx, cy, z) => {
   apply()
 }
 
-// ---- grouping: rows are app screens (components first), frames are versions ----
+// ---- grouping: rows are app screens (components first); in a row, versions (v1, v2, …) in order, and in a
+// version its variants: the layouts for each device (mobile, desktop), files <device>-v<N> sharing N ----
 const rowKey = (s) => (s.kind === 'components' ? '~components' : s.screen)
 const rowRank = (k) => (k === '~components' ? -1 : ORDER.includes(k) ? ORDER.indexOf(k) : 100)
 const sortRows = (keys) => keys.sort((a, b) => rowRank(a) - rowRank(b) || a.localeCompare(b))
+const versionRank = (v) => { const m = /^v(\d+)$/.exec(v); return m ? Number(m[1]) : 0 }
+const DEVICE_RANK = { mobile: 0, tablet: 1, desktop: 2 }
 const sortVersions = (list) =>
-  list.sort((a, b) => (a.device === b.device ? 0 : a.device === 'mobile' ? -1 : 1) || STATUS_RANK[a.status] - STATUS_RANK[b.status] || b.mtime - a.mtime)
+  list.sort((a, b) => versionRank(a.version) - versionRank(b.version) || a.version.localeCompare(b.version) || (DEVICE_RANK[a.device] ?? 9) - (DEVICE_RANK[b.device] ?? 9) || b.mtime - a.mtime)
+/** A version's variants, and one status for all of them: needs review if any does, else the most settled. */
+const versionsOf = (list) => {
+  const by = new Map()
+  for (const s of list) { const k = s.kind === 'components' ? s.path : s.version; by.set(k, [...(by.get(k) ?? []), s]) }
+  return [...by.entries()].map(([version, variants]) => ({ version, variants, status: variants.some((v) => v.status === 'review') ? 'review' : variants.some((v) => v.status === 'draft') ? 'draft' : variants.some((v) => v.status === 'approved') ? 'approved' : 'archived' }))
+}
+const VERSION_H = 44, VERSION_GAP = 120
 function shown(s) {
   const q = document.getElementById('search').value.trim().toLowerCase()
   if (q && !`${s.screen} ${s.title} ${s.path} ${s.version} ${s.source}`.toLowerCase().includes(q)) return false
@@ -272,11 +290,13 @@ function layout() {
   for (const row of rows()) {
     for (const s of row.all) frames.get(s.path).el.style.display = row.visible.includes(s) ? '' : 'none'
     if (!row.visible.length) continue
-    const groupW = row.visible.reduce((w, s) => w + s.width, 0) + GAP_X * (row.visible.length - 1)
+    const groups = versionsOf(row.visible)
+    const widthOf = (g) => g.variants.reduce((w, s) => w + s.width, 0) + GAP_X * (g.variants.length - 1)
+    const groupW = groups.reduce((w, g) => w + widthOf(g), 0) + VERSION_GAP * (groups.length - 1)
     if (x > 0 && x + groupW > LINE_W) { x = 0; y += lineH + GAP_Y; lineH = 0 }
     const label = document.createElement('div')
     label.className = 'row-label'
-    const approved = row.all.filter((s) => s.status === 'approved').map((s) => `${s.device} ${s.version}`)
+    const approved = row.all.filter((s) => s.status === 'approved').map((s) => `${s.version} ${s.device}`)
     label.innerHTML = '<b></b><span></span>'
     label.querySelector('b').textContent = row.key === '~components' ? 'Components' : row.key
     label.querySelector('span').textContent = row.key === '~components' ? 'the catalog every screen is built from' : approved.length ? `approved: ${approved.join(', ')}` : 'nothing approved yet'
@@ -284,12 +304,26 @@ function layout() {
     label.style.maxWidth = `${groupW}px`
     world.append(label)
     let fx = x, tallest = 0
-    for (const s of row.visible) {
-      const f = frames.get(s.path)
-      f.el.style.left = `${fx}px`
-      f.el.style.top = `${y + ROW_LABEL_H}px`
-      fx += s.width + GAP_X
-      tallest = Math.max(tallest, f.height + LABEL_H)
+    const top = row.key === '~components' ? 0 : VERSION_H
+    for (const g of groups) {
+      if (top) {
+        const v = document.createElement('div')
+        v.className = `row-label version-label ${g.status}`
+        v.innerHTML = '<b></b><span></span>'
+        v.querySelector('b').textContent = g.version
+        v.querySelector('span').textContent = `${STATUS_LABEL[g.status]} · ${g.variants.map((s) => s.device).join(', ')}`
+        v.style.transform = `translate(${fx}px, ${y + ROW_LABEL_H}px)`
+        v.style.width = `${widthOf(g)}px`
+        world.append(v)
+      }
+      for (const s of g.variants) {
+        const f = frames.get(s.path)
+        f.el.style.left = `${fx}px`
+        f.el.style.top = `${y + ROW_LABEL_H + top}px`
+        fx += s.width + GAP_X
+        tallest = Math.max(tallest, f.height + LABEL_H + top)
+      }
+      fx += VERSION_GAP - GAP_X
     }
     lineH = Math.max(lineH, ROW_LABEL_H + tallest)
     x += groupW + GROUP_GAP
@@ -335,11 +369,17 @@ function tree() {
     const approved = row.all.some((s) => s.status === 'approved')
     name.innerHTML = `<span class="dot ${approved ? 'approved' : row.all.some((s) => s.status === 'review') ? 'review' : 'draft'}"></span><span></span><span class="meta"></span>`
     name.children[1].textContent = row.key
-    name.querySelector('.meta').textContent = `${row.visible.length} version${row.visible.length > 1 ? 's' : ''}`
+    const vs = versionsOf(row.visible)
+    name.querySelector('.meta').textContent = `${vs.length} version${vs.length > 1 ? 's' : ''}`
     name.onclick = () => select(frames.get(row.visible[0].path), true)
     name.append(copyButton(row.key, 'Copy the screen name'))
     nav.append(name)
-    for (const s of row.visible) item(`${s.version} · ${s.device}`, STATUS_LABEL[s.status], selected?.screen.path === s.path, () => select(frames.get(s.path), true), s.status, 'version', ref(s))
+    for (const g of vs) {
+      const one = g.variants.length === 1
+      const first = g.variants[0]
+      item(one ? `${g.version} · ${first.device}` : g.version, one ? STATUS_LABEL[first.status] : `${STATUS_LABEL[g.status]} · ${g.variants.length} variants`, one && selected?.screen.path === first.path, () => select(frames.get(first.path), true), g.status, 'version', one ? ref(first) : `${row.key} ${g.version}`)
+      if (!one) for (const s of g.variants) item(s.device, STATUS_LABEL[s.status], selected?.screen.path === s.path, () => select(frames.get(s.path), true), s.status, 'variant', ref(s))
+    }
   }
 }
 
@@ -391,7 +431,7 @@ function badge(f) {
 function paintLabel(f) {
   const s = f.screen
   f.el.className = `frame ${s.device} ${s.status}${selected === f ? ' selected' : ''}`
-  f.el.querySelector('.name').textContent = s.kind === 'components' ? 'Catalog' : `${s.version}`
+  f.el.querySelector('.name').textContent = s.kind === 'components' ? 'Catalog' : s.device
   const pill = f.el.querySelector('.pill')
   pill.className = `pill ${s.status}`
   pill.textContent = s.kind === 'components' ? 'components' : `${STATUS_LABEL[s.status]} · ${s.source}`
@@ -478,7 +518,16 @@ function inspector(f) {
     }
     box.insertBefore(sec, box.querySelector('h4'))
   }
-  box.querySelector('.h').textContent = s.kind === 'components' ? 'Component catalog' : `${s.screen} · ${s.version}`
+  box.querySelector('.h').textContent = s.kind === 'components' ? 'Component catalog' : `${s.screen} · ${s.version} · ${s.device}`
+  const siblings = s.kind === 'screen' ? sortVersions(screens.filter((o) => o.kind === 'screen' && o.screen === s.screen && o.version === s.version)) : []
+  if (siblings.length > 1) {
+    const vrow = document.createElement('div')
+    vrow.className = 'version-actions'
+    vrow.innerHTML = '<span></span><button type="button" data-st="approved" title="Approve every variant of this version">Approve version</button><button type="button" data-st="archived" title="Archive every variant of this version">Archive version</button>'
+    vrow.querySelector('span').textContent = `${s.version}: ${siblings.map((o) => `${o.device} ${STATUS_LABEL[o.status]}`).join(', ')}`
+    for (const b of vrow.querySelectorAll('button')) b.onclick = async () => { for (const o of siblings) if (o.status !== b.dataset.st && !(b.dataset.st === 'approved' && o.status === 'archived')) await setMeta(o.path, { status: b.dataset.st }) }
+    box.querySelector('.status').before(vrow)
+  }
   box.querySelector('.f').textContent = `${s.device} · ${s.source}`
   const a = box.querySelector('.facts a')
   a.href = `/${s.path}`

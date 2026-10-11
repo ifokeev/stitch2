@@ -1,14 +1,18 @@
 # Screens, versions and approval
 
-The canvas and the agents share one model: an app **screen** (home, settings, …) has **versions**, each for a
-**device** (mobile or desktop), and each version has a **status**. The user decides; agents read the decision
+The canvas and the agents share one model: an app **screen** (home, settings, …) has **versions**, design
+iterations numbered v1, v2, v3…, and each version has **variants**, its layouts for each device (mobile,
+desktop, later tablet). Each variant has a **status**. The user decides; agents read the decision
 and build on it. Meta tag names below use the project's prefix (`<p>`, from `stitch2.config.json`).
 
 ## Names and files
 
 - Screen names are lowercase with hyphens and name what the user sees; one per step of a flow
   (`checkout-1`, `checkout-2`). Reuse existing names (`stitch2 screens` lists them).
-- A version is one file, `<screens dir>/<screen>/<device>-v<N>.html`, N the next free number for that device.
+- A variant is one file, `<screens dir>/<screen>/<device>-v<N>.html`; the variants of a version share N
+  (`mobile-v3.html` and `desktop-v3.html` are v3). A new version takes the next free N across the screen's
+  variants; a variant added to an existing version takes that version's N (a desktop for v3 is
+  `desktop-v3.html`, never v4). A version may start with one variant and get the others later.
   Its head carries `<p>-screen`, `<p>-device` (mobile | desktop), `<p>-status`, `<p>-source` (stitch | lab),
   `<p>-frame-width` (390 mobile, 1280 desktop) and, written by the user, `<p>-note`. Older files elsewhere
   carry the same tags.
@@ -17,9 +21,11 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
 
 - **New version** for every new attempt: a new direction, a regeneration, an export from a generator, a
   redesign after feedback on an approved screen. It starts as `draft` and ends as `review`.
+- **New variant** for a device the version lacks (its desktop, its tablet): a new file with the version's N,
+  `draft` then `review`, even when the version's other variants are approved.
 - **Edit in place** only to finish your own draft, or to answer a note on a version still in `review` or
   `draft`.
-- **Never edit** an `approved` or `archived` version: copy it to the next number and change the copy.
+- **Never edit** an `approved` or `archived` variant: copy the version to the next number and change the copy.
 
 ## Statuses
 
@@ -28,7 +34,11 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
 | `draft` | Work in progress | The agent, while working |
 | `review` | Finished, waiting for the user ("Needs review") | The agent, when done |
 | `approved` | The reference: build on it, match it, implement it | The user only |
-| `archived` | History: superseded or rejected; hidden on the canvas | The user; approving a version archives the previously approved one |
+| `archived` | History: superseded or rejected; hidden on the canvas | The user; approving a variant archives the previously approved variant of the same device |
+
+The canvas shows each version with its variants side by side under one heading, and one status for the version:
+needs review while any variant does. **Approve version** approves every variant in review at once; a single
+variant can still be approved, archived or noted on its own.
 
 ## How to use them
 
@@ -55,15 +65,15 @@ the page needs a state first (an open sheet, a running workout), add a `prepare`
 
 ## Desktop
 
-Desktop is a device of the same screen, designed after the mobile version is approved: `desktop-v<N>.html`,
-frame width 1280, the same components and type levels, the layout from DESIGN.md (typically a sidebar instead
+Desktop is a variant of a version, designed after the version's mobile variant is approved: `desktop-v<N>.html`
+with the mobile's N, frame width 1280, the same components and type levels, the layout from DESIGN.md (typically a sidebar instead
 of a tab bar, a content max width, two columns where it helps). Shared components get their desktop form in the
 component, before the first desktop screen.
 
 Widths follow Google's window size classes ([google.md](google.md)): compact under 600 px (the phone frame),
 medium 600–839, expanded 840–1199, large from 1200 (the desktop frame). A desktop screen is a layout for the
 width class, not a stretched phone: a side navigation instead of the bar, list-detail with both panes, extra
-columns for feeds. When a project needs a tablet, it is a medium-width device of the same screen.
+columns for feeds. When a project needs a tablet, it is one more variant, at a medium width.
 
 ## The canvas
 

@@ -24,7 +24,8 @@ References, read before the first screen:
 - [principles.md](references/principles.md): what makes a screen read well, and the review rubric.
 - [typography.md](references/typography.md): type levels and how to combine them; most polish is here.
 - [components.md](references/components.md): build from the shared components; the reuse ladder.
-- [screens.md](references/screens.md): screen names, versions, statuses, the user's approval and notes, desktop.
+- [screens.md](references/screens.md): screen names, versions and their variants (mobile, desktop), statuses,
+  the user's approval and notes.
 - [google.md](references/google.md): Google's guidance (Material, Android, web.dev) as rules with numbers.
 - [guides.md](references/guides.md): the public sources behind the rules.
 
@@ -40,8 +41,9 @@ References, read before the first screen:
 3. **Hierarchy before markup.** Name the one thing the user came for, the single primary action (the only
    accent-filled element in its region), and what is secondary. Give every text element a type level and a
    colour before writing markup.
-4. **Build** the next version, `<screens>/<screen>/<device>-v<N>.html`, from the project's template (status
-   `draft`; never edit an approved version). Assemble it from the components; plain markup only where none
+4. **Build** the next version, `<screens>/<screen>/<device>-v<N>.html`, or a missing variant of an existing
+   version (another device, the same N), from the project's template (status `draft`; never edit an approved
+   variant). Assemble it from the components; plain markup only where none
    applies, with token classes, `.type-<level>` classes for text, the spacing scale, and the states DESIGN.md
    defines. When the config has `i18n`, mark every product string with its message key (`data-t`, see
    **stitch2-i18n**). Never add classes to a component to change how it looks, and never write a colour value (hex,
@@ -82,11 +84,11 @@ References, read before the first screen:
 | `lint` | Google's DESIGN.md linter |
 | `localize [filter]` | Copies remote images a screen uses into its `assets/` folder |
 | `init`, `extract` | Build DESIGN.md from choices, or measure it from an existing site (stitch2-design-md) |
-| `sandbox create <dir> <brief.md>…`, `sandbox import <dir>` | Fresh-eyes versions from agents that see no other versions (stitch2-variants) |
+| `sandbox create <dir> <brief.md>…`, `sandbox import <dir>` | Fresh-eyes versions from agents that see no other versions (stitch2-alternatives) |
 
 ## Alternatives and fresh eyes
 
 When the user wants options or a new direction, or a design is stuck, do not iterate on the existing versions:
-use the **stitch2-variants** skill. Fresh agents in sandboxes design from the brief without seeing the other
+use the **stitch2-alternatives** skill. Fresh agents in sandboxes design from the brief without seeing the other
 versions, and their screens come back as new versions to compare on the canvas. The same skill tests changes to
 the skills or DESIGN.md.

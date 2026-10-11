@@ -68,17 +68,18 @@ file that already exists. From there the agent spends its effort on the design.
     { "format": "dtcg", "path": "design/tokens.json" }
   ]
   ```
-- **Versions and approval**: every file is a version of a screen for a device, with its status (draft, review,
-  approved, archived) and your note in meta tags, so agents can read what you decided (`stitch2 screens`).
+- **Versions, variants and approval**: a screen has versions (v1, v2, …), and each version has variants, its
+  layouts for mobile and desktop (`mobile-v3.html`, `desktop-v3.html`). The canvas groups them; you approve a
+  version as a whole or one variant at a time, leave notes, and approving archives the previous approved layout.
 - **DESIGN.md builder**: `stitch2 init` writes a complete DESIGN.md from a few choices (brand colour, modes,
   fonts, roundness, density), with colours checked for contrast; `stitch2 extract` measures one from an existing
   site or screens.
-- **Fresh-eyes variants** (`stitch2 sandbox`): a folder with your design system, components and skills but no
+- **Fresh-eyes alternatives** (`stitch2 sandbox`): a folder with your design system, components and skills but no
   screens, where a fresh agent designs from a brief without being anchored to the existing versions;
   `stitch2 sandbox import` brings the result back as the next version for review. Also the way to test a change
   to the skills on output only the rules produced.
 - **Skills** for agents (`skills/`): `stitch2` (the design workflow, principles, typography, components,
-  versions), `stitch2-design-md` (building the design system), `stitch2-variants` (fresh-eyes versions and
+  versions), `stitch2-design-md` (building the design system), `stitch2-alternatives` (fresh-eyes versions and
   testing skill changes), `stitch2-consistency` (verifying and fixing
   consistency), `stitch2-i18n` (screens in every language), `stitch2-app-sync` (keeping the app and the designs in step: design first, then the app) and,
   optional, `stitch2-import-from-google-stitch` (drafting screens in Google Stitch through its MCP server).
