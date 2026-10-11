@@ -163,13 +163,21 @@ function runtime(p: Awaited<ReturnType<typeof pagePayload>>) {
         let v: string | undefined
         if (a.value.includes('{')) {
           // A template: each {key} or {key|name=value;name=value} becomes its message, the rest stays as written.
+          // Templates nest ({site.title|tab={nav.home}}): the innermost resolve first, until none is left.
           let whole = true
-          v = a.value.replace(/\{([^{}|]+)(?:\|([^}]*))?\}/g, (_m: string, key: string, inline?: string) => {
-            keys.push(key)
-            const r = t(key, { ...args, ...parseArgs(inline, ';') })
-            if (r === undefined) whole = false
-            return r ?? ''
-          })
+          // Resolved text waits as \u0001<n>\u0001, so braces inside a message are never read as keys.
+          const done: string[] = []
+          const back = (s: string) => s.replace(/\u0001(\d+)\u0001/g, (_m: string, i: string) => done[Number(i)]!)
+          v = a.value
+          for (let pass = 0; pass < 5 && /\{[^{}|]+(?:\|[^{}]*)?\}/.test(v); pass++)
+            v = v.replace(/\{([^{}|]+)(?:\|([^{}]*))?\}/g, (_m: string, key: string, inline?: string) => {
+              keys.push(key)
+              const r = t(key, { ...args, ...parseArgs(inline && back(inline), ';') })
+              if (r === undefined) whole = false
+              done.push(r ?? '')
+              return `\u0001${done.length - 1}\u0001`
+            })
+          v = back(v)
           if (!whole) v = undefined
         } else if (a.name === 'data-t') {
           v = t(a.value, args)

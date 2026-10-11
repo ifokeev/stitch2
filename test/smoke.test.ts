@@ -134,7 +134,7 @@ test('languages: screens read the messages, and the report and check find what i
     .replace('content="screen-name"', 'content="hello"')
     .replace(
       /<af-header[^>]*><\/af-header>/,
-      '<af-header title="Today" data-t-title="hello.title"></af-header><p class="type-body" data-t="hello.sets" data-t-args="count=3">3 sets</p><p class="type-body" data-t="hello.only_en">Only here</p><p class="type-body" data-t="hello.nope">Nope</p><p class="type-body">Loose words</p><p class="type-body" translate="no">Bench Press</p><p class="type-body" data-t="{hello.sets|count=5} · {hello.title}">5 sets · Today</p><p class="type-body" data-t="{hello.body weight} · {@date|value=2026-10-04;weekday=short;day=numeric;month=short} · {@number|value=7920}">Body weight · Sun, 4 Oct · 7,920</p><p class="type-body" data-t="hello.at" data-t-args="count=312">Showing what you can do at <b data-t-slot="place" translate="no">Home gym</b>: 312 exercises.</p>',
+      '<af-header title="Today" data-t-title="hello.title"></af-header><p class="type-body" data-t="hello.sets" data-t-args="count=3">3 sets</p><p class="type-body" data-t="hello.only_en">Only here</p><p class="type-body" data-t="hello.nope">Nope</p><p class="type-body">Loose words</p><p class="type-body" translate="no">Bench Press</p><p class="type-body" data-t="{hello.sets|count=5} · {hello.title}">5 sets · Today</p><p class="type-body" data-t="{hello.body weight} · {@date|value=2026-10-04;weekday=short;day=numeric;month=short} · {@number|value=7920}">Body weight · Sun, 4 Oct · 7,920</p><p class="type-body" data-t="hello.at" data-t-args="count=312">Showing what you can do at <b data-t-slot="place" translate="no">Home gym</b>: 312 exercises.</p><p class="type-body" data-t="{hello.at|place={hello.title};count={@number|value=1324}}">Showing what you can do at Today: 1,324 exercises.</p>',
     )
   writeFileSync(join(dir, 'design/screens/hello/mobile-v1.html'), screen)
 
@@ -183,6 +183,8 @@ test('languages: screens read the messages, and the report and check find what i
     assert.match(ru.texts[6]!, /^Собственный вес · вс, 4 окт\. · 7\s920$/)
     // Rich text: the slot keeps its element inside the translated sentence.
     assert.equal(ru.texts[7], 'Упражнения для Home gym: 312.')
+    // Nested: a message, and a formatted number, as another message's arguments.
+    assert.match(ru.texts[8]!, /^Упражнения для Сегодня: 1\s324\.$/)
     assert.equal(await page.evaluate(() => document.querySelector('main p:nth-of-type(8) b')?.textContent), 'Home gym')
     assert.equal((await open('pseudo-rtl')).dir, 'rtl')
     assert.match((await open('pseudo')).h1!, /^\[Ţóðáý ·+\]$/)

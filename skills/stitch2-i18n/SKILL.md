@@ -44,7 +44,8 @@ Use the app's own files. Never copy messages into the design folder: two copies 
 ```
 
 A value with braces is a **template**: each `{key}` or `{key|name=value;name=value}` becomes its message and
-the rest stays as written. Use it for lines the app builds from several messages and data (a meta line, a
+the rest stays as written. Templates nest, innermost first, for a message that takes another as an argument:
+`data-t-title="{site.screens.title|workout={nav.workout};history={nav.history}}"`. Use it for lines the app builds from several messages and data (a meta line, a
 list of `label=url` links: `data-t-links="{site.features}=#features,{site.docs}=/docs"`); sample data inside
 it stays literal. Without braces, `data-t-<attr>` on a comma list takes one key per item.
 

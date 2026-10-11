@@ -70,10 +70,15 @@ export function scan(html: string): { uses: Use[]; loose: Loose[] } {
     const skip = !!top?.skip || 'data-t-skip' in a || a.translate === 'no'
     for (const [name, value] of Object.entries(a)) {
       const keyed = name === 'data-t' || (name.startsWith('data-t-') && name !== 'data-t-args' && name !== 'data-t-skip')
-      if (keyed && value.includes('{'))
-        for (const m of value.matchAll(/\{([^{}|@][^{}|]*)(?:\|([^}]*))?\}/g))
-          uses.push({ key: m[1]!, line, plural: plural || /(^|;)\s*count\s*=/.test(m[2] ?? '') })
-      else if (name === 'data-t') uses.push({ key: value, line, plural })
+      if (keyed && value.includes('{')) {
+        // Innermost first, as the screens resolve them: {site.title|tab={nav.home}} uses both keys.
+        let rest = value
+        for (let pass = 0; pass < 5 && rest.includes('{'); pass++)
+          rest = rest.replace(/\{([^{}|]+)(?:\|([^{}]*))?\}/g, (_m: string, key: string, inline?: string) => {
+            if (!key.startsWith('@')) uses.push({ key, line, plural: plural || /(^|;)\s*count\s*=/.test(inline ?? '') })
+            return 'x'
+          })
+      } else if (name === 'data-t') uses.push({ key: value, line, plural })
       else if (keyed && name !== 'data-t-slot') for (const k of value.split(',')) uses.push({ key: k.trim(), line, plural })
       else if (
         !skip &&
@@ -146,4 +151,3 @@ else {
   )
 }
 if (report.some((r) => r.unknown.length)) process.exitCode = 1
-
