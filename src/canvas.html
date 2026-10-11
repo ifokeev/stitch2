@@ -31,18 +31,18 @@
   .seg button { background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; flex: 1; padding: 4px 6px; white-space: nowrap; }
   .seg button.on { background: var(--panel2); color: var(--text); }
   .seg[hidden] { display: none; }
-  #versionFilter { position: relative; }
-  #versionFilter[hidden] { display: none; }
-  #versionFilter summary { align-items: center; background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; display: flex; gap: 8px; list-style: none; padding: 5px 8px; }
-  #versionFilter summary::-webkit-details-marker { display: none; }
-  #versionFilter summary::after { border: solid var(--muted); border-width: 0 1.5px 1.5px 0; content: ''; height: 6px; margin: -3px 2px 0 auto; transform: rotate(45deg); width: 6px; }
-  #versionFilter[open] summary::after { margin-top: 3px; transform: rotate(-135deg); }
-  #versionFilter .menu { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5); left: 0; max-height: 280px; overflow: auto; padding: 4px; position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; }
-  #versionFilter label { align-items: center; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 5px 8px; }
-  #versionFilter label:hover { background: var(--panel2); color: var(--text); }
-  #versionFilter label.all { border-bottom: 1px solid var(--edge); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
-  #versionFilter input { accent-color: var(--accent); margin: 0; }
-  #versionFilter .n { color: var(--faint); margin-left: auto; }
+  .multi { position: relative; }
+  .multi[hidden] { display: none; }
+  .multi summary { align-items: center; background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; cursor: pointer; display: flex; gap: 8px; list-style: none; padding: 5px 8px; }
+  .multi summary::-webkit-details-marker { display: none; }
+  .multi summary::after { border: solid var(--muted); border-width: 0 1.5px 1.5px 0; content: ''; height: 6px; margin: -3px 2px 0 auto; transform: rotate(45deg); width: 6px; }
+  .multi[open] summary::after { margin-top: 3px; transform: rotate(-135deg); }
+  .multi .menu { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.5); left: 0; max-height: 280px; overflow: auto; padding: 4px; position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; }
+  .multi label { align-items: center; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 5px 8px; }
+  .multi label:hover { background: var(--panel2); color: var(--text); }
+  .multi label.all { border-bottom: 1px solid var(--edge); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
+  .multi input { accent-color: var(--accent); margin: 0; }
+  .multi .n { color: var(--faint); margin-left: auto; }
   #langFilter { background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; color: var(--text); padding: 5px 8px; width: 100%; }
   #tree { flex: 1; overflow: auto; padding: 6px 8px 16px; }
   #tree h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 14px 6px 6px; text-transform: uppercase; }
@@ -126,8 +126,8 @@
     <b id="labName">stitch2</b>
     <input id="search" placeholder="Search screens… ( / )" />
     <div class="seg" id="statusFilter"><button type="button" data-v="active" class="on" title="Everything except archived versions">Active</button><button type="button" data-v="approved" title="The reference versions agents build on">Approved</button><button type="button" data-v="review" title="Finished by an agent, waiting for your decision">Needs review</button><button type="button" data-v="all" title="Including archived versions">All</button></div>
-    <div class="seg" id="deviceFilter"><button type="button" data-v="all" class="on">All devices</button><button type="button" data-v="mobile">Mobile</button><button type="button" data-v="desktop">Desktop</button></div>
-    <details id="versionFilter" hidden title="Show only the versions you pick (several at once), or all of them"><summary>All versions</summary><div class="menu"></div></details>
+    <details id="versionFilter" class="multi" hidden title="Show only the versions you pick (several at once), or all of them"><summary>All versions</summary><div class="menu"></div></details>
+    <details id="variantFilter" class="multi" hidden title="Show only the variants you pick: mobile, desktop (several at once), or all of them"><summary>All variants</summary><div class="menu"></div></details>
     <div class="seg" id="themeFilter" hidden title="Show every screen in this theme (T)"></div>
     <select id="langFilter" title="Show every screen in this language (L)" aria-label="Language"></select>
   </header>
@@ -228,7 +228,8 @@ const copyButton = (text, title) => {
   return b
 }
 let view = JSON.parse(localStorage.getItem('stitch2-view') ?? 'null') ?? { x: 40, y: 60, z: 0.4 }
-const filters = JSON.parse(localStorage.getItem('stitch2-filters') ?? 'null') ?? { status: 'active', device: 'all' }
+const filters = JSON.parse(localStorage.getItem('stitch2-filters') ?? 'null') ?? { status: 'active' }
+if (typeof filters.device === 'string') { filters.devices = filters.device === 'all' ? [] : [filters.device]; delete filters.device }
 let screens = []
 let checks = { screens: {} }
 let selected = null
@@ -270,7 +271,7 @@ const VERSION_H = 44, VERSION_GAP = 120
 function shown(s) {
   const q = document.getElementById('search').value.trim().toLowerCase()
   if (q && !`${s.screen} ${s.title} ${s.path} ${s.version} ${s.source}`.toLowerCase().includes(q)) return false
-  if (filters.device !== 'all' && s.kind === 'screen' && s.device !== filters.device) return false
+  if (filters.devices?.length && s.kind === 'screen' && !filters.devices.includes(s.device)) return false
   if (filters.versions?.length && s.kind === 'screen' && !filters.versions.includes(s.version)) return false
   if (s.kind === 'components') return filters.status !== 'review' && filters.status !== 'approved'
   if (filters.status === 'active') return s.status !== 'archived'
@@ -684,6 +685,7 @@ async function load(first, given) {
   }
   screens = next
   versionFilter()
+  variantFilter()
   layout()
   await loadChecks()
   if (selected) inspector(selected)
@@ -691,7 +693,7 @@ async function load(first, given) {
 }
 
 // ---- filters ----
-for (const [id, key] of [['statusFilter', 'status'], ['deviceFilter', 'device']]) {
+for (const [id, key] of [['statusFilter', 'status']]) {
   const seg = document.getElementById(id)
   for (const b of seg.querySelectorAll('button')) {
     b.classList.toggle('on', b.dataset.v === filters[key])
@@ -705,50 +707,55 @@ for (const [id, key] of [['statusFilter', 'status'], ['deviceFilter', 'device']]
 }
 document.getElementById('search').oninput = layout
 
-// Versions: a multi-select of every version label the screens use (v1 … v12, and imports such as "Stitch"), with
-// how many screen versions carry each; none ticked means all. The catalog is always shown.
-const versionBox = document.getElementById('versionFilter')
-document.addEventListener('click', (e) => { if (versionBox.open && !versionBox.contains(e.target)) versionBox.open = false })
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && versionBox.open) { versionBox.open = false; e.stopPropagation() } }, true)
-function versionFilter() {
+// Versions and variants: multi-selects of every label the screens use (v1 … v12 and imports such as "Stitch";
+// mobile, tablet, desktop), with how many screens carry each; none ticked means all. The catalog always shows.
+const MULTI = []
+for (const id of ['versionFilter', 'variantFilter']) {
+  const box = document.getElementById(id)
+  MULTI.push(box)
+}
+document.addEventListener('click', (e) => { for (const box of MULTI) if (box.open && !box.contains(e.target)) box.open = false })
+document.addEventListener('keydown', (e) => { const open = MULTI.find((b) => b.open); if (e.key === 'Escape' && open) { open.open = false; e.stopPropagation() } }, true)
+function multiFilter({ id, key, of, sort, all, many, again }) {
+  const box = document.getElementById(id)
   const counts = new Map()
-  for (const s of screens) if (s.kind === 'screen') counts.set(s.version, (counts.get(s.version) ?? 0) + 1)
-  const labels = [...counts.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-  filters.versions = (filters.versions ?? []).filter((v) => labels.includes(v))
-  versionBox.hidden = labels.length < 2
-  const picked = filters.versions
-  versionBox.querySelector('summary').textContent = !picked.length
-    ? 'All versions'
-    : picked.length <= 3
-      ? [...picked].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(', ')
-      : picked.length + ' versions'
+  for (const s of screens) if (s.kind === 'screen') counts.set(of(s), (counts.get(of(s)) ?? 0) + 1)
+  const labels = [...counts.keys()].sort(sort)
+  filters[key] = (filters[key] ?? []).filter((v) => labels.includes(v))
+  box.hidden = labels.length < 2
+  const picked = filters[key]
+  box.querySelector('summary').textContent = !picked.length ? all : picked.length <= 3 ? [...picked].sort(sort).join(', ') : `${picked.length} ${many}`
   const change = (next) => {
-    filters.versions = next
+    filters[key] = next
     localStorage.setItem('stitch2-filters', JSON.stringify(filters))
-    versionFilter()
+    again()
     layout()
   }
   const option = (label, checked, n, onChange, cls = '') => {
     const l = document.createElement('label')
     l.className = cls
-    const box = document.createElement('input')
-    box.type = 'checkbox'
-    box.checked = checked
-    box.onchange = onChange
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.checked = checked
+    input.onchange = onChange
     const name = document.createElement('span')
     name.textContent = label
     const count = document.createElement('span')
     count.className = 'n'
     count.textContent = n
-    l.append(box, name, count)
+    l.append(input, name, count)
     return l
   }
-  versionBox.querySelector('.menu').replaceChildren(
-    option('All versions', !picked.length, screens.filter((s) => s.kind === 'screen').length, () => change([]), 'all'),
-    ...labels.map((v) =>
-      option(v, picked.includes(v), counts.get(v), () => change(picked.includes(v) ? picked.filter((x) => x !== v) : [...picked, v])),
-    ),
+  box.querySelector('.menu').replaceChildren(
+    option(all, !picked.length, screens.filter((s) => s.kind === 'screen').length, () => change([]), 'all'),
+    ...labels.map((v) => option(v, picked.includes(v), counts.get(v), () => change(picked.includes(v) ? picked.filter((x) => x !== v) : [...picked, v]))),
   )
+}
+function versionFilter() {
+  multiFilter({ id: 'versionFilter', key: 'versions', of: (s) => s.version, sort: (a, b) => a.localeCompare(b, undefined, { numeric: true }), all: 'All versions', many: 'versions', again: versionFilter })
+}
+function variantFilter() {
+  multiFilter({ id: 'variantFilter', key: 'devices', of: (s) => s.device, sort: (a, b) => (DEVICE_RANK[a] ?? 9) - (DEVICE_RANK[b] ?? 9), all: 'All variants', many: 'variants', again: variantFilter })
 }
 
 // ---- live reload ----
