@@ -110,6 +110,12 @@ Use logical properties so layouts flip by themselves: `ms-*`/`me-*`, `ps-*`/`pe-
 `text-start`, `rounded-s-*`. Icons that point (back, next, chevrons, progress) get `rtl:-scale-x-100`;
 icons that show objects (a dumbbell, a clock) and numbers, charts and media controls do not flip.
 
+## Writing and translating the words
+
+This skill makes every language fit. What the text says, and how well each language says it, is
+**stitch2-copy** (the source) and **stitch2-translate** (meaning, not words: a glossary from the app, the
+language's conventions, a review pass by error type, then this skill's check in context).
+
 ## Hand over
 
 Tell the user which languages you checked, what you changed to make each fit (layout, word, component), and

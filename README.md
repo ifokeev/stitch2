@@ -83,7 +83,7 @@ file that already exists. From there the agent spends its effort on the design.
 - **Skills** for agents (`skills/`): `stitch2` (the design workflow, principles, typography, components,
   versions), `stitch2-design-md` (building the design system), `stitch2-alternatives` (fresh-eyes versions and
   testing skill changes), `stitch2-consistency` (verifying and fixing
-  consistency), `stitch2-i18n` (screens in every language), `stitch2-app-sync` (keeping the app and the designs in step: design first, then the app) and,
+  consistency), `stitch2-i18n` (screens in every language), `stitch2-copy` (writing the text: a brief, plain words, the reader's outcome), `stitch2-translate` (translating by meaning, with a glossary from the product, a review by error type and a check in context), `stitch2-app-sync` (keeping the app and the designs in step: design first, then the app) and,
   optional, `stitch2-import-from-google-stitch` (drafting screens in Google Stitch through its MCP server).
 
 ## Setup

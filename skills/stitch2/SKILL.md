@@ -46,7 +46,8 @@ References, read before the first screen:
    variant). Assemble it from the components; plain markup only where none
    applies, with token classes, `.type-<level>` classes for text, the spacing scale, and the states DESIGN.md
    defines. When the config has `i18n`, mark every product string with its message key (`data-t`, see
-   **stitch2-i18n**). Never add classes to a component to change how it looks, and never write a colour value (hex,
+   **stitch2-i18n**). Write the text as **stitch2-copy** says (the reader's outcome, plain words, the product's terms),
+   and translate it with **stitch2-translate**. Never add classes to a component to change how it looks, and never write a colour value (hex,
    `rgb()`, `hsl()`): only DESIGN.md's colours, as token classes or `var(--<prefix>-<name>)`.
 5. **Check** `stitch2 check <path> --shots --strict`. Fix every error (overflow, wrapped labels, content under
    fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text) and every warning about type (`type-*`), hand-built
