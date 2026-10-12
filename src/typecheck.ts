@@ -63,6 +63,8 @@ export function collectText(): TextItem[] {
     if (/material|symbols|icons/i.test(cs.fontFamily) || cs.visibility === 'hidden') continue
     const r = el.getBoundingClientRect()
     if (!r.width || !r.height) continue
+    // Text for screen readers only (Tailwind's sr-only: a 1px box, clipped away) is not drawn.
+    if (r.width <= 1 && r.height <= 1 && cs.position === 'absolute') continue
     let opacity = 1
     for (let e: Element | null = el; e; e = e.parentElement) opacity *= Number(getComputedStyle(e).opacity)
     if (opacity < 0.05) continue

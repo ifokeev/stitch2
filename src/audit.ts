@@ -39,6 +39,8 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
     const closed = el.closest('details:not([open])')
     if (closed && !closed.querySelector(':scope > summary')?.contains(el)) return false
     const r = el.getBoundingClientRect()
+    // Text kept for screen readers only (Tailwind's sr-only: a 1px box, clipped away) is not drawn.
+    if (r.width <= 1 && r.height <= 1 && cs.position === 'absolute') return false
     return r.width > 0 && r.height > 0
   }
   const opacity = (el: Element) => {
