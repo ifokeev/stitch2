@@ -35,8 +35,13 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
 |---|---|---|
 | `draft` | Work in progress | The agent, while working |
 | `review` | Finished, waiting for the user ("Needs review") | The agent, when done |
-| `approved` | The reference: build on it, match it, implement it | The user only |
-| `archived` | History: superseded or rejected; hidden on the canvas | The user; approving a variant archives the previously approved variant of the same device |
+| `approved` | The current version: the reference to build on and match, and the only one the app implements | The user only (on the canvas, or in words: then the agent runs `stitch2 approve`) |
+| `archived` | Outdated: superseded or rejected; hidden on the canvas | Approval: approving a variant archives every earlier version of that screen on that device, whatever its status |
+
+**One current version.** For each screen and device there is at most one approved variant, and it is what the app
+shows. Approving one archives every earlier version there (approved, in review or a draft), so nothing older can be
+mistaken for the current one; a later version, a newer proposal, keeps its status. `stitch2 screens` ends with
+anything that breaks this (two approved, an older version still in review); `--strict` fails on it.
 
 The canvas shows each version with its variants side by side under one heading, and one status for the version:
 needs review while any variant does. **Approve version** approves every variant in review at once; a single
@@ -47,8 +52,12 @@ variant can still be approved, archived or noted on its own.
 1. Before designing, run `stitch2 screens` (a name or `--status approved` narrows it) and open the approved
    versions of the screens next to yours.
 2. A note is the user's feedback: address every point in your next version or edit, and say how.
-3. Never set `approved` yourself; never build on an archived version unless asked.
-4. Only approved versions get implemented in the product.
+3. Never approve on your own and never build on an archived version unless asked. When the user approves in words
+   ("approve the v3 screens"), run `stitch2 approve <path or filter…>` rather than editing status tags: it archives the
+   earlier versions as the canvas does.
+4. **Implement only approved versions.** A version in review or a draft is not built in the app, not even partly. If
+   the user asks to implement one that is not approved yet, that request is their approval: run `stitch2 approve` on it
+   first and say so. If the app needs something no approved version shows, design it and hand it over first.
 5. When the user pastes a reference copied from the canvas, such as `home mobile v2
    (design/screens/home/mobile-v2.html)`, open that file: it names exactly the version they mean.
 6. A reference to an element adds its source line, its tag and its text: `home mobile v1
@@ -59,7 +68,7 @@ variant can still be approved, archived or noted on its own.
 
 ## Implementing an approved version
 
-Build the screen in the app from the same components the screens use, in the version's order, with the app's
+Check first with `stitch2 screens <screen>` that the version is approved and is the only approved one on its device. Build the screen in the app from the same components the screens use, in the version's order, with the app's
 own data, strings and behaviour; keep the app's tests passing. Then run `stitch2 compare <screen>` with the app
 running: fix every `missing` component and look at the side-by-side report. `extra` and `order` warnings are
 fine when the app needs them (a desktop-only control, a frame drawn by layout); say so when you hand over. When

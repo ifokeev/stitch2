@@ -35,7 +35,8 @@ const COMMANDS: Record<string, [string, string]> = {
     'i18n-report.ts',
     '[filter] [--locale l] [--suggest] [--json]  Keys screens use that a locale lacks, and screen text with no key',
   ],
-  screens: ['list.ts', '[name] [--status s] [--json]  Screen versions, statuses and notes'],
+  screens: ['list.ts', '[name] [--status s] [--json] [--strict]  Screen versions, statuses, notes, and which version is current'],
+  approve: ['approve.ts', '<path or filter…>  Approve variants for the user; earlier versions are archived'],
   localize: ['assets.ts', '[filter]  Copy remote images a screen uses into its assets/ folder'],
   sandbox: [
     'sandbox.ts',

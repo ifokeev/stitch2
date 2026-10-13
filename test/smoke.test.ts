@@ -54,6 +54,31 @@ test('a screen made from the template is listed with its status', () => {
   assert.equal(home.device, 'mobile')
 })
 
+test('approving makes one version current: earlier versions are archived, a newer proposal stays', () => {
+  const home = readFileSync(join(dir, 'design/screens/home/mobile-v1.html'), 'utf8')
+  mkdirSync(join(dir, 'design/screens/plan'), { recursive: true })
+  const at = (status: string) => home.replace(/content="draft"/, `content="${status}"`).replace(/content="screen-name"|content="home"/, 'content="plan"')
+  writeFileSync(join(dir, 'design/screens/plan/mobile-v1.html'), at('approved'))
+  writeFileSync(join(dir, 'design/screens/plan/mobile-v2.html'), at('review'))
+  writeFileSync(join(dir, 'design/screens/plan/mobile-v3.html'), at('review'))
+  writeFileSync(join(dir, 'design/screens/plan/mobile-v4.html'), at('draft'))
+  // Nothing unclear yet: v1 is current and the rest wait.
+  stitch2('screens', 'plan', '--strict')
+  assert.match(stitch2('approve', 'plan/mobile-v3'), /approved plan v3 mobile; archived v1, v2/)
+  const status = (n: number) => {
+    const s = (JSON.parse(stitch2('screens', 'plan', '--json')) as { version: string; status: string }[]).find(
+      (x) => x.version === `v${n}`,
+    )
+    return s?.status
+  }
+  assert.deepEqual([1, 2, 3, 4].map(status), ['archived', 'archived', 'approved', 'draft'])
+  // A version left behind by hand is reported, and --strict fails on it.
+  writeFileSync(join(dir, 'design/screens/plan/mobile-v2.html'), at('review'))
+  assert.match(stitch2('screens', 'plan'), /plan mobile: v2 is still review although v3 is approved/)
+  assert.throws(() => stitch2('screens', 'plan', '--strict'))
+})
+
+
 test('the starter catalog and screen pass the checks', () => {
   const out = stitch2('check', '--strict')
   assert.match(out, /0 errors\./)

@@ -19,7 +19,10 @@ a component rebuilt by hand. The checks can only judge what the canvas draws, so
    approved screen if the change is visible there; a catalog entry for a new variant or state), and run
    `stitch2 check <screens> --strict`. Look at the screens yourself: the check finds overlaps and overflow, not
    ugliness.
-3. **Approval**: the user approves the new versions (or the catalog change) as for any design.
+3. **Approval**: the user approves the new versions (or the catalog change) as for any design. Nothing goes into
+   the app before this: a version in review is not implemented, not even partly. When the user asks to implement
+   one in review, run `stitch2 approve` on it first; that archives the earlier versions, so the approved one is the
+   single current version and the app matches it.
 4. **App**: the app picks the component up; wire it, then run `stitch2 compare <screen>`.
 
 Fixing a bug found in the app follows the same path: reproduce it on the canvas (a screen or catalog state that
@@ -62,7 +65,8 @@ Read the findings as:
 
 ## Before you call it done
 
-1. `stitch2 check --strict` passes on the screens you touched (archived screens excepted).
-2. `stitch2 compare` has no errors for the screens you touched; warnings are explained (a kept feature) or fixed.
-3. The user has seen the canvas versions of anything that changed how a component looks.
+1. Every screen you implemented is approved, and `stitch2 screens --strict` passes: one current version each.
+2. `stitch2 check --strict` passes on the screens you touched (archived screens excepted).
+3. `stitch2 compare` has no errors for the screens you touched; warnings are explained (a kept feature) or fixed.
+4. The user has seen the canvas versions of anything that changed how a component looks.
 

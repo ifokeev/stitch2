@@ -72,7 +72,8 @@ file that already exists. From there the agent spends its effort on the design.
   ```
 - **Versions, variants and approval**: a screen has versions (v1, v2, …), and each version has variants, its
   layouts for mobile and desktop (`mobile-v3.html`, `desktop-v3.html`). The canvas groups them; you approve a
-  version as a whole or one variant at a time, leave notes, and approving archives the previous approved layout.
+  version as a whole or one variant at a time, and leave notes. The approved version is the one current version:
+  approving it archives every earlier one, and only it gets implemented.
 - **DESIGN.md builder**: `stitch2 init` writes a complete DESIGN.md from a few choices (brand colour, modes,
   fonts, roundness, density), with colours checked for contrast; `stitch2 extract` measures one from an existing
   site or screens.
@@ -253,7 +254,8 @@ layout first, then a shorter natural word, never a smaller type size.
 | `stitch2 i18n [filter] [--locale l] [--suggest] [--json]` | Message keys the source or a locale lacks, and screen text with no key |
 | `stitch2 consistency [kind…]` | The consistency report, `<design>/consistency/index.html` |
 | `stitch2 type [filter] [--json]` | The type audit |
-| `stitch2 screens [name] [--status s] [--json]` | Versions, statuses and notes |
+| `stitch2 screens [name] [--status s] [--json] [--strict]` | Versions, statuses and notes; flags a screen whose current version is unclear |
+| `stitch2 approve <path or filter…>` | Approve variants (the user's decision); every earlier version is archived |
 | `stitch2 tokens` | Tokens from DESIGN.md |
 | `stitch2 compare [screen…]` | The live app against the approved screens (`app` in the config) |
 | `stitch2 elements <entry>` | Bundle your components (`stitch2/elements`) for the screens |

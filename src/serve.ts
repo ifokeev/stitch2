@@ -28,7 +28,7 @@ function inlineTailwind(html: string, file: string): string {
     return `<style type="text/tailwindcss">${readFileSync(css, 'utf8').replace(/\s*\n\s*/g, ' ')}</style>`
   })
 }
-import { listScreens, ROOT, STATUSES, type Status, tag, writeMeta } from './screens.ts'
+import { listScreens, ROOT, STATUSES, type Status, tag, writeMeta, approve } from './screens.ts'
 
 /** When a report was made and which of the files it covers changed after it; null when it has never run. */
 export interface ReportState {
@@ -137,16 +137,8 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
           if (status) values[tag('status')] = status
           if (note !== undefined) values[tag('note')] = note.trim() || undefined
           writeMeta(path, values)
-          // One approved version per screen and device: approving archives the previous one.
-          if (status === 'approved')
-            for (const s of all)
-              if (
-                s.path !== path &&
-                s.screen === target.screen &&
-                s.device === target.device &&
-                s.status === 'approved'
-              )
-                writeMeta(s.path, { [tag('status')]: 'archived' })
+          // One current version per screen and device: approving archives every earlier one (screens.ts).
+          if (status === 'approved' && target.kind === 'screen') approve(path)
           json(listScreens())
         } catch (e) {
           res.writeHead(400, { 'content-type': 'text/plain' })

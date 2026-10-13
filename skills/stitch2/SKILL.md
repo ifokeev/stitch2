@@ -66,7 +66,8 @@ References, read before the first screen:
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.
 7. **Hand over.** Set the version's status to `review`, point the user to it on the canvas, and report what
-   changed, how you answered their notes, and any rubric item you could not satisfy. The user approves.
+   changed, how you answered their notes, and any rubric item you could not satisfy. The user approves; only then
+   does it go into the app (the approved version is the one current version: see screens.md).
 
 ## Commands
 
@@ -80,7 +81,8 @@ References, read before the first screen:
 | `i18n [filter] [--locale l] [--suggest]` | Message keys screens use that the source or a locale lacks, and text with no key (stitch2-i18n) |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |
-| `screens [name] [--status s] [--json]` | Every version with its status and the user's note |
+| `screens [name] [--status s] [--json] [--strict]` | Every version with its status and the user's note, and anything that makes the current version unclear |
+| `approve <path or filter…>` | Approves variants for the user (only on their word); every earlier version of the screen on that device is archived |
 | `compare [screen…]` | The live app against the approved versions: missing or extra components, order, looks; a side-by-side report |
 | `elements <entry>` | Bundles the app's components, turned into elements with `stitch2/elements`, for the screens |
 | `tokens` | `tokens.css` (colours, `.type-*` classes) and `tailwind.tokens.js` from DESIGN.md |

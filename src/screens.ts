@@ -112,3 +112,55 @@ export function writeMeta(path: string, values: Record<string, string | undefine
   }
   writeFileSync(file, html)
 }
+
+/**
+ * Approves a variant. Approval makes it the one current version of its screen on its device: every earlier
+ * version there (approved, in review or a draft) and any other approved one become archived, so nobody can mistake
+ * an older one for what is implemented. Later versions (a newer proposal) keep their status.
+ * Returns the variants it archived.
+ */
+export function approve(path: string): Screen[] {
+  const all = listScreens()
+  const target = all.find((s) => s.path === path)
+  if (!target || target.kind !== 'screen') throw new Error(`not a screen: ${path}`)
+  writeMeta(path, { [tag('status')]: 'approved' })
+  const n = versionNumber(target)
+  const outdated = all.filter(
+    (s) =>
+      s.path !== path &&
+      s.kind === 'screen' &&
+      s.screen === target.screen &&
+      s.device === target.device &&
+      s.status !== 'archived' &&
+      (s.status === 'approved' || versionNumber(s) < n),
+  )
+  for (const s of outdated) writeMeta(s.path, { [tag('status')]: 'archived' })
+  return outdated
+}
+
+/**
+ * What makes it unclear which version of a screen is current: two approved on one device, or an earlier version
+ * still in review or a draft next to an approved later one. One line each; empty when every screen is clear.
+ */
+export function versionProblems(screens: Screen[] = listScreens()): string[] {
+  const out: string[] = []
+  const groups = new Map<string, Screen[]>()
+  for (const s of screens) {
+    if (s.kind !== 'screen' || s.status === 'archived') continue
+    const key = `${s.screen} ${s.device}`
+    groups.set(key, [...(groups.get(key) ?? []), s])
+  }
+  for (const [key, list] of groups) {
+    const approved = list.filter((s) => s.status === 'approved')
+    if (approved.length > 1)
+      out.push(`${key}: ${approved.map((s) => s.version).join(' and ')} are all approved; approve the current one again`)
+    const current = Math.max(...approved.map(versionNumber).filter((n) => !Number.isNaN(n)))
+    for (const s of list)
+      if (s.status !== 'approved' && versionNumber(s) < current)
+        out.push(`${key}: ${s.version} is still ${s.status} although v${current} is approved; archive it (${s.path})`)
+  }
+  return out.sort()
+}
+
+/** A version's number: 3 for "v3"; NaN for one without (a Stitch export, a trial). */
+export const versionNumber = (s: Pick<Screen, 'version'>) => Number(/^v(\d+)$/.exec(s.version)?.[1] ?? Number.NaN)
