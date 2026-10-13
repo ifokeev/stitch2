@@ -79,6 +79,22 @@ test('approving makes one version current: earlier versions are archived, a newe
 })
 
 
+test('screens of one page are listed under it by their state', () => {
+  const home = readFileSync(join(dir, 'design/screens/home/mobile-v1.html'), 'utf8')
+  const as = (screen: string, page?: string) =>
+    home
+      .replace(/<meta name="af-screen" content="[^"]*" \/>/, `<meta name="af-screen" content="${screen}" />`)
+      .replace(/<meta name="af-page" content="[^"]*" \/>\n?/, page ? `<meta name="af-page" content="${page}" />\n` : '')
+  for (const [screen, page] of [['shop', 'shop'], ['shop-cart', 'shop'], ['shop-pay-1', 'shop']]) {
+    mkdirSync(join(dir, `design/screens/${screen}`), { recursive: true })
+    writeFileSync(join(dir, `design/screens/${screen}/mobile-v1.html`), as(screen, page))
+  }
+  const list = JSON.parse(stitch2('screens', 'shop', '--json')) as { screen: string; page: string }[]
+  assert.deepEqual(list.map((s) => [s.screen, s.page]), [['shop', 'shop'], ['shop-cart', 'shop'], ['shop-pay-1', 'shop']])
+  assert.match(stitch2('screens', 'shop'), /shop \(page\)\n  main .*\n  cart .*\n  pay-1 /)
+})
+
+
 test('the starter catalog and screen pass the checks', () => {
   const out = stitch2('check', '--strict')
   assert.match(out, /0 errors\./)

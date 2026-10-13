@@ -24,6 +24,12 @@ export interface Screen {
   kind: 'screen' | 'components'
   /** Which app screen this file is a version of (<meta name="<prefix>-screen">), e.g. "home". */
   screen: string
+  /**
+   * The page it belongs to (<meta name="<prefix>-page">): one place in the app whose states and steps are screens of
+   * their own, e.g. "workout" for workout, workout-entry and workout-menu. A screen's latest version that names one
+   * decides it for all of its versions; without one a screen is its own page.
+   */
+  page: string
   device: 'mobile' | 'desktop'
   /** Where the version came from: stitch, lab or trial. */
   source: 'stitch' | 'lab' | 'trial'
@@ -79,6 +85,7 @@ export function listScreens(): Screen[] {
         mtime: statSync(file).mtimeMs,
         kind: under(path, config.catalogDir) ? 'components' : 'screen',
         screen: meta(html, tag('screen')) ?? (versioned ? group.split('/').pop()! : name),
+        page: meta(html, tag('page')) ?? '',
         device: (meta(html, tag('device')) ??
           (versioned?.[1] || (width >= 768 ? 'desktop' : 'mobile'))) as Screen['device'],
         source,
@@ -94,8 +101,17 @@ export function listScreens(): Screen[] {
       })
     }
   }
+  // One page per screen: the latest version that names one.
+  const pages = new Map<string, string>()
+  for (const s of [...out].sort((a, b) => versionNumber(b) - versionNumber(a) || b.mtime - a.mtime))
+    if (s.page && !pages.has(s.screen)) pages.set(s.screen, s.page)
+  for (const s of out) s.page = pages.get(s.screen) ?? s.screen
   return out
 }
+
+/** What a screen is within its page: its name without the page's ("entry" for workout-entry), or "main". */
+export const stateOf = (s: Pick<Screen, 'screen' | 'page'>) =>
+  s.screen === s.page ? 'main' : s.screen.startsWith(`${s.page}-`) ? s.screen.slice(s.page.length + 1) : s.screen
 
 /** Sets (or removes, with undefined) <prefix>-* meta tags in a screen file, keeping the rest of it untouched. */
 export function writeMeta(path: string, values: Record<string, string | undefined>) {

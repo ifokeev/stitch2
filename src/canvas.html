@@ -58,6 +58,11 @@
   .screen-name { align-items: center; border-radius: 6px; color: var(--text); cursor: pointer; display: flex; font-weight: 600; gap: 6px; padding: 8px 8px 2px; }
   .screen-name:hover { background: var(--panel2); }
   .screen-name .meta { color: var(--faint); font-size: 11px; font-weight: 400; margin-left: auto; }
+  .page-name .chev { color: var(--faint); display: inline-block; font-size: 10px; transition: transform .15s; width: 10px; }
+  .page-name.open .chev { transform: rotate(90deg); }
+  .screen-name.state { font-weight: 500; padding-left: 26px; }
+  .item.version.nested { padding-left: 30px; }
+  .item.variant.nested { padding-left: 52px; }
   .version { padding-left: 20px; }
   .dot { background: var(--faint); border-radius: 50%; flex: none; height: 8px; width: 8px; }
   .dot.approved { background: var(--good); } .dot.review { background: var(--warn); } .dot.draft { background: var(--muted); } .dot.archived { background: transparent; border: 1px solid var(--faint); }
@@ -151,6 +156,8 @@ const viewport = document.getElementById('viewport')
 const world = document.getElementById('world')
 const SIDE = 288, GAP_X = 72, GAP_Y = 150, GROUP_GAP = 200, LINE_W = 3400, ROW_LABEL_H = 52, LABEL_H = 38
 let ORDER = [] // screen order, from the config
+// Pages whose screens are unfolded in the sidebar.
+const openPages = new Set((() => { try { return JSON.parse(localStorage.getItem('stitch2-open-pages') ?? '[]') } catch { return [] } })())
 const STATUS_RANK = { approved: 0, review: 1, draft: 2, archived: 3 }
 const STATUS_LABEL = { approved: 'approved', review: 'needs review', draft: 'draft', archived: 'archived' }
 const STATUS_HINT = {
@@ -289,7 +296,19 @@ const zoomAt = (cx, cy, z) => {
 // version its variants: the layouts for each device (mobile, desktop), files <device>-v<N> sharing N ----
 const rowKey = (s) => (s.kind === 'components' ? '~components' : s.screen)
 const rowRank = (k) => (k === '~components' ? -1 : ORDER.includes(k) ? ORDER.indexOf(k) : 100)
-const sortRows = (keys) => keys.sort((a, b) => rowRank(a) - rowRank(b) || a.localeCompare(b))
+/** What a screen is within its page: its name without the page's ("entry" for workout-entry), or "main". */
+const stateOf = (screen, page) => (screen === page ? 'main' : screen.startsWith(`${page}-`) ? screen.slice(page.length + 1) : screen)
+// Pages keep their screens together: a page sorts where the first of its screens (or the page itself) is in the
+// config's order, its main screen first, the rest in order.
+const sortRows = (keys, pageOf) => {
+  const pageRank = new Map()
+  for (const k of keys) { const p = pageOf(k); pageRank.set(p, Math.min(pageRank.get(p) ?? 100, rowRank(k), rowRank(p))) }
+  return keys.sort((a, b) => {
+    const pa = pageOf(a), pb = pageOf(b)
+    if (pa !== pb) return pageRank.get(pa) - pageRank.get(pb) || pa.localeCompare(pb)
+    return (a === pa ? -1 : b === pb ? 1 : 0) || rowRank(a) - rowRank(b) || a.localeCompare(b)
+  })
+}
 const versionRank = (v) => { const m = /^v(\d+)$/.exec(v); return m ? Number(m[1]) : 0 }
 const DEVICE_RANK = { mobile: 0, tablet: 1, desktop: 2 }
 const sortVersions = (list) =>
@@ -314,16 +333,31 @@ function shown(s) {
 const rows = () => {
   const by = new Map()
   for (const s of screens) by.set(rowKey(s), [...(by.get(rowKey(s)) ?? []), s])
-  return sortRows([...by.keys()]).map((k) => ({ key: k, all: sortVersions(by.get(k)), visible: sortVersions(by.get(k).filter(shown)) }))
+  const pageOf = (k) => (k === '~components' ? '~components' : by.get(k)[0].page || k)
+  const sizes = new Map()
+  for (const k of by.keys()) sizes.set(pageOf(k), (sizes.get(pageOf(k)) ?? 0) + 1)
+  return sortRows([...by.keys()], pageOf).map((k) => ({
+    key: k,
+    page: pageOf(k),
+    // A page with several screens: each is one of its states (entry, menu, empty…).
+    state: sizes.get(pageOf(k)) > 1 ? stateOf(k, pageOf(k)) : '',
+    all: sortVersions(by.get(k)),
+    visible: sortVersions(by.get(k).filter(shown)),
+  }))
 }
 
 // Screens flow left to right and wrap, like a design canvas; each screen's versions stay together.
 function layout() {
   for (const n of world.querySelectorAll('.row-label')) n.remove()
-  let x = 0, y = 0, lineH = 0
-  for (const row of rows()) {
+  let x = 0, y = 0, lineH = 0, page = ''
+  const all = rows()
+  const paged = new Set(all.filter((r) => r.state).map((r) => r.page))
+  for (const row of all) {
     for (const s of row.all) frames.get(s.path).el.style.display = row.visible.includes(s) ? '' : 'none'
     if (!row.visible.length) continue
+    // Each page with several screens starts its own line, so its states read together.
+    if (x > 0 && row.page !== page && (paged.has(row.page) || paged.has(page))) { x = 0; y += lineH + GAP_Y; lineH = 0 }
+    page = row.page
     const groups = versionsOf(row.visible)
     const widthOf = (g) => g.variants.reduce((w, s) => w + s.width, 0) + GAP_X * (g.variants.length - 1)
     const groupW = groups.reduce((w, g) => w + widthOf(g), 0) + VERSION_GAP * (groups.length - 1)
@@ -332,7 +366,7 @@ function layout() {
     label.className = 'row-label'
     const approved = row.all.filter((s) => s.status === 'approved').map((s) => `${s.version} ${s.device}`)
     label.innerHTML = '<b></b><span></span>'
-    label.querySelector('b').textContent = row.key === '~components' ? 'Components' : row.key
+    label.querySelector('b').textContent = row.key === '~components' ? 'Components' : row.state ? `${row.page} › ${row.state}` : row.key
     label.querySelector('span').textContent = row.key === '~components' ? 'the catalog every screen is built from' : approved.length ? `approved: ${approved.join(', ')}` : 'nothing approved yet'
     label.style.transform = `translate(${x}px, ${y}px)`
     label.style.maxWidth = `${groupW}px`
@@ -438,26 +472,50 @@ function tree() {
   report('Consistency report', '/consistency/index.html', reports.consistency, 'stitch2 consistency')
   report('App comparison', '/compare/index.html', reports.compare, 'stitch2 compare')
   item('Languages', 'screens × languages', docOpen('/languages'), () => openDoc('/languages'))
-  const all = rows()
+  const all = rows().filter((r) => r.key !== '~components' && r.visible.length)
   head('Screens')
-  for (const row of all) {
-    if (row.key === '~components' || !row.visible.length) continue
+  const dotOf = (list) => (list.some((s) => s.status === 'approved') ? 'approved' : list.some((s) => s.status === 'review') ? 'review' : 'draft')
+  const screenRow = (row, nested) => {
     const name = document.createElement('div')
-    name.className = 'screen-name'
-    const approved = row.all.some((s) => s.status === 'approved')
-    name.innerHTML = `<span class="dot ${approved ? 'approved' : row.all.some((s) => s.status === 'review') ? 'review' : 'draft'}"></span><span></span><span class="meta"></span>`
-    name.children[1].textContent = row.key
+    name.className = `screen-name${nested ? ' state' : ''}`
+    name.innerHTML = `<span class="dot ${dotOf(row.all)}"></span><span></span><span class="meta"></span>`
+    name.children[1].textContent = nested ? row.state : row.key
     const vs = versionsOf(row.visible)
     name.querySelector('.meta').textContent = `${vs.length} version${vs.length > 1 ? 's' : ''}`
     name.onclick = () => select(frames.get(row.visible[0].path), true)
     name.append(copyButton(row.key, 'Copy the screen name'))
     nav.append(name)
+    const sub = nested ? ' nested' : ''
     for (const g of vs) {
       const one = g.variants.length === 1
       const first = g.variants[0]
-      item(one ? `${g.version} · ${first.device}` : g.version, one ? STATUS_LABEL[first.status] : `${STATUS_LABEL[g.status]} · ${g.variants.length} variants`, one && selected?.screen.path === first.path, () => select(frames.get(first.path), true), g.status, 'version', one ? ref(first) : `${row.key} ${g.version}`)
-      if (!one) for (const s of g.variants) item(s.device, STATUS_LABEL[s.status], selected?.screen.path === s.path, () => select(frames.get(s.path), true), s.status, 'variant', ref(s))
+      item(one ? `${g.version} · ${first.device}` : g.version, one ? STATUS_LABEL[first.status] : `${STATUS_LABEL[g.status]} · ${g.variants.length} variants`, one && selected?.screen.path === first.path, () => select(frames.get(first.path), true), g.status, `version${sub}`, one ? ref(first) : `${row.key} ${g.version}`)
+      if (!one) for (const s of g.variants) item(s.device, STATUS_LABEL[s.status], selected?.screen.path === s.path, () => select(frames.get(s.path), true), s.status, `variant${sub}`, ref(s))
     }
+  }
+  // A page with several screens folds them under its name; it opens on a click, while one of them is selected, or
+  // while searching.
+  const searching = !!document.getElementById('search').value.trim()
+  for (let i = 0; i < all.length; ) {
+    const page = all[i].page
+    const group = []
+    while (i < all.length && all[i].page === page) group.push(all[i++])
+    if (!group[0].state) { screenRow(group[0], false); continue }
+    const open = searching || openPages.has(page) || group.some((r) => r.all.some((s) => s.path === selected?.screen.path))
+    const pageRow = document.createElement('div')
+    pageRow.className = `screen-name page-name${open ? ' open' : ''}`
+    pageRow.innerHTML = `<span class="chev">▶</span><span class="dot ${dotOf(group.flatMap((r) => r.all))}"></span><span></span><span class="meta"></span>`
+    pageRow.children[2].textContent = page
+    pageRow.querySelector('.meta').textContent = `${group.length} screens`
+    pageRow.title = group.map((r) => r.state).join(', ')
+    pageRow.onclick = () => {
+      if (openPages.has(page)) openPages.delete(page)
+      else openPages.add(page)
+      localStorage.setItem('stitch2-open-pages', JSON.stringify([...openPages]))
+      tree()
+    }
+    nav.append(pageRow)
+    if (open) for (const row of group) screenRow(row, true)
   }
 }
 
@@ -527,8 +585,9 @@ function summary() {
   const review = versions.filter((s) => s.status === 'review').length
   const approved = new Set(versions.filter((s) => s.status === 'approved').map((s) => s.screen)).size
   const names = new Set(versions.map((s) => s.screen)).size
+  const pages = new Set(versions.map((s) => s.page || s.screen)).size
   const bad = versions.filter((s) => forTheme(checks.screens?.[s.path]).some((i) => i.severity === 'error')).length
-  document.getElementById('summary').textContent = `${names} screens · ${approved} approved · ${review} need review${bad ? ` · ${bad} with errors` : ''}`
+  document.getElementById('summary').textContent = `${pages < names ? `${pages} pages · ` : ''}${names} screens · ${approved} approved · ${review} need review${bad ? ` · ${bad} with errors` : ''}`
 }
 
 function frameFor(s) {

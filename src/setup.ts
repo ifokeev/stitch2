@@ -105,7 +105,7 @@ ${extra}<meta charset="utf-8" />
 `
 write(
   join(design, 'screens/_template.html'),
-  `${head('Screen name', `<meta name="${prefix}-screen" content="screen-name" />\n<meta name="${prefix}-device" content="mobile" />\n<meta name="${prefix}-status" content="draft" />\n`)}<!--
+  `${head('Screen name', `<meta name="${prefix}-screen" content="screen-name" />\n<meta name="${prefix}-page" content="screen-name" />\n<meta name="${prefix}-device" content="mobile" />\n<meta name="${prefix}-status" content="draft" />\n`)}<!--
   Template for ${name} screens. Copy it to ${design}/screens/<screen>/<device>-v<N>.html and set the ${prefix}-* meta
   tags (desktop: ${prefix}-device desktop and ${prefix}-frame-width 1280); status draft while you work, review when
   done. Files starting with _ are not shown on the canvas. Build with the components in the catalog

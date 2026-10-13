@@ -13,9 +13,22 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
   (`mobile-v3.html` and `desktop-v3.html` are v3). A new version takes the next free N across the screen's
   variants; a variant added to an existing version takes that version's N (a desktop for v3 is
   `desktop-v3.html`, never v4). A version may start with one variant and get the others later.
-  Its head carries `<p>-screen`, `<p>-device` (mobile | desktop), `<p>-status`, `<p>-source` (stitch | lab),
+  Its head carries `<p>-screen`, `<p>-page` (see Pages), `<p>-device` (mobile | desktop), `<p>-status`, `<p>-source` (stitch | lab),
   `<p>-frame-width` (390 mobile, 1280 desktop) and, written by the user, `<p>-note`. Older files elsewhere
   carry the same tags.
+
+## Pages and their screens
+
+A place in the app often has several states or steps: the workout with its number pad, its menu and its discard
+question; an exercise list with its detail sheet and a three-step form. Each is a **screen** of its own (it has its own
+versions and approval), and they belong to one **page**: `<p>-page` in the head, the page's name (`workout`). The page's
+main screen has the page's name; the others are named `<page>-<state>` (`workout-entry`, `workout-menu`,
+`create-exercise-1`) and carry the same `<p>-page`. The canvas folds a page's screens under its name and lays them out
+together; `stitch2 screens <page>` lists them. A screen without `<p>-page` is a page of its own.
+
+- A new state of an existing place (a sheet, a dialog, an empty, loading or error state, a step) is a new screen in
+  that page, not a new page.
+- Copy `<p>-page` along with the other tags into each new version; the latest version that has it decides the page.
 
 ## New version or edit?
 
