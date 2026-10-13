@@ -38,6 +38,9 @@ References, read before the first screen:
 2. **Inventory.** List every element the brief names, in order, with its real data. That list is the screen:
    add nothing (status bars, step labels, tips, helper text, extra buttons), drop nothing. Next to each element
    write the catalog component that shows it; adapt or extend components rather than inventing markup.
+   Then list the page's **states**. A page that shows data gets an empty screen and a loading screen, designed
+   with its main screen in the same version; a page that loads or saves data that can fail also gets an error
+   state. Build them with the main screen; they are part of the page (screens.md, Empty, loading and error).
 3. **Hierarchy before markup.** Name the one thing the user came for, the single primary action (the only
    accent-filled element in its region), and what is secondary. Give every text element a type level and a
    colour before writing markup.
@@ -66,7 +69,8 @@ References, read before the first screen:
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.
 7. **Hand over.** Set the version's status to `review`, point the user to it on the canvas, and report what
-   changed, how you answered their notes, and any rubric item you could not satisfy. The user approves; only then
+   changed, how you answered their notes, and any rubric item you could not satisfy. The page's empty and loading
+   screens go to review with it; for a page without them (a form, a static page), say why. The user approves; only then
    does it go into the app (the approved version is the one current version: see screens.md).
 
 ## Commands

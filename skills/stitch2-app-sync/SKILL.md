@@ -25,6 +25,11 @@ a component rebuilt by hand. The checks can only judge what the canvas draws, so
    single current version and the app matches it.
 4. **App**: the app picks the component up; wire it, then run `stitch2 compare <screen>`.
 
+A page in the app is its main screen and its states: implement its approved empty, loading and error screens with
+it. The app's loader is the loading screen's skeleton, shown until the data arrives, never a blank page or a lone
+spinner; data appearing all at once with no loading state is a bug. A page whose states were never designed goes
+back to the canvas for them first.
+
 Fixing a bug found in the app follows the same path: reproduce it on the canvas (a screen or catalog state that
 shows it), fix the component, check, then the app. If the canvas cannot show the bug, the canvas is missing a
 state: add it.
@@ -69,4 +74,3 @@ Read the findings as:
 2. `stitch2 check --strict` passes on the screens you touched (archived screens excepted).
 3. `stitch2 compare` has no errors for the screens you touched; warnings are explained (a kept feature) or fixed.
 4. The user has seen the canvas versions of anything that changed how a component looks.
-

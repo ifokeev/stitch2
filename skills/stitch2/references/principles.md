@@ -56,7 +56,8 @@ short labels never wrap **(check)**.
   axis or month labels, a legend for a colour scale, captions under figures. They add no new facts.
 - Icons that stand for different things look different; one generic glyph repeated down a list says nothing.
 - Charts: one series in the accent, thin lines, few gridlines; label a single line directly instead of a legend.
-- Empty and loading states are designed too: one sentence and one action; skeletons the size of the content.
+- Empty and loading states are designed with every page that shows data: one sentence and one action; skeletons
+  the size of the content (screens.md, Empty, loading and error).
 
 ## Touch and mobile
 
@@ -86,3 +87,5 @@ Score each pass or fail from the render; done when all pass or the failures are 
 8. **Data realism:** names, numbers and dates look like a real person's data.
 9. **Consistency:** built from the catalog components; no `reuse` or `consistency` warnings.
 10. **Checks:** `stitch2 check --strict` reports no errors.
+11. **States:** the page has its empty and loading screens (and error when data can fail), built from the same
+    components and layout as the main screen; or the hand-over says why it needs none.

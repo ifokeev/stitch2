@@ -30,6 +30,32 @@ together; `stitch2 screens <page>` lists them. A screen without `<p>-page` is a 
   that page, not a new page.
 - Copy `<p>-page` along with the other tags into each new version; the latest version that has it decides the page.
 
+## Empty, loading and error
+
+Every page that shows data has these states, and the app shows them on most first visits: a new user sees the
+empty screen before any other, and every user sees the loading one. Design them with the page's main screen,
+not after it.
+
+- **Which pages:** any page that lists, counts or charts the user's data, or loads it from a server. A form, a
+  dialog, a static page (sign-in, a landing page) needs none; say so in the hand-over.
+- **Names:** `<page>-empty` and `<page>-loading` (`history-empty`, `history-loading`), `<page>-error` when it
+  has one, with the page's `<p>-page`. Same version number and same variants (mobile, desktop) as the main
+  screen. A page whose main screen is a new version gets new versions of its states when they change.
+- **Empty:** the page's header and navigation stay where they are. In place of the content: what this place is
+  for in one sentence, and the one action that fills it ("Create your first routine"). Use the page's own
+  components where they help (a suggested program as a list row), not a large illustration. An empty search or
+  filter result is a different empty: it says nothing matched and how to widen it (clear the filter), and keeps
+  the search field and filters.
+- **Loading:** the same layout as the main screen, with skeletons in place of the data: blocks the size and
+  shape of the rows, cards and numbers that will arrive (typography.md, Text in each state). The header,
+  navigation and buttons that need no data stay real and usable. No spinner in the middle of the page and no
+  "Loading…" text; a spinner belongs only inside a button or a row that is saving. Build skeletons from a
+  catalog component, so every page loads the same way.
+- **Error:** the page's frame stays; where the data would be, one sentence on what failed and a Retry action.
+  Data already shown stays on screen; a failed save says so next to what failed and keeps the user's input.
+- **Partial states** follow the same rules inside a section: an empty list in a page that has other data shows
+  one line and an action in that section only.
+
 ## New version or edit?
 
 - **New version** for every new attempt: a new direction, a regeneration, an export from a generator, a
