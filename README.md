@@ -36,6 +36,8 @@ file that already exists. From there the agent spends its effort on the design.
 - **Canvas** (`stitch2 canvas`): every screen and its versions on a pan-and-zoom board, a sidebar with search
   and status filters, your DESIGN.md drawn as tokens and rules, the component catalog, and an inspector to
   approve, archive or leave a note on a version. Live reload; copyable references to paste to an agent.
+  Only the screens in view are live pages; the rest, and every screen when you zoom out, are pictures the
+  canvas renders with Playwright and keeps on disk, so a project with hundreds of screens stays fast.
   With a light and a dark theme (DESIGN.md's `light-*` colours), a switch (`T`) shows every screen in either one.
   A width switch (`W`) shows every screen at the narrowest or widest window its layout covers.
   With languages configured, a Language switch (`L`) shows every screen in one of them, and the Languages page

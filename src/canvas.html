@@ -85,7 +85,11 @@
   .frame.desktop .device { border-radius: 12px; }
   .frame.selected .device { outline: 3px solid var(--accent); }
   .frame.archived { opacity: .55; }
-  .device iframe { background: #fff; border: 0; display: block; }
+  /* A frame shows its picture (rendered by the server) until its live page is ready; only frames in view are live. */
+  .device iframe { background: #fff; border: 0; display: block; left: 0; position: absolute; top: 0; visibility: hidden; }
+  .frame.ready .device iframe { visibility: visible; }
+  .device .shot { display: block; left: 0; pointer-events: none; position: absolute; top: 0; user-select: none; }
+  .device .shot:not([src]) { display: none; }
   .device .shield { cursor: pointer; inset: 0; position: absolute; }
   .frame.live .shield { display: none; }
   .frame.changed .device { animation: flash 900ms ease-out; }
@@ -190,10 +194,11 @@ function setLang(l) {
   lang = l
   localStorage.setItem('stitch2-lang', l)
   document.getElementById('langFilter').value = l
-  for (const f of frames.values()) f.iframe.src = `/${f.screen.path}?pick${langQuery()}`
+  for (const f of frames.values()) if (f.iframe) { f.el.classList.remove('ready'); f.iframe.src = frameSrc(f.screen) }
   for (const f of frames.values()) badge(f)
   if (selected) inspector(selected)
   summary()
+  scheduleSync()
 }
 // Widths: each variant covers a range of windows (config widths); frames show it drawn, at the narrowest or the widest.
 let WIDTHS = {}
@@ -208,7 +213,7 @@ function setWidth(mode) {
   for (const f of frames.values()) {
     f.screen.width = widthFor(f.screen)
     f.el.style.width = `${f.screen.width}px`
-    f.iframe.style.width = `${f.screen.width}px`
+    size(f)
     setTimeout(() => measure(f), 300)
     setTimeout(() => measure(f), 1200)
   }
@@ -224,7 +229,7 @@ function widthOptions() {
   wsel.value = widthMode
 }
 function applyTheme(f) {
-  if (!themed()) return
+  if (!themed() || !f.iframe) return
   try { f.iframe.contentDocument.documentElement.dataset.theme = theme } catch {}
 }
 function setTheme(t) {
@@ -236,6 +241,7 @@ function setTheme(t) {
   if (selected) inspector(selected)
   summary()
   sendFilter()
+  scheduleSync()
 }
 const widthNote = (s) => (s.width !== s.drawn ? ` at ${s.width}px` : '')
 const ref = (s) => (s.kind === 'components' ? `component catalog (${designDir}/${s.path})` : `${s.screen} ${s.device} ${s.version}${themeNote()}${widthNote(s)} (${designDir}/${s.path})`)
@@ -273,7 +279,14 @@ let screens = []
 let checks = { screens: {} }
 let reports = { consistency: null, compare: null }
 let selected = null
-const frames = new Map() // path -> { el, iframe, screen, height }
+const frames = new Map() // path -> { el, device, img, iframe (while live), screen, height }
+// Heights measured before, so the layout doesn't jump while pictures and pages load.
+const HEIGHTS = JSON.parse(localStorage.getItem('stitch2-heights') ?? '{}')
+let heightsTimer
+const saveHeights = () => { clearTimeout(heightsTimer); heightsTimer = setTimeout(() => localStorage.setItem('stitch2-heights', JSON.stringify(HEIGHTS)), 1000) }
+let layoutQueued = false
+/** Many frames measure themselves at once while loading: one layout per animation frame. */
+const scheduleLayout = () => { if (!layoutQueued) { layoutQueued = true; requestAnimationFrame(() => { layoutQueued = false; layout() }) } }
 
 const apply = () => {
   world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`
@@ -283,6 +296,7 @@ const apply = () => {
   viewport.style.backgroundPosition = `${view.x}px ${view.y}px`
   document.getElementById('zoom').textContent = `${Math.round(view.z * 100)}%`
   localStorage.setItem('stitch2-view', JSON.stringify(view))
+  scheduleSync()
 }
 const zoomAt = (cx, cy, z) => {
   z = Math.min(4, Math.max(0.03, z))
@@ -398,6 +412,7 @@ function layout() {
   }
   tree()
   sendFilter()
+  scheduleSync()
 }
 
 // ---- reports follow the filters: the open report (consistency, app comparison, languages) gets the files the
@@ -545,17 +560,126 @@ function zoomTo(f) {
 const MAX_FRAME_HEIGHT = 20000
 
 function measure(f) {
+  if (!f.iframe) return
   try {
     const doc = f.iframe.contentDocument
-    const min = bigFrame(f.screen) ? 800 : 844
     // As tall as the page, up to MAX_FRAME_HEIGHT: long landing pages are drawn whole.
-    const h = Math.min(MAX_FRAME_HEIGHT, Math.max(min, doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0))
-    if (Math.abs(h - f.height) > 2) {
-      f.height = h
-      f.iframe.style.height = `${h}px`
-      layout()
-    }
+    setHeight(f, Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0))
   } catch {}
+}
+
+const minHeight = (s) => (bigFrame(s) ? 800 : 844)
+function setHeight(f, h) {
+  h = Math.min(MAX_FRAME_HEIGHT, Math.max(minHeight(f.screen), h))
+  HEIGHTS[`${f.screen.path}@${f.screen.width}`] = h
+  saveHeights()
+  if (Math.abs(h - f.height) <= 2) return
+  f.height = h
+  size(f)
+  scheduleLayout()
+}
+/** The device box, the picture and the live page all take the frame's width and height. */
+function size(f) {
+  const w = `${f.screen.width}px`, h = `${f.height}px`
+  Object.assign(f.device.style, { width: w, height: h })
+  f.img.style.width = w
+  if (f.iframe) Object.assign(f.iframe.style, { width: w, height: h })
+}
+const frameSrc = (s) => `/${s.path}?pick${langQuery()}`
+
+// ---- live frames: a screen is a whole page, so only the frames in view, at a zoom where you can work with them,
+// are live (at most MAX_LIVE, nearest the middle first), plus the selected one and those with picked elements.
+// The rest show the picture the server renders (/api/shot). Without pictures (no Chromium), frames in view stay
+// live at any zoom, still at most MAX_LIVE. ----
+const LIVE_ZOOM = 0.3, MAX_LIVE = 12, SHOTS_AT_ONCE = 3
+let shotRev = 0, shotErrors = 0, syncTimer
+const shotsFailed = () => shotErrors > 2
+const scheduleSync = () => { clearTimeout(syncTimer); syncTimer = setTimeout(syncLive, 120) }
+function shotUrl(s) {
+  const q = new URLSearchParams({ path: s.path, width: String(s.width), m: String(Math.round(s.mtime)), r: String(shotRev) })
+  if (themed()) q.set('theme', theme)
+  if (lang !== SOURCE) q.set('lang', lang)
+  return `/api/shot?${q}`
+}
+const pinned = (f) => f === selected || f.el.classList.contains('live') || picked.some((p) => p.f === f)
+function mount(f) {
+  if (f.iframe) return
+  const iframe = document.createElement('iframe')
+  iframe.setAttribute('scrolling', 'no')
+  f.iframe = iframe
+  size(f)
+  iframe.addEventListener('load', () => {
+    if (f.iframe !== iframe) return
+    applyTheme(f)
+    measure(f)
+    clearTimeout(f.reveal)
+    // Tailwind's browser build and the components settle just after load: the picture stays until then.
+    f.reveal = setTimeout(() => {
+      if (f.iframe !== iframe) return
+      measure(f)
+      f.el.classList.add('ready')
+      for (const go of f.waiters.splice(0)) go()
+    }, 350)
+    setTimeout(() => measure(f), 1200)
+    setTimeout(() => measure(f), 2500)
+  })
+  iframe.src = frameSrc(f.screen)
+  f.device.insertBefore(iframe, f.img.nextSibling)
+}
+function unmount(f) {
+  if (!f.iframe) return
+  clearTimeout(f.reveal)
+  // Cleared first: a page still loading can fire its load event as it's removed.
+  const iframe = f.iframe
+  f.iframe = null
+  iframe.remove()
+  f.el.classList.remove('ready', 'live')
+}
+/** Resolves once the frame's live page is ready: for what reads its document (locating an issue). */
+function whenLive(f) {
+  mount(f)
+  return f.el.classList.contains('ready') ? Promise.resolve() : new Promise((go) => f.waiters.push(go))
+}
+let shotsLoading = 0
+let shotQueue = [] // [frame, url], nearest the middle first
+function pumpShots() {
+  while (shotsLoading < SHOTS_AT_ONCE && shotQueue.length) {
+    const [f, url] = shotQueue.shift()
+    if (f.img.dataset.loading || f.img.getAttribute('src') === url || !frames.has(f.screen.path)) continue
+    shotsLoading++
+    f.img.dataset.loading = url
+    f.img.src = url
+  }
+}
+function shotDone(f, ok) {
+  if (!f.img.dataset.loading) return
+  delete f.img.dataset.loading
+  shotsLoading--
+  if (ok) { shotErrors = 0; if (!f.iframe) setHeight(f, f.img.naturalHeight) } else if (++shotErrors > 2) scheduleSync()
+  pumpShots()
+}
+function syncLive() {
+  const vw = innerWidth - SIDE, vh = innerHeight
+  const near = [], kept = new Set()
+  for (const f of frames.values()) {
+    if (f.el.style.display === 'none') { if (!pinned(f)) unmount(f); continue }
+    const x = view.x + parseFloat(f.el.style.left) * view.z, y = view.y + parseFloat(f.el.style.top) * view.z
+    const w = f.screen.width * view.z, h = (f.height + LABEL_H) * view.z
+    const beyond = (m) => x + w < -vw * m || x > vw * (1 + m) || y + h < -vh * m || y > vh * (1 + m)
+    if (!beyond(0.5)) near.push({ f, d: Math.hypot(x + w / 2 - vw / 2, y + Math.min(h, vh) / 2 - vh / 2) })
+    if (!beyond(1)) kept.add(f)
+  }
+  near.sort((a, b) => a.d - b.d)
+  const live = new Set([...frames.values()].filter(pinned))
+  if (view.z >= LIVE_ZOOM || shotsFailed()) {
+    for (const { f } of near) { if (live.size >= MAX_LIVE) break; live.add(f) }
+    // Frames just out of view stay live while there's room, so panning back and forth doesn't reload them.
+    for (const f of kept) { if (live.size >= MAX_LIVE) break; if (f.iframe) live.add(f) }
+  }
+  for (const f of frames.values()) if (f.iframe && !live.has(f)) unmount(f)
+  for (const f of live) mount(f)
+  shotQueue = near.filter(({ f }) => !f.el.classList.contains('ready')).map(({ f }) => [f, shotUrl(f.screen)])
+  pumpShots()
 }
 
 function badge(f) {
@@ -570,7 +694,8 @@ function badge(f) {
 
 function paintLabel(f) {
   const s = f.screen
-  f.el.className = `frame ${s.device} ${s.status}${selected === f ? ' selected' : ''}`
+  const kept = ['ready', 'live', 'changed'].filter((c) => f.el.classList.contains(c))
+  f.el.className = ['frame', s.device, s.status, selected === f ? 'selected' : '', ...kept].filter(Boolean).join(' ')
   f.el.querySelector('.name').textContent = s.kind === 'components' ? 'Catalog' : s.device
   const pill = f.el.querySelector('.pill')
   pill.className = `pill ${s.status}`
@@ -594,15 +719,13 @@ function frameFor(s) {
   const el = document.createElement('div')
   // The frame is exactly as wide as its device; a long title is cut, never widens it.
   el.style.width = `${s.width}px`
-  el.innerHTML = `<div class="label"><span class="name"></span><span class="pill"></span><span class="title"></span><button class="copy" type="button" title="Copy a reference to paste to an agent">Copy</button><button class="badge" type="button"></button></div><div class="device"><iframe loading="lazy" scrolling="no"></iframe><div class="shield"></div></div>`
-  const iframe = el.querySelector('iframe')
-  iframe.style.width = `${s.width}px`
-  iframe.style.height = `${bigFrame(s) ? 800 : 844}px`
-  iframe.src = `/${s.path}?pick${langQuery()}`
-  const f = { el, iframe, screen: s, height: bigFrame(s) ? 800 : 844 }
-  iframe.addEventListener('load', () => { applyTheme(f); measure(f); setTimeout(() => measure(f), 800); setTimeout(() => measure(f), 2500) })
+  el.innerHTML = `<div class="label"><span class="name"></span><span class="pill"></span><span class="title"></span><button class="copy" type="button" title="Copy a reference to paste to an agent">Copy</button><button class="badge" type="button"></button></div><div class="device"><img class="shot" alt="" decoding="async" draggable="false"><div class="shield"></div></div>`
+  const img = el.querySelector('.shot')
+  const f = { el, device: el.querySelector('.device'), img, iframe: null, screen: s, height: HEIGHTS[`${s.path}@${s.width}`] ?? minHeight(s), waiters: [] }
+  img.addEventListener('load', () => shotDone(f, true))
+  img.addEventListener('error', () => shotDone(f, false))
+  size(f)
   el.querySelector('.shield').addEventListener('click', () => select(f, false))
-  el.querySelector('.shield').addEventListener('dblclick', () => { select(f, false); f.el.classList.add('live') })
   el.querySelector('.label').addEventListener('click', () => select(f, true))
   el.querySelector('.label .copy').addEventListener('click', (e) => { e.stopPropagation(); copy(ref(f.screen)) })
   world.append(el)
@@ -618,10 +741,11 @@ function select(f, zoom) {
   const prev = selected
   selected = f
   if (prev) paintLabel(prev)
-  if (f) { paintLabel(f); inspector(f); if (zoom) zoomTo(f) }
+  if (f) { mount(f); paintLabel(f); inspector(f); if (zoom) zoomTo(f) }
   else document.getElementById('inspector').classList.remove('open')
   closeDoc()
   tree()
+  scheduleSync()
 }
 
 function inspector(f) {
@@ -709,7 +833,8 @@ async function setMeta(path, body) {
 }
 
 /** Outline the element in its frame and bring it to the middle of the canvas. */
-function locate(f, selector) {
+async function locate(f, selector) {
+  await whenLive(f)
   let el
   try { el = f.iframe.contentDocument.querySelector(selector) } catch {}
   if (!el) return
@@ -733,7 +858,7 @@ let hoverBox = null
 function elementAt(e) {
   const hit = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.classList?.contains('shield'))
   const f = hit && [...frames.values()].find((g) => g.el.contains(hit))
-  if (!f) return null
+  if (!f?.iframe) return null
   let doc
   try { doc = f.iframe.contentDocument } catch { return null }
   const r = f.iframe.getBoundingClientRect()
@@ -929,12 +1054,14 @@ events.onmessage = async (e) => {
   // Stylesheets and scripts are shared: tokens.css, tailwind.tokens.js, token exports the screens link
   // (tokens.tailwind.css), the components.
   const shared = paths.some((p) => /\.(css|js|mjs)$/.test(p) || p.startsWith('components/'))
+  if (shared) shotRev++
   for (const f of frames.values()) {
     if (shared || html.includes(f.screen.path)) {
-      f.iframe.contentWindow?.location.reload()
+      f.iframe?.contentWindow?.location.reload()
       f.el.classList.remove('changed'); void f.el.offsetWidth; f.el.classList.add('changed')
     }
   }
+  scheduleSync()
 }
 
 // ---- pan, zoom, keys ----
@@ -990,7 +1117,7 @@ addEventListener('keydown', (e) => {
   if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
   if (e.key === '+' || e.key === '=') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z * 1.2)
   if (e.key === '-') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z / 1.2)
-  if (e.key === 'r' || e.key === 'R') for (const f of frames.values()) f.iframe.contentWindow?.location.reload()
+  if (e.key === 'r' || e.key === 'R') reloadAll()
   if (['j', 'k', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
     const list = visibleFrames()
     if (!list.length) return
@@ -1003,7 +1130,13 @@ addEventListener('keydown', (e) => {
 })
 document.getElementById('fit').onclick = fit
 document.getElementById('pick').onclick = () => setPicking(!picking)
-document.getElementById('reload').onclick = () => { for (const f of frames.values()) f.iframe.contentWindow?.location.reload() }
+/** Reload the live frames and draw fresh pictures of the rest. */
+function reloadAll() {
+  shotRev++
+  for (const f of frames.values()) f.iframe?.contentWindow?.location.reload()
+  scheduleSync()
+}
+document.getElementById('reload').onclick = reloadAll
 
 apply()
 fetch('/api/config').then((r) => r.json()).then((c) => {

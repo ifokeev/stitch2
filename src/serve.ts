@@ -15,6 +15,7 @@ import { allLocales, localeScript, sourceLocale } from './i18n.ts'
 import { designPage } from './design-page.ts'
 import { languagesPage } from './languages-page.ts'
 import { annotate } from './pick.ts'
+import { closeShots, sharedChanged, shot } from './shots.ts'
 
 /**
  * Inlines <link rel="stylesheet" type="text/tailwindcss" href="…">: the Tailwind v4 browser build reads @theme and
@@ -69,6 +70,7 @@ const TYPES: Record<string, string> = {
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.md': 'text/markdown; charset=utf-8',
 }
@@ -76,10 +78,12 @@ const TYPES: Record<string, string> = {
 export function startServer(port: number): Promise<{ port: number; close: () => void }> {
   const clients = new Set<ServerResponse>()
   const changed = new Set<string>()
+  let base = ''
   let timer: ReturnType<typeof setTimeout> | undefined
   // Editors write files in bursts; one event per quiet moment is enough.
   const watcher = watch(ROOT, { recursive: true }, (_event, file) => {
     if (!file || file.startsWith('renders')) return
+    if (!file.toString().endsWith('.html')) sharedChanged()
     changed.add(file.toString())
     clearTimeout(timer)
     timer = setTimeout(() => {
@@ -151,6 +155,32 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       return json({ ...config, themes: designThemes(), locales: allLocales(), sourceLocale: sourceLocale(), widths: widthRanges() })
     if (url.pathname === '/api/screens') return json(listScreens())
     if (url.pathname === '/api/reports') return json(reportStates())
+    // A picture of a screen, for the frames the canvas doesn't keep live (off screen, or too small to read).
+    if (url.pathname === '/api/shot') {
+      const q = url.searchParams
+      const job = shot(base, {
+        path: q.get('path') ?? '',
+        width: Math.min(4000, Math.max(200, Number(q.get('width')) || 390)),
+        theme: q.get('theme') || undefined,
+        lang: q.get('lang') || undefined,
+      })
+      if (!job) {
+        res.writeHead(404, { 'content-type': 'text/plain' })
+        return res.end('not found')
+      }
+      job.then(
+        (jpg) => {
+          // The canvas puts the screen's change time in the address, so a picture never changes under it.
+          res.writeHead(200, { 'content-type': TYPES['.jpg'], 'cache-control': 'private, max-age=86400' })
+          res.end(jpg)
+        },
+        (e: unknown) => {
+          res.writeHead(503, { 'content-type': 'text/plain' })
+          res.end(`no picture: ${String(e)}. Install Chromium for Playwright: npx playwright install chromium`)
+        },
+      )
+      return
+    }
     if (url.pathname === '/api/checks') {
       const file = join(ROOT, 'checks.json')
       return json(existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { screens: {} })
@@ -198,6 +228,9 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
     server.listen(port, host, () => {
       const address = server.address()
       const actual = typeof address === 'object' && address ? address.port : port
+      // The renderer for pictures reaches the server where it listens; on every interface, through loopback.
+      const at = host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host.includes(':') ? `[${host}]` : host
+      base = `http://${at}:${actual}`
       if (!process.env.HOST) {
         v6 = createServer((req, res) => server.emit('request', req, res))
         v6.on('error', () => {}).listen(actual, '::1')
@@ -208,6 +241,7 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
           watcher.close()
           clearInterval(keepAlive)
           for (const c of clients) c.end()
+          void closeShots()
           server.close()
           v6?.close()
         },

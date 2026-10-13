@@ -46,7 +46,7 @@ export function checkLocales(override?: string): string[] {
   return [...PSEUDO, ...(c === 'all' ? realLocales() : (c ?? []))]
 }
 
-function messagesFile(locale: string): string | undefined {
+export function messagesFile(locale: string): string | undefined {
   const m = i18nConfig().messages
   if (!m) return undefined
   const pattern = typeof m === 'string' ? m : (m[locale] ?? m['*'])

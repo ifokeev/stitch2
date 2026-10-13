@@ -157,6 +157,17 @@ test('the canvas serves the screen list, and says when a report is older than th
     utimesSync(report, old, old)
     assert.ok((await reports()).consistency.changed.includes('screens/components/catalog.html'))
     rmSync(join(dir, 'design/consistency'), { recursive: true })
+    // Frames out of view are drawn from pictures the server renders, then keeps.
+    const picture = `http://127.0.0.1:${port}/api/shot?path=screens/components/catalog.html&width=390`
+    const first = await fetch(picture)
+    assert.equal(first.status, 200, await first.clone().text())
+    assert.equal(first.headers.get('content-type'), 'image/jpeg')
+    const jpg = Buffer.from(await first.arrayBuffer())
+    assert.deepEqual([...jpg.subarray(0, 2)], [0xff, 0xd8])
+    const again = Date.now()
+    assert.equal((await fetch(picture)).status, 200)
+    assert.ok(Date.now() - again < 500, 'the second picture comes from the cache')
+    assert.equal((await fetch(`http://127.0.0.1:${port}/api/shot?path=screens/nope.html&width=390`)).status, 404)
   } finally {
     server.kill()
   }
