@@ -607,27 +607,45 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   }
 
   // 6i. A medium window (600–1199 px: tablets, small laptops, Material's medium and expanded classes) is used: a
-  // phone column in the middle of it, with most of the window empty, is a layout that stopped adapting.
-  if (W >= 600 && W < 1200) {
-    const fixedBar = (el: Element) => {
-      for (let e: Element | null = el; e && e !== document.body; e = e.parentElement)
-        if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return true
-      return false
+  // phone column in the middle of it, with most of the window empty, is a layout that stopped adapting. Only for a
+  // page longer than the window (a list or a feed): a sign-in card or an empty state is narrow on purpose. Bars
+  // fixed to an edge (a tab bar, a side navigation) don't count, and a side navigation's width is not available.
+  const H = innerHeight
+  if (W >= 600 && W < 1200 && document.documentElement.scrollHeight > H * 1.15) {
+    const rail = (e: Element) => {
+      const cs = getComputedStyle(e)
+      if (cs.position !== 'fixed' && cs.position !== 'sticky') return false
+      const r = e.getBoundingClientRect()
+      return r.left <= 1 || r.right >= W - 1 || r.top <= 1 || r.bottom >= H - 1
     }
+    const rails = new Set<Element>()
+    let side = 0
+    for (const el of all)
+      if (rail(el)) {
+        rails.add(el)
+        const r = el.getBoundingClientRect()
+        if (r.height >= H * 0.5 && r.width < W * 0.4) side = Math.max(side, r.width)
+      }
+    const inRail = (el: Element) => [...rails].some((r) => r.contains(el))
+    const room = W - side
     let left = W, right = 0
     for (const el of all) {
-      if (!(ownText(el) || el.matches('img, svg, input, textarea, select, button, [role="button"]')) || fixedBar(el)) continue
+      if (el === document.body || el === document.documentElement || inRail(el)) continue
+      const cs = getComputedStyle(el)
+      const box = (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') || parseFloat(cs.borderTopWidth) > 0
+      if (!(ownText(el) || box || el.matches('img, svg, input, textarea, select, button, [role="button"]'))) continue
       const r = el.getBoundingClientRect()
+      if (r.width >= room * 0.95) continue
       left = Math.min(left, r.left)
       right = Math.max(right, r.right)
     }
     const used = right - left
-    if (used > 0 && used < W * 0.6)
+    if (used > 0 && used < room * 0.6)
       push(
         'warning',
         'narrow-layout',
         document.querySelector('main') ?? document.body,
-        'The content takes ' + Math.round(used) + ' of ' + W + 'px: a phone column in a wide window. Use the room (more columns, a side column) with the breakpoints, or give these widths to another variant',
+        'The content takes ' + Math.round(used) + ' of ' + Math.round(room) + 'px: a phone column in a wide window. Use the room (more columns, a side column) with the breakpoints, or give these widths to another variant',
       )
   }
 

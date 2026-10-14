@@ -428,3 +428,22 @@ test('motion: a transition length DESIGN.md does not name, and what still moves 
     await browser.close()
   }
 })
+
+test('audit: a phone column in a tablet-wide window is narrow-layout; a short centred card is not', async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 768, height: 600 } })
+    const column = (rows: number) =>
+      '<body style="margin:0;font:16px sans-serif"><main style="max-width:358px;margin:0 auto">' +
+      Array.from({ length: rows }, (_, i) => '<p style="background:#eee;padding:20px">Workout ' + i + '</p>').join('') +
+      '</main><nav style="position:fixed;bottom:0;left:0;right:0;background:#ddd"><button>Home</button></nav></body>'
+    await page.setContent(column(20))
+    const long = (await page.evaluate(audit, { comfortable: 32 })).filter((i) => i.type === 'narrow-layout')
+    assert.equal(long.length, 1)
+    assert.match(long[0]!.message, /takes 358 of 768px/)
+    await page.setContent(column(2))
+    assert.equal((await page.evaluate(audit, { comfortable: 32 })).filter((i) => i.type === 'narrow-layout').length, 0)
+  } finally {
+    await browser.close()
+  }
+})
