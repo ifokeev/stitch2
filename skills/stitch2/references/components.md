@@ -35,14 +35,20 @@ Every interactive component has its states, defined once in the component and de
 | Focus (keyboard) | a ring, never removed without a replacement |
 | Selected / current | shown by the accent or a raised surface; hover and press may stay as they are |
 | Disabled | faint, no hover or press change, the reason nearby |
+| Cursor (pointer only) | the hand over everything that acts when clicked (buttons, links, chips, rows that open something, switches, selects); not-allowed over a disabled control; the text cursor only in fields |
+
+The cursor comes from one rule, not from each component: `stitch2 tokens` writes it into tokens.css and every
+`css` and `tailwind4` export, in `@layer base`, because Tailwind v4's preflight gives buttons the arrow. A
+clickable element that is not a button or a link gets `role="button"` (and a keyboard handler), which also gives
+it the hand. Override the cursor only with a reason (`cursor-grab` on a drag handle).
 
 The catalog shows each component in each of its **data states** (selected, done, active, disabled, error, with
 and without an icon). Hover, focus and pressed are not drawn by hand: `stitch2 check` on the catalog forces them on
 every control and writes the **States** sheet (canvas sidebar), each control at rest, hovered, focused and
 pressed side by side. It reports a control that gives no feedback (**state-feedback**, **state-hover**,
 **state-pressed**: pressing adds nothing to hover, so a tap shows nothing) and text that loses contrast in a state
-(**state-contrast**). Fix them in the component, once. Selected and current controls and text fields are exempt
-from the feedback checks.
+(**state-contrast**), and a clickable control the pointer doesn't show as clickable (**state-cursor**). Fix them
+in the component, once. Selected and current controls and text fields are exempt from the feedback checks.
 
 ## Components from the app
 

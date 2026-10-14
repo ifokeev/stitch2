@@ -26,7 +26,7 @@ import {
 } from '@material/material-color-utilities'
 import { config as lab } from './config.ts'
 import { readDesign } from './design-md.ts'
-import { writeExports } from './exports.ts'
+import { POINTER, writeExports } from './exports.ts'
 import { ROOT } from './screens.ts'
 
 type SchemeClass = new (source: Hct, isDark: boolean, contrast: number) => DynamicScheme
@@ -128,6 +128,7 @@ writeFileSync(
       : []),
     '/* Typography levels: one class sets family, size, line height, weight, tracking and figures. */',
     typeCss.join('\n'),
+    POINTER,
     '',
   ].join('\n\n'),
 )

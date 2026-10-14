@@ -69,7 +69,9 @@ file that already exists. From there the agent spends its effort on the design.
   rules for scripts without capitals) and a Tailwind config, from DESIGN.md's front matter, plus Material 3
   colour roles from a seed colour. **Exports** write the same tokens for your app, so DESIGN.md drives the
   product as well as the screens: plain CSS variables, a Tailwind v4 theme (`@theme` plus `@utility type-*`), or
-  W3C Design Tokens JSON for Style Dictionary and native platforms. Aliases keep your app's own variable names:
+  W3C Design Tokens JSON for Style Dictionary and native platforms. The CSS and Tailwind exports also set the
+  cursor: the hand over every enabled control, not-allowed over a disabled one (Tailwind v4 gives buttons the
+  arrow). Aliases keep your app's own variable names:
 
   ```json
   "exports": [

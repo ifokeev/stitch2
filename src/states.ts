@@ -28,6 +28,8 @@ interface Control {
   field: boolean
   /** Already chosen (a selected chip, the current tab): it shows that, and pressing it again does nothing. */
   chosen: boolean
+  /** Clicked to act (a button, a link, a switch, a select): the pointer shows the hand over it (state-cursor). */
+  clickable: boolean
 }
 export interface StateRow {
   name: string
@@ -70,7 +72,8 @@ function findControls(opts: { attr: string; max: number }): Control[] {
       h.setAttribute('data-s2-state', String(out.length))
       const field = h.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea, select, [contenteditable="true"]')
       const chosen = ['aria-pressed', 'aria-selected', 'aria-checked'].some((a) => h.getAttribute(a) === 'true') || (h.hasAttribute('aria-current') && h.getAttribute('aria-current') !== 'false')
-      out.push({ i: out.length, name, label, selector: path(h), field, chosen })
+      const clickable = h.matches('button, a[href], summary, select, [role="button"], [role="switch"], [role="tab"], [role="checkbox"], [role="radio"], [role="option"], [role="menuitem"], input:is([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="submit"], [type="button"], [type="reset"])')
+      out.push({ i: out.length, name, label, selector: path(h), field, chosen, clickable })
     }
   }
   return out
@@ -106,7 +109,7 @@ function lookOf(i: number) {
     const large = parseFloat(cs.fontSize) >= 24 || (parseFloat(cs.fontSize) >= 18.66 && Number(cs.fontWeight) >= 700)
     worst = Math.min(worst, ratio / (large ? 3 : 4.5))
   }
-  return { look, contrast: worst }
+  return { look, contrast: worst, cursor: getComputedStyle(el).cursor }
 }
 
 /**
@@ -127,7 +130,7 @@ export async function catalogStates(page: Page, path: string, opts: { crop: bool
   for (const c of controls) {
     const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '[data-s2-state="' + c.i + '"]' })
     if (!nodeId) continue
-    const looks: Partial<Record<State, { look: string; contrast: number }>> = {}
+    const looks: Partial<Record<State, { look: string; contrast: number; cursor: string }>> = {}
     const row: StateRow = { name: c.name, label: c.label, selector: c.selector, crops: {}, notes: [] }
     const el = page.locator('[data-s2-state="' + c.i + '"]')
     await el.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {})
@@ -161,6 +164,10 @@ export async function catalogStates(page: Page, path: string, opts: { crop: bool
       else if (noHover) add('state-hover', who + ': hovering changes nothing, so a pointer gives no feedback (DESIGN.md, hover)')
       else if (noPress) add('state-pressed', who + ': pressing adds nothing to hover, so a tap gives no feedback (DESIGN.md, pressed)')
     }
+    // The hand says "this does something" before the click; the arrow over a button reads as plain text.
+    const cursor = looks.hover?.cursor
+    if (c.clickable && cursor && cursor !== 'pointer')
+      add('state-cursor', who + ': the pointer shows "' + cursor + '" over it, not the hand, so it doesn\'t look clickable (stitch2 tokens writes the rule; a component overrides it)')
     for (const state of ['hover', 'focus', 'pressed'] as const)
       if ((looks[state]?.contrast ?? 21) < 1 && (looks.rest?.contrast ?? 21) >= 1) {
         add('state-contrast', who + ': low text contrast when ' + (state === 'focus' ? 'focused' : state === 'hover' ? 'hovered' : 'pressed'))

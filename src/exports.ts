@@ -8,6 +8,8 @@
  *              Motion: ease-<name> classes, duration-<name> utilities, and Tailwind's default transition (the
  *              plain transition, transition-colors…) set to the first duration and ease-standard.
  *   dtcg       W3C Design Tokens JSON, for Style Dictionary and other platforms (iOS, Android)
+ * css and tailwind4 also carry the pointer rule (POINTER): every enabled control shows the hand cursor, a disabled
+ * one shows not-allowed. Tailwind v4's preflight gives buttons the arrow, so without it nothing looks clickable.
  * "aliases" maps the app's own variable names to DESIGN.md colours ({ "background": "floor" } writes
  * --background: var(--<prefix>-floor) in each theme), so an existing theme (shadcn's, say) keeps its names.
  */
@@ -39,6 +41,26 @@ export interface Tokens {
 
 const p = () => config.prefix
 
+/**
+ * The cursor over controls, in @layer base so any utility (cursor-grab, cursor-text) or component rule wins.
+ * check reports a catalog control that still shows another cursor (state-cursor, states.ts).
+ */
+export const POINTER = [
+  '/* Every enabled control shows the hand cursor, a disabled one not-allowed (Tailwind v4 gives buttons the arrow). */',
+  '@layer base {',
+  '  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [role="switch"]:not([aria-disabled="true"]),',
+  '  [role="tab"]:not([aria-disabled="true"]), [role="checkbox"]:not([aria-disabled="true"]),',
+  '  [role="radio"]:not([aria-disabled="true"]), [role="option"]:not([aria-disabled="true"]),',
+  '  [role="menuitem"]:not([aria-disabled="true"]), summary, select:not(:disabled), label[for],',
+  '  input:is([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="submit"], [type="button"], [type="reset"]):not(:disabled) {',
+  '    cursor: pointer;',
+  '  }',
+  '  :disabled, [aria-disabled="true"] {',
+  '    cursor: not-allowed;',
+  '  }',
+  '}',
+].join('\n')
+
 function themeBlocks(t: Tokens, e: TokenExport): string[] {
   const dark = e.themes?.dark ?? ":root, [data-theme='dark']"
   const light = e.themes?.light ?? "[data-theme='light']"
@@ -61,7 +83,7 @@ function themeBlocks(t: Tokens, e: TokenExport): string[] {
 
 function css(t: Tokens, e: TokenExport): string {
   const type = Object.entries(t.type).map(([n, d]) => `.type-${n} { ${d.join('; ')}; }`)
-  return [t.header, ...themeBlocks(t, e), ...type, ''].join('\n\n')
+  return [t.header, ...themeBlocks(t, e), ...type, POINTER, ''].join('\n\n')
 }
 
 function tailwind4(t: Tokens, e: TokenExport): string {
@@ -79,7 +101,7 @@ function tailwind4(t: Tokens, e: TokenExport): string {
   const durations = Object.keys(t.design.motion)
     .filter((k) => k.startsWith('duration-'))
     .map((k) => `@utility ${k} {\n  transition-duration: var(--${p()}-${k});\n  animation-duration: var(--${p()}-${k});\n}`)
-  return [t.header, ...themeBlocks(t, e), `@theme inline {\n${theme.join('\n')}\n}`, ...type, ...durations, ''].join('\n\n')
+  return [t.header, ...themeBlocks(t, e), `@theme inline {\n${theme.join('\n')}\n}`, ...type, ...durations, POINTER, ''].join('\n\n')
 }
 
 /** @theme entries for motion: --ease-<name> (Tailwind's ease-* classes) and the default transition. */
