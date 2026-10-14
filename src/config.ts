@@ -38,6 +38,12 @@ export interface LabConfig {
    * follow Google's window size classes: mobile 360–599 (compact), tablet 600–1023 (medium), desktop 1024–1920.
    */
   widths?: Record<string, [number, number]>
+  /**
+   * The window widths where the screens' layouts change (their responsive rules, Tailwind's sm: md: lg: …), in px.
+   * check renders each variant at every breakpoint inside its range besides the two ends, and the canvas can show
+   * every screen at one of them. Defaults to Tailwind's: sm 640, md 768, lg 1024, xl 1280, 2xl 1536.
+   */
+  breakpoints?: Record<string, number>
   /** Skill folders a blind-trial sandbox copies. */
   skills: string[]
   /** Paths under designDir a sandbox leaves out besides screens (notes that would give the trial away). */
@@ -106,5 +112,17 @@ export const config: LabConfig = {
 export const WIDTH_DEFAULTS: Record<string, [number, number]> = { mobile: [360, 599], tablet: [600, 1023], desktop: [1024, 1920] }
 export const widthRanges = (): Record<string, [number, number]> => ({ ...WIDTH_DEFAULTS, ...config.widths })
 export const widthRange = (device: string): [number, number] | undefined => widthRanges()[device]
+export const BREAKPOINT_DEFAULTS: Record<string, number> = { sm: 640, md: 768, lg: 1024, xl: 1280, '2xl': 1536 }
+export const breakpoints = (): Record<string, number> => config.breakpoints ?? BREAKPOINT_DEFAULTS
+/**
+ * The widths check renders a variant at: both ends of its range and every breakpoint inside it, where a responsive
+ * rule starts (each one is the narrowest window of its layout, where things are most likely to break).
+ */
+export function checkWidths(device: string): number[] {
+  const range = widthRange(device)
+  if (!range) return []
+  const inside = Object.values(breakpoints()).filter((b) => b > range[0] && b < range[1])
+  return [...new Set([range[0], ...inside, range[1]])].sort((a, b) => a - b)
+}
 /** The design folder, with a trailing slash. */
 export const ROOT = join(resolve(BASE, config.designDir), '/')

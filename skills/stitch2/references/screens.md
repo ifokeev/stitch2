@@ -131,6 +131,18 @@ Widths are a dimension like themes and languages, not more files: `stitch2 check
 both ends of its range and reports what breaks there ("at 1024px: …"), and the canvas shows every frame at its
 narrowest or widest (the width dropdown, W).
 
+Inside a range the layout changes at the project's **breakpoints** (`breakpoints` in the config, Tailwind's by
+default: sm 640, md 768, lg 1024, xl 1280, 2xl 1536). Each one starts a layout at its narrowest, where it is most
+likely to break, so check also renders every variant at each breakpoint inside its range (gymgym's mobile variant
+at 360, 640, 768 and 1023). On the canvas, "At 768 px (md)" shows every screen at that window; a variant that
+doesn't cover it is drawn at its nearest edge and faded, because the app shows another variant there.
+
+- Design for the whole range, not only the frame: a phone layout stretched to 1023 px with a 390 px column in the
+  middle of the window is a defect at that width. Let it use the room (two columns of cards, a wider measure
+  capped by the type rules) or give the range to a new variant.
+- Use the breakpoints the config names and no others (no `min-[700px]:`), so check covers every layout the
+  screen has.
+
 - A screen that breaks at an edge gets a **responsive rule inside the same variant**: a two-column grid that drops
   to one, three cards across that become two, a side column that moves under the main one. Use the project's
   breakpoints (Tailwind's `md:`, `lg:`, `xl:`), so the screen keeps one layout that adapts.

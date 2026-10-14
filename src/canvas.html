@@ -85,6 +85,8 @@
   .frame.desktop .device { border-radius: 12px; }
   .frame.selected .device { outline: 3px solid var(--accent); }
   .frame.archived { opacity: .55; }
+  /* At a breakpoint (the width dropdown), a variant whose range doesn't cover it is drawn at its nearest edge, faded. */
+  .frame.outside { opacity: .35; }
   /* A frame shows its picture (rendered by the server) until its live page is ready; only frames in view are live. */
   .device iframe { background: #fff; border: 0; display: block; left: 0; position: absolute; top: 0; visibility: hidden; }
   .frame.ready .device iframe { visibility: visible; }
@@ -139,7 +141,7 @@
     <details id="versionFilter" class="multi" hidden title="Show only the versions you pick (several at once), or all of them"><summary>All versions</summary><div class="menu"></div></details>
     <details id="variantFilter" class="multi" hidden title="Show only the variants you pick: mobile, desktop (several at once), or all of them"><summary>All variants</summary><div class="menu"></div></details>
     <select id="themeFilter" class="pick" hidden title="Show every screen in this theme (T)" aria-label="Theme"></select>
-    <select id="widthFilter" class="pick" title="Show every screen at the narrowest or widest window its variant covers (W)" aria-label="Width"></select>
+    <select id="widthFilter" class="pick" title="Show every screen at the narrowest or widest window its variant covers, or at one breakpoint (W)" aria-label="Width"></select>
     <select id="langFilter" class="pick" title="Show every screen in this language (L)" aria-label="Language"></select>
   </header>
   <nav id="tree"></nav>
@@ -200,11 +202,22 @@ function setLang(l) {
   summary()
   scheduleSync()
 }
-// Widths: each variant covers a range of windows (config widths); frames show it drawn, at the narrowest or the widest.
+// Widths: each variant covers a range of windows (config widths); frames show it drawn, at the narrowest or the
+// widest, or at one breakpoint (config breakpoints): "at:768" puts every variant at 768 px, or the nearest edge of
+// its range when 768 is outside it (then the frame is faded: the app shows another variant there).
 let WIDTHS = {}
+let BREAKPOINTS = {}
 let widthMode = localStorage.getItem('stitch2-width') ?? 'drawn'
 const rangeOf = (s) => WIDTHS[s.device]
-const widthFor = (s) => { const r = rangeOf(s); return !r || widthMode === 'drawn' ? s.drawn : widthMode === 'narrow' ? r[0] : r[1] }
+const atWidth = () => (widthMode.startsWith('at:') ? Number(widthMode.slice(3)) : 0)
+const widthFor = (s) => {
+  const r = rangeOf(s), at = atWidth()
+  if (!r || widthMode === 'drawn') return s.drawn
+  if (at) return Math.min(r[1], Math.max(r[0], at))
+  return widthMode === 'narrow' ? r[0] : r[1]
+}
+const outside = (s) => { const r = rangeOf(s), at = atWidth(); return !!(r && at && (at < r[0] || at > r[1])) }
+const widthModes = () => ['drawn', 'narrow', 'wide', ...Object.values(BREAKPOINTS).sort((a, b) => a - b).map((w) => `at:${w}`)]
 const bigFrame = (s) => (s.drawn ?? s.width) > 700
 function setWidth(mode) {
   widthMode = mode
@@ -214,6 +227,7 @@ function setWidth(mode) {
     f.screen.width = widthFor(f.screen)
     f.el.style.width = `${f.screen.width}px`
     size(f)
+    f.el.classList.toggle('outside', outside(f.screen))
     setTimeout(() => measure(f), 300)
     setTimeout(() => measure(f), 1200)
   }
@@ -225,7 +239,9 @@ function widthOptions() {
   const used = [...new Set(screens.map((s) => s.device))].filter((d) => WIDTHS[d]).sort((a, b) => WIDTHS[a][0] - WIDTHS[b][0])
   const edge = (k) => used.map((d) => `${d} ${WIDTHS[d][k]}`).join(', ')
   const wsel = document.getElementById('widthFilter')
-  wsel.innerHTML = `<option value="drawn">Drawn width</option><option value="narrow">Narrowest: ${edge(0)}</option><option value="wide">Widest: ${edge(1)}</option>`
+  const at = Object.entries(BREAKPOINTS).sort((a, b) => a[1] - b[1]).map(([name, w]) => `<option value="at:${w}">At ${w} px (${name})</option>`).join('')
+  wsel.innerHTML = `<option value="drawn">Drawn width</option><option value="narrow">Narrowest: ${edge(0)}</option><option value="wide">Widest: ${edge(1)}</option>${at}`
+  if (!widthModes().includes(widthMode)) widthMode = 'drawn'
   wsel.value = widthMode
 }
 function applyTheme(f) {
@@ -695,6 +711,7 @@ function badge(f) {
 function paintLabel(f) {
   const s = f.screen
   const kept = ['ready', 'live', 'changed'].filter((c) => f.el.classList.contains(c))
+  if (outside(s)) kept.push('outside')
   f.el.className = ['frame', s.device, s.status, selected === f ? 'selected' : '', ...kept].filter(Boolean).join(' ')
   f.el.querySelector('.name').textContent = s.kind === 'components' ? 'Catalog' : s.device
   const pill = f.el.querySelector('.pill')
@@ -818,7 +835,7 @@ function inspector(f) {
     li.querySelector('code').textContent = i.selector
     li.onclick = () => {
       const r = rangeOf(s)
-      if (i.width && r && i.width !== s.width) { setWidth(i.width === r[0] ? 'narrow' : 'wide'); setTimeout(() => locate(f, i.selector), 900) }
+      if (i.width && r && i.width !== s.width) { setWidth(i.width === r[0] ? 'narrow' : i.width === r[1] ? 'wide' : `at:${i.width}`); setTimeout(() => locate(f, i.selector), 900) }
       else locate(f, i.selector)
     }
     ul.append(li)
@@ -1113,7 +1130,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') fit()
   if ((e.key === 't' || e.key === 'T') && themed()) setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])
   if (e.key === 'l' || e.key === 'L') setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length])
-  if (e.key === 'w' || e.key === 'W') setWidth(['drawn', 'narrow', 'wide'][(['drawn', 'narrow', 'wide'].indexOf(widthMode) + 1) % 3])
+  if (e.key === 'w' || e.key === 'W') { const m = widthModes(); setWidth(m[(m.indexOf(widthMode) + 1) % m.length]) }
   if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
   if (e.key === '+' || e.key === '=') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z * 1.2)
   if (e.key === '-') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, view.z / 1.2)
@@ -1151,6 +1168,7 @@ fetch('/api/config').then((r) => r.json()).then((c) => {
   pick.onchange = () => setTheme(pick.value)
   setTheme(theme)
   WIDTHS = c.widths ?? {}
+  BREAKPOINTS = c.breakpoints ?? {}
   const wsel = document.getElementById('widthFilter')
   wsel.onchange = () => setWidth(wsel.value)
   SOURCE = c.sourceLocale ?? 'en'

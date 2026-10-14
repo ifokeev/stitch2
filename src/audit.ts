@@ -590,5 +590,30 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
   before?.focus?.({ preventScroll: true })
   still.remove()
 
+  // 6i. A medium window (600–1199 px: tablets, small laptops, Material's medium and expanded classes) is used: a
+  // phone column in the middle of it, with most of the window empty, is a layout that stopped adapting.
+  if (W >= 600 && W < 1200) {
+    const fixedBar = (el: Element) => {
+      for (let e: Element | null = el; e && e !== document.body; e = e.parentElement)
+        if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return true
+      return false
+    }
+    let left = W, right = 0
+    for (const el of all) {
+      if (!(ownText(el) || el.matches('img, svg, input, textarea, select, button, [role="button"]')) || fixedBar(el)) continue
+      const r = el.getBoundingClientRect()
+      left = Math.min(left, r.left)
+      right = Math.max(right, r.right)
+    }
+    const used = right - left
+    if (used > 0 && used < W * 0.6)
+      push(
+        'warning',
+        'narrow-layout',
+        document.querySelector('main') ?? document.body,
+        'The content takes ' + Math.round(used) + ' of ' + W + 'px: a phone column in a wide window. Use the room (more columns, a side column) with the breakpoints, or give these widths to another variant',
+      )
+  }
+
   return out.sort((x, y) => (x.severity === y.severity ? 0 : x.severity === 'error' ? -1 : 1))
 }

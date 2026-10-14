@@ -8,16 +8,17 @@
  * Then again in each check language (i18n.ts: the pseudo-languages and the config's): layout problems that
  * show only there (a label running into its neighbour, text cut off, a control drawn backwards right to left),
  * and keys a locale has no translation for, tagged with the locale. Last, each variant at both ends of the widths
- * it covers (config widths: mobile 360–599, desktop 1024–1920 by default), tagged with the width.
+ * it covers (config widths: mobile 360–599, desktop 1024–1920 by default) and at every breakpoint inside them
+ * (config breakpoints, Tailwind's by default), tagged with the width.
  * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none]
- *   --shots   also save page-tall renders to design/renders/ (one per theme, language and width edge)
+ *   --shots   also save page-tall renders to design/renders/ (one per theme, language and width)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
 import { colourIssues } from './colours.ts'
-import { config, widthRange } from './config.ts'
+import { checkWidths, config } from './config.ts'
 import {
   type Components,
   collectComponents,
@@ -125,10 +126,9 @@ for (const s of screens) {
     }
     if (shots) await shoot(s, undefined, locale)
   }
-  // The edges of the widths this variant covers (config widths), in its own theme and language: what breaks
-  // only when the window is narrower or wider than the frame it was drawn in.
-  const range = s.kind === 'screen' ? widthRange(s.device) : undefined
-  for (const width of range ? [...new Set(range)].filter((w) => w !== s.width) : []) {
+  // The edges of the widths this variant covers (config widths) and the breakpoints inside them, in its own theme
+  // and language: what breaks only when the window is narrower or wider than the frame it was drawn in.
+  for (const width of s.kind === 'screen' ? checkWidths(s.device).filter((w) => w !== s.width) : []) {
     await page.setViewportSize({ width, height: 844 })
     await page.goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
     await page.waitForTimeout(600)
