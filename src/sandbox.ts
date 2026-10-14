@@ -3,7 +3,7 @@
  * versions, so their work is not anchored to what exists ("fresh eyes"), and where changes to the skills can
  * be tested on output that only the rules produced.
  *
- *   stitch2 sandbox create <dir> <brief.md>… [--device mobile|desktop] [--context <screen>…]
+ *   stitch2 sandbox create <dir> <brief.md>… [--device mobile|tablet|desktop] [--context <screen>…]
  *     The project's config, its design folder without screens (DESIGN.md, tokens, components, the catalog and
  *     templates), the skills from the config, a copy of stitch2 and the briefs (one screen each, named after the
  *     file). --context adds the approved versions of other screens, to stay consistent with them.
@@ -44,7 +44,7 @@ if (sub === 'create') {
   const [dir, ...briefs] = argv
   if (!dir || !briefs.length) {
     console.error(
-      'usage: stitch2 sandbox create <dir> <brief.md>… [--device mobile|desktop] [--context <screen>…]',
+      'usage: stitch2 sandbox create <dir> <brief.md>… [--device mobile|tablet|desktop] [--context <screen>…]',
     )
     process.exit(1)
   }
@@ -190,7 +190,7 @@ public design guides listed in the skills is fine.
       [tag('note')]:
         `Fresh-eyes version from sandbox ${basename(box)}${label ? ` (${label})` : ''}: designed without seeing the other versions.`,
     })
-    versions.push({ ...versions[0]!, screen, device: device as 'mobile' | 'desktop', version: `v${n}` })
+    versions.push({ ...versions[0]!, screen, device: device as 'mobile' | 'tablet' | 'desktop', version: `v${n}` })
     console.log(`  ${screen} ${device} v${n} (${config.designDir}/${path})`)
     imported++
   }

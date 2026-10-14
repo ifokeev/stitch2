@@ -1,5 +1,5 @@
 /**
- * Lists every screen version, variant by variant (mobile, desktop), with its status and the reviewer's note, for agents (and anyone without the
+ * Lists every screen version, variant by variant (mobile, tablet, desktop), with its status and the reviewer's note, for agents (and anyone without the
  * canvas open). Approved versions are the reference; review versions wait for the user; notes are feedback.
  * Ends with what makes the current version unclear (versionProblems); --strict fails on it.
  * Usage: stitch2 screens [screen name] [--status approved|review|draft|archived] [--json] [--strict]

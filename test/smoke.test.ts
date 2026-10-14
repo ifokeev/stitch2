@@ -56,6 +56,12 @@ test('a screen made from the template is listed with its status', () => {
   assert.ok(home, JSON.stringify(screens))
   assert.equal(home.status, 'draft')
   assert.equal(home.device, 'mobile')
+  // A tablet variant, named <device>-v<N> like the others.
+  const tablet = readFileSync(join(dir, 'design/screens/_template.html'), 'utf8').replace(/<meta name="af-device"[^>]*>\n?/, '')
+  writeFileSync(join(dir, 'design/screens/home/tablet-v1.html'), tablet)
+  const listed = (JSON.parse(stitch2('screens', '--json')) as { path: string; device: string; version: string }[]).find((s) => s.path.endsWith('home/tablet-v1.html'))
+  assert.deepEqual([listed?.device, listed?.version], ['tablet', 'v1'])
+  rmSync(join(dir, 'design/screens/home/tablet-v1.html'))
 })
 
 test('approving makes one version current: earlier versions are archived, a newer proposal stays', () => {

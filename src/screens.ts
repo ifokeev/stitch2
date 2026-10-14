@@ -30,7 +30,7 @@ export interface Screen {
    * decides it for all of its versions; without one a screen is its own page.
    */
   page: string
-  device: 'mobile' | 'desktop'
+  device: 'mobile' | 'tablet' | 'desktop'
   /** Where the version came from: stitch, lab or trial. */
   source: 'stitch' | 'lab' | 'trial'
   /** Short version label: "v3", "Stitch", "Trial 2". */
@@ -75,7 +75,7 @@ export function listScreens(): Screen[] {
       const source = (meta(html, tag('source')) ??
         (under(path, config.stitchDir) ? 'stitch' : archive ? 'trial' : 'lab')) as Screen['source']
       // design/screens/<screen>/<device>-v<N>.html, or older files named after the screen.
-      const versioned = /^(mobile|desktop)-v(\d+)$/.exec(name)
+      const versioned = /^(mobile|tablet|desktop)-v(\d+)$/.exec(name)
       out.push({
         path,
         group,
@@ -87,7 +87,7 @@ export function listScreens(): Screen[] {
         screen: meta(html, tag('screen')) ?? (versioned ? group.split('/').pop()! : name),
         page: meta(html, tag('page')) ?? '',
         device: (meta(html, tag('device')) ??
-          (versioned?.[1] || (width >= 768 ? 'desktop' : 'mobile'))) as Screen['device'],
+          (versioned?.[1] || (width >= 1000 ? 'desktop' : width >= 600 ? 'tablet' : 'mobile'))) as Screen['device'],
         source,
         version:
           meta(html, tag('version')) ??
