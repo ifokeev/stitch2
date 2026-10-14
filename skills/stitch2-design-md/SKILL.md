@@ -35,13 +35,18 @@ The generated prose is correct but generic. Make it the product's:
    surfaces and the primary with the user.
 3. **Typography**: keep the levels; adjust sizes only together with the user and only on the scale.
 4. **Components**: name the product's real components (its tab bar items, its core list row) and their states.
-5. **Content & voice** and **Do's and Don'ts**: add the product's data style, naming and banned patterns.
-6. Keep every rule checkable: values, not adjectives.
+   Each interactive one gets hover, pressed, focus, selected and disabled in the prose, in values ("darkens to
+   primary-pressed and moves 1px"); the States sheet then shows whether the components do it.
+5. **Motion**: keep the `motion:` tokens (duration-short, -medium, -long; ease-standard, -enter, -exit) and say in
+   Motion & Interaction what moves, with which token. See the stitch2 skill's motion.md.
+6. **Content & voice** and **Do's and Don'ts**: add the product's data style, naming and banned patterns.
+7. Keep every rule checkable: values, not adjectives.
 
 ## 3. Validate and show
 
 1. `stitch2 lint`: 0 errors. Warnings about disabled text contrast (WCAG exempts it), semi-transparent washes
    (the linter cannot measure them) and colours no component references are expected.
+   `motion:` is stitch2's extension of the format; the linter doesn't know it, and stitch2 lint leaves that note out.
 2. `stitch2 tokens`, then open the canvas: **DESIGN.md** in the sidebar draws the swatches, live type levels,
    radii and component tokens. Walk the user through it; change and repeat until they agree.
 3. Then build the component catalog and the first screens with the stitch2 skill, and run stitch2-consistency.

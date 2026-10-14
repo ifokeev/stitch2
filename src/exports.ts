@@ -5,6 +5,8 @@
  *   tailwind4  the same, plus an @theme block (bg-<colour>, rounded-<name>, font-sans) and the type levels as
  *              @utility type-<level>, for a Tailwind v4 stylesheet to @import. Spacing stays out of @theme:
  *              names like lg or 2xl would also resize max-w-lg and friends; it is --<prefix>-spacing-<name>.
+ *              Motion: ease-<name> classes, duration-<name> utilities, and Tailwind's default transition (the
+ *              plain transition, transition-colors…) set to the first duration and ease-standard.
  *   dtcg       W3C Design Tokens JSON, for Style Dictionary and other platforms (iOS, Android)
  * "aliases" maps the app's own variable names to DESIGN.md colours ({ "background": "floor" } writes
  * --background: var(--<prefix>-floor) in each theme), so an existing theme (shadcn's, say) keeps its names.
@@ -71,9 +73,26 @@ function tailwind4(t: Tokens, e: TokenExport): string {
     ...Object.entries(t.design.rounded).map(([k, v]) => `  --radius-${k}: ${v};`),
     ...(sans ? [`  --font-sans: "${sans}", var(--${p()}-font-sans-fallback);`] : []),
     ...(mono ? [`  --font-mono: "${mono}", var(--${p()}-font-mono-fallback);`] : []),
+    ...motionTheme(t.design.motion),
   ]
   const type = Object.entries(t.type).map(([n, d]) => `@utility type-${n} {\n${d.map((x) => `  ${x};`).join('\n')}\n}`)
-  return [t.header, ...themeBlocks(t, e), `@theme inline {\n${theme.join('\n')}\n}`, ...type, ''].join('\n\n')
+  const durations = Object.keys(t.design.motion)
+    .filter((k) => k.startsWith('duration-'))
+    .map((k) => `@utility ${k} {\n  transition-duration: var(--${p()}-${k});\n  animation-duration: var(--${p()}-${k});\n}`)
+  return [t.header, ...themeBlocks(t, e), `@theme inline {\n${theme.join('\n')}\n}`, ...type, ...durations, ''].join('\n\n')
+}
+
+/** @theme entries for motion: --ease-<name> (Tailwind's ease-* classes) and the default transition. */
+function motionTheme(motion: Record<string, string>): string[] {
+  const keys = Object.keys(motion)
+  const eases = keys.filter((k) => k.startsWith('ease-'))
+  const first = keys.includes('duration-short') ? 'duration-short' : keys.find((k) => k.startsWith('duration-'))
+  const standard = eases.find((k) => k === 'ease-standard') ?? eases[0]
+  return [
+    ...eases.map((k) => `  --${k}: var(--${p()}-${k});`),
+    ...(first ? [`  --default-transition-duration: var(--${p()}-${first});`] : []),
+    ...(standard ? [`  --default-transition-timing-function: var(--${p()}-${standard});`] : []),
+  ]
 }
 
 function dtcg(t: Tokens): string {
@@ -101,6 +120,16 @@ function dtcg(t: Tokens): string {
       'color-light': group('color', t.light),
       radius: group('dimension', t.design.rounded),
       spacing: group('dimension', t.design.spacing),
+      ...(Object.keys(t.design.motion).length
+        ? {
+            duration: group('duration', Object.fromEntries(Object.entries(t.design.motion).filter(([k]) => k.startsWith('duration-')).map(([k, v]) => [k.slice(9), v]))),
+            easing: Object.fromEntries(
+              Object.entries(t.design.motion)
+                .filter(([k]) => k.startsWith('ease-'))
+                .map(([k, v]) => [k.slice(5), { $type: 'cubicBezier', $value: (v.match(/-?[\d.]+/g) ?? []).map(Number) }]),
+            ),
+          }
+        : {}),
       typography,
     },
     null,

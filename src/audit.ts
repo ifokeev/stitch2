@@ -8,7 +8,7 @@ import type { Issue } from './typecheck.ts'
 export const LAYOUT_ERRORS = ['overflow', 'nav-overflow', 'fixed-overlap', 'control-overlap', 'text-overlap']
 
 /** Runs inside the page. Plain JS on purpose: Playwright sends its source to the browser. */
-export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
+export async function audit(opts: { comfortable: number; durations?: number[] }): Promise<Issue[]> {
   const W = document.documentElement.clientWidth
   const out: Issue[] = []
   const sel = (el: Element) => {
@@ -590,6 +590,22 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
   before?.focus?.({ preventScroll: true })
   still.remove()
 
+  // 7. Motion uses DESIGN.md's durations (its motion: duration-* tokens): a transition of any other length is a
+  // value someone typed, and screens drift apart in how they move.
+  if (opts.durations?.length) {
+    const named = opts.durations.map((d) => Math.round(d))
+    for (const el of all) {
+      const cs = getComputedStyle(el)
+      if (cs.transitionProperty === 'none') continue
+      const odd = cs.transitionDuration
+        .split(',')
+        .map((v) => (v.trim().endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000))
+        .find((ms) => ms > 0 && !named.includes(Math.round(ms)))
+      if (odd !== undefined)
+        push('warning', 'motion-token', el, 'Moves for ' + Math.round(odd) + "ms, a duration DESIGN.md's motion doesn't name (" + named.join(', ') + 'ms): use a duration-* token')
+    }
+  }
+
   // 6i. A medium window (600–1199 px: tablets, small laptops, Material's medium and expanded classes) is used: a
   // phone column in the middle of it, with most of the window empty, is a layout that stopped adapting.
   if (W >= 600 && W < 1200) {
@@ -616,4 +632,41 @@ export async function audit(opts: { comfortable: number }): Promise<Issue[]> {
   }
 
   return out.sort((x, y) => (x.severity === y.severity ? 0 : x.severity === 'error' ? -1 : 1))
+}
+
+/**
+ * Runs inside the page with prefers-reduced-motion: reduce. What still moves (an animation of transform,
+ * translate, scale, rotate or position) ignores the setting; fading and colour changes are fine.
+ */
+export function movingAnimations(): Issue[] {
+  const MOVES = ['transform', 'translate', 'scale', 'rotate', 'left', 'top', 'right', 'bottom', 'marginTop', 'marginLeft', 'offsetDistance']
+  const sel = (el: Element) => {
+    const parts: string[] = []
+    for (let e: Element | null = el; e && e !== document.body && parts.length < 6; e = e.parentElement) {
+      let p = e.tagName.toLowerCase()
+      const same = e.parentElement ? [...e.parentElement.children].filter((c) => c.tagName === e!.tagName) : []
+      if (same.length > 1) p += ':nth-of-type(' + (same.indexOf(e) + 1) + ')'
+      parts.unshift(p)
+    }
+    return parts.join(' > ')
+  }
+  const out: Issue[] = []
+  const seen = new Set<Element>()
+  for (const a of document.getAnimations()) {
+    const effect = a.effect as KeyframeEffect | null
+    const el = effect?.target
+    if (!el || seen.has(el) || a.playState !== 'running') continue
+    const moves = effect!.getKeyframes().some((k) => MOVES.some((p) => p in k))
+    if (!moves) continue
+    seen.add(el)
+    if (out.length < 10)
+      out.push({
+        severity: 'warning',
+        type: 'reduced-motion',
+        selector: sel(el),
+        text: (el.textContent ?? '').trim().slice(0, 60),
+        message: 'Still moves with reduced motion on: wrap the animation in @media (prefers-reduced-motion: no-preference) (Tailwind motion-safe:), or fade instead',
+      })
+  }
+  return out
 }

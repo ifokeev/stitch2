@@ -48,18 +48,24 @@ file that already exists. From there the agent spends its effort on the design.
 - **Checks** (`stitch2 check`): content past the frame edge or out of its card, navigation whose links scroll or are cut (in any language), labels that wrap, text running into
   other text, labels cut short with an ellipsis, content under fixed bars, fixed bars that overlap each other, tap
   targets (WCAG 2.2), all of it again at both ends of the window widths each layout covers (360 and 599 px for a
-  phone, 1024 and 1920 for desktop, or your own ranges), text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
+  phone, 1024 and 1920 for desktop, or your own ranges) and at every breakpoint inside them (Tailwind's sm, md,
+  lg, xl, 2xl, or your own), a phone column left in a tablet-wide window, text contrast in every theme, text that is not one of DESIGN.md's type levels, capitals without tracking,
   large numbers in monospace, components built by hand, components that differ between screens, and colours
   written as values instead of DESIGN.md tokens. Google's guidelines (Material 3, Android's app quality
   guidelines, web.dev, Lighthouse) add warnings for text under 11 px, text closer than 16 px (24 px from 600 px)
   to the edge, lines over 75 characters, targets under 48 px without room around them, placeholder-only labels,
   icon-only controls without a name, more than five bottom-navigation destinations and controls without visible
-  focus. Each screen is also run in long and right-to-left
+  focus. Motion: transitions whose length isn't one of DESIGN.md's motion tokens, and anything that still moves
+  with reduced motion on. Each screen is also run in long and right-to-left
   pseudo-languages and your locales (see below).
+- **States** (from `stitch2 check` on the component catalog): every control at rest, hovered, focused and
+  pressed, forced through Chromium so the components need nothing extra, side by side on one sheet; with
+  warnings for a control that gives no feedback and text that loses contrast in a state.
 - **Consistency report** (`stitch2 consistency`): every shared component (tab bar, header, buttons, chips, …)
   cropped from every screen, next to the catalog's version, with what differs (sizes, fonts, icon set, icons).
 - **Type audit** (`stitch2 type`): every text style a screen uses, and the level it matches.
-- **Tokens** (`stitch2 tokens`): CSS variables, one `.type-<level>` class per type level (with per-language
+- **Tokens** (`stitch2 tokens`): CSS variables, motion tokens (durations and easings, a stitch2 extension of
+  DESIGN.md), one `.type-<level>` class per type level (with per-language
   rules for scripts without capitals) and a Tailwind config, from DESIGN.md's front matter, plus Material 3
   colour roles from a seed colour. **Exports** write the same tokens for your app, so DESIGN.md drives the
   product as well as the screens: plain CSS variables, a Tailwind v4 theme (`@theme` plus `@utility type-*`), or

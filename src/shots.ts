@@ -17,7 +17,7 @@ import { ROOT } from './screens.ts'
 const MAX_HEIGHT = 20000
 const DIR = join(tmpdir(), 'stitch2-shots')
 /** Folders under the design directory that hold outputs, not inputs: they never change a picture. */
-const OUTPUTS = new Set(['renders', 'consistency', 'compare', 'node_modules', '.git'])
+const OUTPUTS = new Set(['renders', 'consistency', 'compare', 'states', 'node_modules', '.git'])
 const REPORTS = new Set(['checks.json', 'compare.json', 'type-audit.json'])
 
 export interface ShotRequest {

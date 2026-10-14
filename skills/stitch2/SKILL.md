@@ -27,6 +27,7 @@ References, read before the first screen:
 - [screens.md](references/screens.md): screen names, versions and their variants (mobile, desktop), the widths
   each variant covers, statuses, the user's approval and notes.
 - [google.md](references/google.md): Google's guidance (Material, Android, web.dev) as rules with numbers.
+- [motion.md](references/motion.md): motion tokens, what may move and how, reduced motion.
 - [guides.md](references/guides.md): the public sources behind the rules.
 
 ## Workflow
@@ -66,6 +67,10 @@ References, read before the first screen:
    **stitch2-i18n** skill says.
    An issue tagged with a width ("at 1024px: …") breaks at an edge of the windows the variant covers: fix it with a
    responsive rule in the screen, or a new variant when the layout's structure has to change (screens.md, Widths).
+   Widths include the breakpoints inside the range; `narrow-layout` is a phone column left in a wide window.
+   Motion warnings: `motion-token` (a transition length DESIGN.md doesn't name) and `reduced-motion` (something
+   still moves when the person asked for less); see motion.md. On the catalog, `state-*` warnings come from the
+   States sheet (components.md, States).
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.
 7. **Hand over.** Set the version's status to `review`, point the user to it on the canvas, and report what

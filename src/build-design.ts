@@ -314,6 +314,17 @@ export function buildDesignMd(c: Choices): string {
   }
   y.push('rounded:', ...Object.entries(rounded).map(([k, v]) => `  ${k}: ${v}`))
   y.push('spacing:', ...Object.entries(spacing).map(([k, v]) => `  "${k}": ${v}`))
+  // stitch2's motion tokens (Material's durations and easings): tokens turns them into CSS variables, ease-*
+  // classes, duration-* utilities and Tailwind's default transition.
+  y.push(
+    'motion:',
+    '  duration-short: 150ms',
+    '  duration-medium: 250ms',
+    '  duration-long: 400ms',
+    '  ease-standard: cubic-bezier(0.2, 0, 0, 1)',
+    '  ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1)',
+    '  ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15)',
+  )
   y.push('components:')
   for (const [k, props] of Object.entries(components)) {
     y.push(`  ${k}:`)
@@ -383,6 +394,13 @@ ${Object.entries(rounded)
 - **Selected:** chips primary-wash with primary text; segments raised with text; the active tab primary.
 - **Disabled:** text-faint on raised, no pressed or hover change, the reason shown nearby when not obvious.
 - **Error:** danger border and one meta line in danger under the field, saying how to fix it.
+
+## Motion & Interaction
+- Durations and easings are the motion tokens: short (150ms) for a control's own change (a press, a toggle),
+  medium (250ms) for something entering or opening (a sheet, a menu), long (400ms) only for a whole screen.
+  ease-standard inside the screen, ease-enter for what arrives, ease-exit for what leaves.
+- Animate transform and opacity only; nothing animates on its own except a skeleton's pulse.
+- With reduced motion, nothing moves: fade or switch instead.
 
 ## Do's and Don'ts
 - Do build every screen from the shared components; adapt the content or extend the component rather than build a near-copy.

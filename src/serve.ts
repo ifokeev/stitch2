@@ -42,7 +42,7 @@ export interface ReportState {
  * the approved screens. A report is stale once one of those files is newer than it (a status change counts: it
  * changes what the report covers). Only the design side is known: changes in the app itself don't show here.
  */
-export function reportStates(): { consistency: ReportState | null; compare: ReportState | null } {
+export function reportStates(): { consistency: ReportState | null; compare: ReportState | null; states: ReportState | null } {
   const screens = listScreens()
   const components = (() => {
     const dir = join(ROOT, 'components')
@@ -60,6 +60,8 @@ export function reportStates(): { consistency: ReportState | null; compare: Repo
   return {
     consistency: state('consistency/index.html', [...screens.filter((s) => s.status !== 'archived'), ...components]),
     compare: state('compare/index.html', screens.filter((s) => s.kind === 'screen' && s.status === 'approved')),
+    // The states sheet is made when check runs on a catalog: it covers the catalogs and the components.
+    states: state('states/index.html', [...screens.filter((s) => s.kind === 'components'), ...components]),
   }
 }
 
@@ -124,6 +126,12 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
       return res.end(
         '<body style="background:#0f0f11;color:#a1a1aa;font:15px system-ui;padding:32px">No consistency report yet: run <code>stitch2 consistency</code>.</body>',
+      )
+    }
+    if (url.pathname === '/states/index.html' && !existsSync(join(ROOT, 'states/index.html'))) {
+      res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' })
+      return res.end(
+        '<body style="background:#0f0f11;color:#a1a1aa;font:15px system-ui;padding:32px">No states sheet yet: run <code>stitch2 check</code> on the component catalog.</body>',
       )
     }
     if (url.pathname === '/api/screens/meta' && req.method === 'POST') {

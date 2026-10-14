@@ -55,11 +55,27 @@ if (command === 'lint') {
   const { ROOT } = await import('./config.ts')
   // The linter's main entry is also its command line (the package only exports for import).
   const file = fileURLToPath(import.meta.resolve('@google/design.md'))
+  let out: string
   try {
-    execFileSync(process.execPath, [file, 'lint', join(ROOT, 'DESIGN.md'), ...rest], { stdio: 'inherit' })
+    out = execFileSync(process.execPath, [file, 'lint', join(ROOT, 'DESIGN.md'), ...rest], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })
+  } catch (e) {
+    out = String((e as { stdout?: string }).stdout ?? '')
+  }
+  // motion is stitch2's extension of the format (duration-* and ease-* tokens): the linter only notes that it
+  // doesn't know the key, so that note is left out.
+  let report: { findings?: { path?: string; rule?: string; severity?: string }[]; summary?: Record<string, number> }
+  try {
+    report = JSON.parse(out)
   } catch {
+    process.stdout.write(out)
     process.exit(1)
   }
+  const ours = (f: { path?: string; rule?: string }) => f.path === 'motion' && f.rule === 'token-like-ignored'
+  const dropped = (report.findings ?? []).filter(ours)
+  report.findings = (report.findings ?? []).filter((f) => !ours(f))
+  if (report.summary && dropped.length) report.summary.warnings = (report.summary.warnings ?? 0) - dropped.length
+  console.log(JSON.stringify(report, null, 2))
+  if ((report.summary?.errors ?? 0) > 0) process.exit(1)
 } else {
   // Sources run as .ts (Node strips the types); the published build runs as .js.
   const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js'

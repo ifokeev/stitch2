@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
 import { chromium } from '@playwright/test'
-import { audit } from '../src/audit.ts'
+import { audit, movingAnimations } from '../src/audit.ts'
 import { fileURLToPath } from 'node:url'
 
 const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url))
@@ -41,7 +41,11 @@ test('setup writes the config, the starter design files, DESIGN.md and its token
 })
 
 test('the generated DESIGN.md passes the linter', () => {
-  stitch2('lint')
+  const out = stitch2('lint')
+  // motion: is stitch2's extension; the linter's note about the unknown key is left out.
+  assert.match(readFileSync(join(dir, 'design/DESIGN.md'), 'utf8'), /\nmotion:\n {2}duration-short: 150ms/)
+  assert.doesNotMatch(out, /token-like-ignored/)
+  assert.match(readFileSync(join(dir, 'design/tokens.css'), 'utf8'), /--af-duration-short: 150ms;/)
 })
 
 test('a screen made from the template is listed with its status', () => {
@@ -98,6 +102,11 @@ test('screens of one page are listed under it by their state', () => {
 test('the starter catalog and screen pass the checks', () => {
   const out = stitch2('check', '--strict')
   assert.match(out, /0 errors\./)
+  // The catalog's controls at rest, hovered, focused and pressed: the States sheet.
+  assert.ok(existsSync(join(dir, 'design/states/index.html')))
+  const sheet = JSON.parse(readFileSync(join(dir, 'design/states/states.json'), 'utf8'))
+  const rows = sheet['screens/components/catalog.html']
+  assert.ok(rows.length > 0 && rows[0].crops.pressed, JSON.stringify(rows?.[0]))
 })
 
 test('with a light theme, check also runs the screens in it', () => {
@@ -110,7 +119,10 @@ test('with a light theme, check also runs the screens in it', () => {
 })
 
 
-test('check renders each variant at both ends of the widths it covers', () => {
+test('check renders each variant at both ends of the widths it covers, and at the breakpoints inside them', () => {
+  const configFile = join(dir, 'stitch2.config.json')
+  const saved = readFileSync(configFile, 'utf8')
+  writeFileSync(configFile, JSON.stringify({ ...JSON.parse(saved), breakpoints: { md: 480 } }, null, 2))
   // A 350 px block fits the 390 px phone frame (16 px margins) but not a 360 px window, the narrowest a phone covers.
   const home = readFileSync(join(dir, 'design/screens/home/mobile-v1.html'), 'utf8')
   mkdirSync(join(dir, 'design/screens/wide'), { recursive: true })
@@ -124,8 +136,9 @@ test('check renders each variant at both ends of the widths it covers', () => {
   assert.ok(narrow.length > 0, JSON.stringify(issues))
   assert.match(narrow[0].message, /^at 360px: /)
   assert.ok(!issues.some((i: { width?: number; type: string }) => !i.width && i.type === 'overflow'), 'fits as drawn')
-  for (const w of [360, 599]) assert.ok(existsSync(join(dir, `design/renders/screens__wide__mobile-v1--${w}px.png`)), String(w))
+  for (const w of [360, 480, 599]) assert.ok(existsSync(join(dir, `design/renders/screens__wide__mobile-v1--${w}px.png`)), String(w))
   rmSync(join(dir, 'design/screens/wide'), { recursive: true })
+  writeFileSync(configFile, saved)
 })
 
 test('setup again keeps every existing file', () => {
@@ -389,6 +402,28 @@ test('audit: a nav whose links scroll or are cut is an error; links wrapped out 
     await page.setContent(nav('flex-wrap:wrap;height:44px;overflow:hidden'))
     const wrapped = await page.evaluate(audit, { comfortable: 32 })
     assert.deepEqual(wrapped.filter((i) => i.type === 'nav-overflow' || i.type === 'text-overlap'), [])
+  } finally {
+    await browser.close()
+  }
+})
+
+test('motion: a transition length DESIGN.md does not name, and what still moves with reduced motion', async () => {
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 600 } })
+    await page.setContent(
+      '<style>@keyframes spin { to { transform: rotate(360deg) } } @keyframes pulse { 50% { opacity: .5 } }' +
+        '.spin { animation: spin 1s linear infinite } .pulse { animation: pulse 2s infinite }' +
+        '@media (prefers-reduced-motion: reduce) { .safe { animation: none } }</style>' +
+        '<body style="margin:0;font:16px sans-serif"><button id="ok" style="transition: background-color 150ms">Save</button>' +
+        '<button id="odd" style="transition: background-color 180ms">Cancel</button>' +
+        '<span class="spin">Syncing</span><span class="spin safe">Saving</span><span class="pulse">Loading</span></body>',
+    )
+    const issues = await page.evaluate(audit, { comfortable: 32, durations: [150, 250] })
+    assert.deepEqual(issues.filter((i) => i.type === 'motion-token').map((i) => i.text), ['Cancel'])
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    // The spinner without a reduced-motion rule still turns; the guarded one stops and the fade may stay.
+    assert.deepEqual((await page.evaluate(movingAnimations)).map((i) => i.text), ['Syncing'])
   } finally {
     await browser.close()
   }

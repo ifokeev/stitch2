@@ -26,12 +26,13 @@ import {
   consistencyIssues,
   reuseIssues,
 } from './consistency.ts'
-import { designThemes, typeLevels } from './design-md.ts'
+import { designThemes, motionDurations, typeLevels } from './design-md.ts'
 import { checkLocales } from './i18n.ts'
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
+import { catalogStates, type StateRow, writeStatesSheet } from './states.ts'
 import { collectText, type Issue, typeIssues } from './typecheck.ts'
-import { audit } from './audit.ts'
+import { audit, movingAnimations } from './audit.ts'
 
 
 const args = process.argv.slice(2)
@@ -45,6 +46,8 @@ const screens = listScreens().filter((s) => !filters.length || filters.some((f) 
 const levels = typeLevels()
 const themes = designThemes()
 const collect = collectOptions()
+/** What the layout audit needs: the comfortable tap size and DESIGN.md's motion durations. */
+const auditOpts = { comfortable: config.comfortableTarget, durations: (() => { try { return motionDurations() } catch { return [] } })() }
 const server = await startServer(0)
 /** The tallest render, in CSS px: a long landing page is shot whole (the canvas draws frames up to the same height). */
 const MAX_RENDER_HEIGHT = 20000
@@ -53,6 +56,7 @@ const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 const results: Record<string, Issue[]> = {}
 const components: Record<string, Components> = {}
+const stateRows: Record<string, StateRow[]> = {}
 for (const s of screens) {
   await page.setViewportSize({ width: s.width, height: 844 })
   await page
@@ -64,14 +68,19 @@ for (const s of screens) {
   components[s.path] = found.components
   const own = await page.evaluate(() => document.documentElement.dataset.theme || '')
   const base = own || themes[0]!
-  const layout = await page.evaluate(audit, { comfortable: config.comfortableTarget })
+  const layout = await page.evaluate(audit, auditOpts)
+  // With reduced motion asked for, nothing keeps moving (DESIGN.md motion, WCAG 2.3.3).
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.waitForTimeout(100)
+  layout.push(...(await page.evaluate(movingAnimations)))
+  await page.emulateMedia({ reducedMotion: null })
   for (const i of layout) if (i.type === 'contrast') i.theme = base
   // The other themes: what the colours change (contrast), plus anything that only shows there.
   const seen = new Set(layout.map((i) => `${i.type} ${i.selector}`))
   const themed: Issue[] = []
   for (const theme of themes.filter((t) => t !== base)) {
     await setTheme(theme)
-    for (const i of await page.evaluate(audit, { comfortable: config.comfortableTarget }))
+    for (const i of await page.evaluate(audit, auditOpts))
       if (i.type === 'contrast' || !seen.has(`${i.type} ${i.selector}`))
         themed.push({ ...i, theme, message: `${theme} theme: ${i.message}` })
     if (shots) await shoot(s, theme)
@@ -79,6 +88,18 @@ for (const s of screens) {
   if (themes.length > 1) await setTheme(base)
   const typed = typeIssues(levels, await page.evaluate(collectText))
   if (shots) await shoot(s)
+  // A catalog: every control at rest, hovered, focused and pressed (states.ts), then its contrast in each theme.
+  const states: Issue[] = []
+  if (s.kind === 'components') {
+    const own = await catalogStates(page, s.path, { crop: true })
+    states.push(...own.issues)
+    stateRows[s.path] = own.rows
+    for (const theme of themes.filter((t) => t !== base)) {
+      await setTheme(theme)
+      states.push(...(await catalogStates(page, s.path, { crop: false, theme })).issues.filter((i) => i.type === 'state-contrast'))
+    }
+    if (themes.length > 1) await setTheme(base)
+  }
   // The other languages, in the screen's own theme. Reported once per element and kind, in the first locale.
   const unknownSeen = new Set<string>()
   for (const locale of locales) {
@@ -86,7 +107,7 @@ for (const s of screens) {
       .goto(`http://127.0.0.1:${server.port}/${s.path}?lang=${encodeURIComponent(locale)}`, { waitUntil: 'networkidle', timeout: 30_000 })
       .catch(() => {})
     await page.waitForTimeout(600)
-    for (const i of await page.evaluate(audit, { comfortable: config.comfortableTarget })) {
+    for (const i of await page.evaluate(audit, auditOpts)) {
       const key = `${i.type} ${i.selector}`
       if (i.type === 'contrast' || seen.has(key)) continue
       seen.add(key)
@@ -132,7 +153,7 @@ for (const s of screens) {
     await page.setViewportSize({ width, height: 844 })
     await page.goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
     await page.waitForTimeout(600)
-    for (const i of await page.evaluate(audit, { comfortable: config.comfortableTarget })) {
+    for (const i of await page.evaluate(audit, auditOpts)) {
       const key = `${i.type} ${i.selector}`
       if (i.type === 'contrast' || seen.has(key)) continue
       seen.add(key)
@@ -147,9 +168,13 @@ for (const s of screens) {
     ...typed,
     ...reuseIssues(s.path, found),
     ...colourIssues(s.path),
+    ...states,
   ]
 }
 await browser.close()
+// The states sheet: the catalogs checked now, and the rows of the others from their last check.
+if (Object.keys(stateRows).length)
+  writeStatesSheet(stateRows, listScreens().filter((s) => s.kind === 'components').map((s) => s.path))
 server.close()
 
 async function setTheme(theme: string) {

@@ -1,6 +1,7 @@
 /**
  * Reads design/DESIGN.md's YAML front matter (the DESIGN.md format: colors, typography, rounded, spacing,
- * components) and resolves {path.to.token} references.
+ * components) and resolves {path.to.token} references. stitch2 adds motion: duration-<name> and ease-<name>
+ * tokens (Google's format has no motion yet; stitch2 lint leaves the linter's note about the key out).
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -24,6 +25,8 @@ export interface Design {
   rounded: Record<string, string>
   spacing: Record<string, string>
   components: Record<string, Record<string, string>>
+  /** duration-<name>: "150ms", ease-<name>: "cubic-bezier(0.2, 0, 0, 1)". */
+  motion: Record<string, string>
 }
 
 export function readDesign(file = join(ROOT, 'DESIGN.md')): Design {
@@ -46,7 +49,16 @@ export function readDesign(file = join(ROOT, 'DESIGN.md')): Design {
     rounded: raw.rounded ?? {},
     spacing: raw.spacing ?? {},
     components: raw.components ?? {},
+    motion: Object.fromEntries(Object.entries(raw.motion ?? {}).map(([k, v]) => [k, String(v)])),
   }
+}
+
+/** The durations DESIGN.md's motion names, in ms (for check: a transition of any other length is a warning). */
+export function motionDurations(design = readDesign()): number[] {
+  return Object.entries(design.motion)
+    .filter(([k]) => k.startsWith('duration-'))
+    .map(([, v]) => (v.trim().endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000))
+    .filter((n) => Number.isFinite(n))
 }
 
 /**

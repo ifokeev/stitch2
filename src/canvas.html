@@ -293,7 +293,7 @@ const filters = JSON.parse(localStorage.getItem('stitch2-filters') ?? 'null') ??
 if (typeof filters.device === 'string') { filters.devices = filters.device === 'all' ? [] : [filters.device]; delete filters.device }
 let screens = []
 let checks = { screens: {} }
-let reports = { consistency: null, compare: null }
+let reports = { consistency: null, compare: null, states: null }
 let selected = null
 const frames = new Map() // path -> { el, device, img, iframe (while live), screen, height }
 // Heights measured before, so the layout doesn't jump while pictures and pages load.
@@ -448,7 +448,7 @@ function filterLabel() {
 var sentFilter = ''
 function sendFilter(force) {
   const doc = document.getElementById('doc')
-  if (!doc.classList.contains('open') || !['/consistency/index.html', '/compare/index.html', '/languages'].includes(docUrl)) return
+  if (!doc.classList.contains('open') || !['/consistency/index.html', '/compare/index.html', '/languages', '/states/index.html'].includes(docUrl)) return
   const message = { stitch2Filter: { paths: reportPaths(), label: filterLabel(), theme: themed() ? theme : '' } }
   const key = JSON.stringify(message)
   if (!force && key === sentFilter) return
@@ -501,6 +501,7 @@ function tree() {
       : `Made ${new Date(state.at).toLocaleString()}${n ? `. Changed since, run ${command} again:\n${changed.slice(0, 12).join('\n')}${n > 12 ? `\n… and ${n - 12} more` : ''}` : ', up to date'}`
   }
   report('Consistency report', '/consistency/index.html', reports.consistency, 'stitch2 consistency')
+  report('States', '/states/index.html', reports.states, 'stitch2 check on the catalog')
   report('App comparison', '/compare/index.html', reports.compare, 'stitch2 compare')
   item('Languages', 'screens × languages', docOpen('/languages'), () => openDoc('/languages'))
   const all = rows().filter((r) => r.key !== '~components' && r.visible.length)
