@@ -267,7 +267,8 @@ test('audit: a wrapped button label is an error, a row with a title and a wrappe
       '<body style="margin:0;font:16px sans-serif">' +
         '<button id="label" style="width:80px">Start the workout now</button>' +
         '<button id="row" style="display:block;width:160px;text-align:start"><span style="display:block">Push</span>' +
-        '<span style="display:block">5 упражнений · Линейная прогрессия</span></button></body>',
+        '<span style="display:block">5 упражнений · Линейная прогрессия</span></button>' +
+        '<button id="rail" style="width:60px;display:flex;flex-direction:column"><span style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">Einstellungen und mehr</span></button></body>',
     )
     const issues = await page.evaluate(audit, { comfortable: 32 })
     const wraps = issues.filter((i) => i.type === 'label-wraps').map((i) => i.text)

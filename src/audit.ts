@@ -128,6 +128,8 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
       if (!n.textContent!.trim()) continue
+      // A label allowed two lines on purpose (line-clamp-2: a navigation rail's, under its icon) may wrap.
+      if ((parseInt(getComputedStyle(n.parentElement!).getPropertyValue('-webkit-line-clamp')) || 0) > 1) continue
       const range = document.createRange()
       range.selectNodeContents(n)
       const tops = [...range.getClientRects()].filter((r) => r.width > 1).map((r) => r.top + r.height / 2)
