@@ -241,6 +241,13 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       'button, a[href], input:not([type=hidden]), select, textarea, [role=button], [role=tab], [role=switch], [role=checkbox]',
     ),
   )
+  // Fixed and sticky layers float over the scrolling page (a running-workout panel over cards): content slides
+  // under them while scrolling, so they never crowd in-flow targets. Tap spacing (6d) already compares layers.
+  const layerOf = (el: Element) => {
+    for (let e: Element | null = el; e; e = e.parentElement)
+      if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return e
+    return null
+  }
   for (const el of interactive) {
     if (interactive.some((o) => o !== el && o.contains(el))) continue
     if (el.matches('a') && el.closest('p')) continue
@@ -250,7 +257,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     const cx = r.left + r.width / 2
     const cy = r.top + r.height / 2
     const crowded = interactive.some((o) => {
-      if (o === el || o.contains(el) || el.contains(o)) return false
+      if (o === el || o.contains(el) || el.contains(o) || layerOf(o) !== layerOf(el)) return false
       const q = o.getBoundingClientRect()
       const dx = Math.max(q.left - cx, 0, cx - q.right)
       const dy = Math.max(q.top - cy, 0, cy - q.bottom)
@@ -276,11 +283,8 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   // 4b. Controls never overlap one another (a button squeezed over its neighbour). Controls inside one another
   // and invisible overlays (a native picker laid over a row) are fine; fixed and sticky layers (a docked timer,
   // a sticky Save bar floating over a list) are compared apart from the scrolling page.
-  const layer = (el: Element) => {
-    for (let e: Element | null = el; e; e = e.parentElement)
-      if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return e
-    return null
-  }
+  // layerOf is defined with the tap targets above; fixed and sticky layers are compared apart here too.
+  const layer = layerOf
   // The part of a control its scrolling or clipping ancestors show: a link scrolled out of a nav strip is not drawn
   // where its box would be.
   const visibleBox = (el: Element) => {
