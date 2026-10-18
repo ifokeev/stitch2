@@ -2,8 +2,10 @@
  * Consistency report: every shared component cropped from every active screen, next to the component
  * catalog's version, with what differs. Writes <design>/consistency/index.html, which the canvas opens from
  * its sidebar. Usage: stitch2 consistency [kind…]   (kinds: tab-bar, header, icon-button, chip, …)
+ * Signatures and crops are cached in <design>/consistency/known.json: reruns only visit screens that are
+ * new, changed, or lack crops for the requested kinds, and check the issues against every screen.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
 import { config } from './config.ts'
@@ -30,19 +32,70 @@ const esc = (s: unknown) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
 
+interface CachedScreen {
+  mtime: number
+  components: Components
+  /** Component kinds cropped for this screen ('all' after an unfiltered run). */
+  kinds: string[]
+  /** Crop files by kind, reused while the screen is unchanged. */
+  crops: Record<string, string[]>
+}
+
+const KNOWN_FILE = join(out, 'known.json')
+const cached: Record<string, CachedScreen> = existsSync(KNOWN_FILE)
+  ? (JSON.parse(readFileSync(KNOWN_FILE, 'utf8')) as Record<string, CachedScreen>)
+  : {}
+// A screen needs a visit when it is new, changed, or lacks crops for the requested kinds.
+const needsVisit = (path: string): boolean => {
+  const hit = cached[path]
+  if (!hit) return true
+  try {
+    if (statSync(join(ROOT, path)).mtimeMs !== hit.mtime) return true
+  } catch {
+    return true
+  }
+  if (!kinds.length) return !hit.kinds.includes('all')
+  return !kinds.every((k) => hit.kinds.includes(k) || hit.kinds.includes('all'))
+}
+const todo = screens.filter((s) => needsVisit(s.path))
+const todoPaths = new Set(todo.map((s) => s.path))
 const server = await startServer(0)
-let browser = await chromium.launch()
-let page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+const CONCURRENCY = 4
 const known: Record<string, Components> = {}
 const crops: Record<string, Record<string, string[]>> = {} // kind -> path -> image files
-for (const [i, s] of screens.entries()) {
-  if (i > 0 && i % 50 === 0) {
-    // Chromium gets fragile after hundreds of page loads in one browser; a fresh one keeps long runs alive.
-    await page.close().catch(() => {})
-    await browser.close().catch(() => {})
-    browser = await chromium.launch()
-    page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+// Reuse the cached signatures and crops of unchanged screens; only changed screens get a visit.
+for (const s of screens) {
+  const hit = cached[s.path]
+  if (hit && !todoPaths.has(s.path)) {
+    known[s.path] = hit.components
+    for (const [kind, files] of Object.entries(hit.crops)) {
+      if (kinds.length && !kinds.includes(kind.split(':')[0]!)) continue
+      crops[kind] ??= {}
+      crops[kind]![s.path] = files
+    }
   }
+}
+const fresh = async () => {
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+  return { browser, page, visits: 0 }
+}
+const pool = await Promise.all(Array.from({ length: Math.min(CONCURRENCY, todo.length) }, fresh))
+let nextWorker = 0
+/** Component families cropped per visited screen, merged into the cache. */
+const visitedKinds: Record<string, Set<string>> = {}
+const visit = async (s: (typeof screens)[number]): Promise<void> => {
+  const worker = pool[nextWorker++ % pool.length]!
+  const { page } = worker
+  if (worker.visits > 0 && worker.visits % 50 === 0) {
+    // Chromium gets fragile after hundreds of page loads; a fresh browser keeps long runs alive.
+    await worker.page.close().catch(() => {})
+    await worker.browser.close().catch(() => {})
+    const next = await fresh()
+    pool[pool.indexOf(worker)] = next
+    return visit(s)
+  }
+  worker.visits++
   await page.setViewportSize({ width: s.width, height: 844 })
   await page
     .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
@@ -50,8 +103,10 @@ for (const [i, s] of screens.entries()) {
   await page.waitForTimeout(600)
   const found = await page.evaluate(collectComponents, collectOptions())
   known[s.path] = found.components
+  visitedKinds[s.path] = new Set<string>()
   for (const [kind, sigs] of Object.entries(found.components)) {
     if (kinds.length && !kinds.includes(kind.split(':')[0]!)) continue
+    visitedKinds[s.path]!.add(kind.split(':')[0]!)
     const files: string[] = []
     for (const [i, sig] of sigs.entries()) {
       const file = `${safe(kind)}/${safe(s.path)}-${i}.png`
@@ -86,8 +141,39 @@ for (const [i, s] of screens.entries()) {
     crops[kind] ??= {}
     crops[kind]![s.path] = files
   }
+  visitedKinds[s.path]!.add('all')
 }
-await browser.close()
+await Promise.all(todo.map((s) => visit(s)))
+// Remember what this run saw: visited screens with fresh mtimes, the rest untouched. Screens that are
+// gone leave the cache; their rows leave the report with them.
+const live = new Set(screens.map((s) => s.path))
+const next: Record<string, CachedScreen> = {}
+for (const [path, hit] of Object.entries(cached)) {
+  if (live.has(path) && !todoPaths.has(path)) next[path] = hit
+}
+for (const s of todo) {
+  const screenCrops: Record<string, string[]> = {}
+  for (const [kind, byPath] of Object.entries(crops)) {
+    if (byPath[s.path]) screenCrops[kind] = byPath[s.path]
+  }
+  const prev = cached[s.path]
+  const families = new Set([...(prev?.kinds ?? []), ...(visitedKinds[s.path] ?? [])])
+  if (!kinds.length) families.add('all')
+  else for (const k of kinds) families.add(k)
+  try {
+    next[s.path] = {
+      mtime: statSync(join(ROOT, s.path)).mtimeMs,
+      components: known[s.path]!,
+      kinds: [...families],
+      crops: { ...(prev?.crops ?? {}), ...screenCrops },
+    }
+  } catch {}
+}
+writeFileSync(KNOWN_FILE, JSON.stringify(next))
+await Promise.all(pool.map(async (w) => {
+  await w.page.close().catch(() => {})
+  await w.browser.close().catch(() => {})
+}))
 server.close()
 
 const issues = consistencyIssues(known, Object.keys(known))
