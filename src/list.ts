@@ -1,10 +1,11 @@
 /**
  * Lists every screen version, variant by variant (mobile, tablet, desktop), with its status and the reviewer's note, for agents (and anyone without the
  * canvas open). Approved versions are the reference; review versions wait for the user; notes are feedback.
- * Ends with what makes the current version unclear (versionProblems); --strict fails on it.
+ * Ends with what makes the current version unclear (versionProblems) and links to a previous variant
+ * (staleLinks); --strict fails on either.
  * Usage: stitch2 screens [screen name] [--status approved|review|draft|archived] [--json] [--strict]
  */
-import { listScreens, stateOf, versionProblems } from './screens.ts'
+import { listScreens, staleLinks, stateOf, versionProblems } from './screens.ts'
 
 const args = process.argv.slice(2)
 const status = args.includes('--status') ? args[args.indexOf('--status') + 1] : undefined
@@ -42,4 +43,9 @@ if (problems.length && !args.includes('--json')) {
   console.log(`\nWhich version is current is unclear (${problems.length}):`)
   for (const p of problems) console.log(`  ${p}`)
 }
-if (problems.length && args.includes('--strict')) process.exit(1)
+const links = staleLinks().filter((p) => !name || p.startsWith(`${name}/`) || p.includes(` ${name} `))
+if (links.length && !args.includes('--json')) {
+  console.log(`\nLinks to a previous variant (${links.length}):`)
+  for (const p of links) console.log(`  ${p}`)
+}
+if ((problems.length || links.length) && args.includes('--strict')) process.exit(1)

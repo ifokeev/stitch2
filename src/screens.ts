@@ -130,12 +130,101 @@ export function writeMeta(path: string, values: Record<string, string | undefine
 }
 
 /**
+ * Links between screens: a screen embeds or points at another screen's variant,
+ * `src="/screens/workout/mobile-v3.html"`. Such a link always names the current approved version of that
+ * screen on that device; approval moves every link that names an earlier version to the approved one.
+ */
+
+/** Every src/href reference to a screen variant inside a screen file. */
+export interface ScreenRef {
+  screen: string
+  device: 'mobile' | 'tablet' | 'desktop'
+  version: number
+}
+
+const refRe = /(?:src|href)="[^"]*?(?:screens\/)?([a-z0-9-]+)\/(mobile|tablet|desktop)-v(\d+)\.html/g
+
+export function findScreenRefs(html: string): ScreenRef[] {
+  const out: ScreenRef[] = []
+  for (const m of html.matchAll(refRe))
+    out.push({ screen: m[1], device: m[2] as ScreenRef['device'], version: Number(m[3]) })
+  return out
+}
+
+/** Bumps every reference to an earlier version of one screen variant to the given version. */
+export function rewriteScreenRefs(html: string, screen: string, device: string, version: number): string {
+  return html.replace(refRe, (m, s: string, d: string, v: string) =>
+    s === screen && d === device && Number(v) < version ? m.replace(`-v${v}.html`, `-v${version}.html`) : m,
+  )
+}
+
+/**
+ * Moves every link that names an earlier version of the target's screen on its device to the target's
+ * version, in every screen file. Returns the files it changed.
+ */
+export function rewriteStaleLinks(target: Pick<Screen, 'screen' | 'device' | 'version'>): string[] {
+  const n = versionNumber(target)
+  if (Number.isNaN(n)) return []
+  const changed: string[] = []
+  for (const dir of config.screenDirs) {
+    for (const file of htmlFiles(join(ROOT, dir))) {
+      const html = readFileSync(file, 'utf8')
+      const next = rewriteScreenRefs(html, target.screen, target.device, n)
+      if (next !== html) {
+        writeFileSync(file, next)
+        changed.push(relative(ROOT, file))
+      }
+    }
+  }
+  return changed.sort()
+}
+
+/**
+ * Links that name a variant which is not current: the file is gone, the variant is archived, or a newer
+ * version is approved on that screen and device. A link to a version still in review or a draft is a
+ * deliberate preview of a proposal, not stale. One line each; empty when every link is current.
+ */
+export function staleLinks(screens: Screen[] = listScreens()): string[] {
+  const out: string[] = []
+  const current = new Map<string, number>()
+  for (const s of screens) {
+    if (s.kind !== 'screen' || s.status !== 'approved') continue
+    const key = `${s.screen} ${s.device}`
+    const n = versionNumber(s)
+    if (!Number.isNaN(n)) current.set(key, Math.max(current.get(key) ?? -1, n))
+  }
+  const byVariant = new Map(screens.map((s) => [`${s.screen} ${s.device} v${versionNumber(s)}`, s]))
+  const seen = new Set<string>()
+  for (const dir of config.screenDirs) {
+    for (const file of htmlFiles(join(ROOT, dir))) {
+      const rel = relative(ROOT, file)
+      const html = readFileSync(file, 'utf8')
+      for (const r of findScreenRefs(html)) {
+        const key = `${r.screen} ${r.device}`
+        const cur = current.get(key)
+        if (cur === undefined || r.version >= cur) continue
+        const hit = byVariant.get(`${key} v${r.version}`)
+        if (hit && hit.status !== 'approved' && hit.status !== 'archived') continue
+        const line = `${rel}: points at ${r.screen} ${r.device}-v${r.version} (${hit ? hit.status : 'missing'}); current is v${cur}`
+        if (!seen.has(line)) {
+          seen.add(line)
+          out.push(line)
+        }
+      }
+    }
+  }
+  return out.sort()
+}
+
+/**
  * Approves a variant. Approval makes it the one current version of its screen on its device: every earlier
  * version there (approved, in review or a draft) and any other approved one become archived, so nobody can mistake
  * an older one for what is implemented. Later versions (a newer proposal) keep their status.
- * Returns the variants it archived.
+ * Links from other screens to an earlier version of this screen on this device move to the approved one,
+ * so no screen keeps pointing at a previous variant.
+ * Returns the variants it archived and the files whose links moved.
  */
-export function approve(path: string): Screen[] {
+export function approve(path: string): { archived: Screen[]; relinked: string[] } {
   const all = listScreens()
   const target = all.find((s) => s.path === path)
   if (!target || target.kind !== 'screen') throw new Error(`not a screen: ${path}`)
@@ -151,7 +240,7 @@ export function approve(path: string): Screen[] {
       (s.status === 'approved' || versionNumber(s) < n),
   )
   for (const s of outdated) writeMeta(s.path, { [tag('status')]: 'archived' })
-  return outdated
+  return { archived: outdated, relinked: rewriteStaleLinks(target) }
 }
 
 /**

@@ -21,7 +21,8 @@ if (!targets.length) {
 // Oldest first, so approving several versions of one screen leaves the latest current.
 targets.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }))
 for (const t of targets) {
-  const archived = approve(t.path)
+  const { archived, relinked } = approve(t.path)
   const note = archived.length ? `; archived ${archived.map((s) => s.version).join(', ')}` : ''
-  console.log(`approved ${t.screen} ${t.version} ${t.device}${note}`)
+  const links = relinked.length ? `; relinked ${relinked.join(', ')}` : ''
+  console.log(`approved ${t.screen} ${t.version} ${t.device}${note}${links}`)
 }

@@ -86,6 +86,15 @@ The canvas shows each version with its variants side by side under one heading, 
 needs review while any variant does. **Approve version** approves every variant in review at once; a single
 variant can still be approved, archived or noted on its own.
 
+## Links between screens
+
+A screen that embeds or points at another screen names its file
+(`src="/screens/workout/mobile-v3.html"`): always the current approved version of that screen on that
+device, never a previous one. Approving a variant moves every such link to it at once (the canvas Approve
+does the same as `stitch2 approve`), and `stitch2 screens` lists any link that still names a previous variant
+— fix it, or move it to the current version yourself when the link was deliberate. A link to a version still
+in review or a draft is a preview of a proposal and stays.
+
 ## How to use them
 
 1. Before designing, run `stitch2 screens` (a name or `--status approved` narrows it) and open the approved
