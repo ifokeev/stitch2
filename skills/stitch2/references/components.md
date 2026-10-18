@@ -11,6 +11,8 @@ colour, icons and states. Users learn an element once; every variant costs atten
 
 ## The ladder
 
+Open the catalog first (on the canvas, or its render under `<design>/renders/`): every element of the
+screen is mapped to a component before any markup is written, and the mapping is part of the hand-over.
 Go down only when the step above cannot work:
 
 1. **Use** a component as it is.
@@ -69,9 +71,11 @@ series) is added to DESIGN.md first, with a line in the prose saying where it is
 
 ## What the checks report
 
-- **reuse**: on a lab screen, an element that looks like a catalog component but was built by hand (a bottom
-  bar with three or more buttons, an h1, a primary-filled button, a pill chip, a header icon button, a caps
-  label).
+- **reuse** (an error: it fails `check --strict` and blocks the hand-over): on a lab screen, an element that
+  looks like a catalog component but was built by hand (a bottom bar with three or more buttons, an h1,
+  a primary-filled button, a pill chip, a header icon button, a caps label). A screen that duplicates a
+  component instead of using it is not handed over: use the component, or extend it (step 4 of the ladder)
+  when it cannot do what the screen needs.
 - **consistency**: a component whose size, radius, font, icon set or icons differ from the catalog's version
   (or, without a catalog, from the majority of screens in its family), or that appears in two versions on one
   screen. `stitch2 consistency` shows the same as cropped images; see the stitch2-consistency skill.

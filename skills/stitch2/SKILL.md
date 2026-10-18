@@ -54,8 +54,9 @@ References, read before the first screen:
    and translate it with **stitch2-translate**. Never add classes to a component to change how it looks, and never write a colour value (hex,
    `rgb()`, `hsl()`): only DESIGN.md's colours, as token classes or `var(--<prefix>-<name>)`.
 5. **Check** `stitch2 check <path> --shots --strict`. Fix every error (overflow, wrapped labels, content under
-   fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text) and every warning about type (`type-*`), hand-built
-   components (`reuse`), components that differ from the catalog (`consistency`) and colour values (`color`).
+   fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text), a hand-built copy of a
+   catalog component (`reuse`: use the component or extend it, never rebuild it), and every warning about type
+   (`type-*`), components that differ from the catalog (`consistency`) and colour values (`color`).
    Text running into other text (`text-overlap`) or out of its card (`overflow`) is an error; a short label cut
    short with an ellipsis (`truncated`) is a warning to fix with room, not a smaller size. Google's rules are
    warnings too (`text-small`, `edge-margin`, `measure`, `tap-spacing`, `placeholder-label`, `unnamed-control`,

@@ -355,7 +355,7 @@ export function consistencyIssues(
 export function reuseIssues(path: string, page: PageComponents): Issue[] {
   if (familyOf(path) !== 'screens') return []
   return page.handBuilt.slice(0, 10).map((h) => ({
-    severity: 'warning' as const,
+    severity: 'error' as const,
     type: 'reuse',
     message: `${nameOf(h.kind)} built by hand; use <${NAMES[h.kind]?.[1] ?? 'the catalog component'}> (see the component catalog, ${config.catalogDir})`,
     selector: h.selector,
