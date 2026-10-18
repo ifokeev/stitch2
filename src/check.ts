@@ -20,7 +20,7 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
 import { colourIssues } from './colours.ts'
-import { checkWidths, config } from './config.ts'
+import { CONFIG_FILE, checkWidths, config } from './config.ts'
 import {
   type Components,
   collectComponents,
@@ -75,7 +75,13 @@ const depMtime = (p: string): number => {
     return 0
   }
 }
-let previous: { screens?: Record<string, Issue[]>; components?: Record<string, Components>; checkedAt?: string; depsMtime?: number } = {}
+let previous: {
+  screens?: Record<string, Issue[]>
+  components?: Record<string, Components>
+  checkedAt?: string
+  depsMtime?: number
+  runKey?: string
+} = {}
 try {
   previous = JSON.parse(readFileSync(join(ROOT, 'checks.json'), 'utf8'))
 } catch {}
@@ -83,8 +89,13 @@ const currentDeps = Math.max(
   ...depFiles.map(depMtime),
   depMtime(config.catalogDir),
   depMtime(join(config.catalogDir, 'catalog.html')),
+  ...(CONFIG_FILE ? [depMtime(CONFIG_FILE)] : []),
 )
 const depsChanged = !previous.checkedAt || (previous.depsMtime ?? 0) < currentDeps
+// Renders are the point of --shots: every screen is visited, nothing is skipped.
+// ...as are explicit locales: different flags check different things.
+const runKey = JSON.stringify({ locales, shots })
+const skipping = !shots && !depsChanged && previous.runKey !== undefined && previous.runKey === runKey
 const screenMtime = (path: string): number => {
   try {
     return statSync(join(ROOT, path)).mtimeMs
@@ -94,7 +105,7 @@ const screenMtime = (path: string): number => {
 }
 const checkedAt = previous.checkedAt ? Date.parse(previous.checkedAt) : 0
 const todo = screens.filter(
-  (s) => depsChanged || !previous.screens?.[s.path] || screenMtime(s.path) >= checkedAt,
+  (s) => !skipping || !previous.screens?.[s.path] || screenMtime(s.path) >= checkedAt,
 )
 for (const s of screens) {
   if (!todo.includes(s)) {
@@ -305,7 +316,7 @@ for (const s of screens) {
 }
 writeFileSync(
   join(ROOT, 'checks.json'),
-  `${JSON.stringify({ checkedAt: new Date().toISOString(), depsMtime: currentDeps, screens: keep({ ...previous.screens, ...results }), components: allComponents }, null, 2)}\n`,
+  `${JSON.stringify({ checkedAt: new Date().toISOString(), depsMtime: currentDeps, runKey, screens: keep({ ...previous.screens, ...results }), components: allComponents }, null, 2)}\n`,
 )
 console.log(
   `\n${screens.length} screens checked, ${errors} errors. Results in design/checks.json (badges on the canvas).`,
