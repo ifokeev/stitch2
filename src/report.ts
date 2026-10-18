@@ -31,11 +31,18 @@ const esc = (s: unknown) =>
     .replaceAll('"', '&quot;')
 
 const server = await startServer(0)
-const browser = await chromium.launch()
-const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+let browser = await chromium.launch()
+let page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 const known: Record<string, Components> = {}
 const crops: Record<string, Record<string, string[]>> = {} // kind -> path -> image files
-for (const s of screens) {
+for (const [i, s] of screens.entries()) {
+  if (i > 0 && i % 50 === 0) {
+    // Chromium gets fragile after hundreds of page loads in one browser; a fresh one keeps long runs alive.
+    await page.close().catch(() => {})
+    await browser.close().catch(() => {})
+    browser = await chromium.launch()
+    page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+  }
   await page.setViewportSize({ width: s.width, height: 844 })
   await page
     .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })

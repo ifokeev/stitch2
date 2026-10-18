@@ -52,12 +52,19 @@ const server = await startServer(0)
 /** The tallest render, in CSS px: a long landing page is shot whole (the canvas draws frames up to the same height). */
 const MAX_RENDER_HEIGHT = 20000
 
-const browser = await chromium.launch()
-const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+let browser = await chromium.launch()
+let page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 const results: Record<string, Issue[]> = {}
 const components: Record<string, Components> = {}
 const stateRows: Record<string, StateRow[]> = {}
-for (const s of screens) {
+for (const [i, s] of screens.entries()) {
+  if (i > 0 && i % 50 === 0) {
+    // Chromium gets fragile after hundreds of page loads in one browser; a fresh one keeps long runs alive.
+    await page.close().catch(() => {})
+    await browser.close().catch(() => {})
+    browser = await chromium.launch()
+    page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+  }
   await page.setViewportSize({ width: s.width, height: 844 })
   await page
     .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
