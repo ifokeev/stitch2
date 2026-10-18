@@ -13,8 +13,10 @@
  * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none]
  *   --shots   also save page-tall renders to design/renders/ (one per theme, language and width)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
+ * Screens run four at a time; reruns only visit screens that changed since design/checks.json (or
+ * everything DESIGN.md, the tokens, the components or the catalog changed since).
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
 import { colourIssues } from './colours.ts'
@@ -52,27 +54,75 @@ const server = await startServer(0)
 /** The tallest render, in CSS px: a long landing page is shot whole (the canvas draws frames up to the same height). */
 const MAX_RENDER_HEIGHT = 20000
 
-let browser = await chromium.launch()
-let page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+const fresh = async () => {
+  const browser = await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+  return { browser, page, visits: 0 }
+}
+type Worker = Awaited<ReturnType<typeof fresh>>
+const CONCURRENCY = 4
+const pool = await Promise.all(Array.from({ length: CONCURRENCY }, fresh))
 const results: Record<string, Issue[]> = {}
 const components: Record<string, Components> = {}
 const stateRows: Record<string, StateRow[]> = {}
-for (const [i, s] of screens.entries()) {
-  if (i > 0 && i % 50 === 0) {
-    // Chromium gets fragile after hundreds of page loads in one browser; a fresh one keeps long runs alive.
-    await page.close().catch(() => {})
-    await browser.close().catch(() => {})
-    browser = await chromium.launch()
-    page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+// Screens unchanged since the last green run keep their results when nothing they depend on changed
+// (DESIGN.md, tokens, components, the catalog): reruns then only visit what actually changed.
+const depFiles = ['DESIGN.md', 'tokens.css', 'tokens.json']
+const depMtime = (p: string): number => {
+  try {
+    return statSync(join(ROOT, p)).mtimeMs
+  } catch {
+    return 0
   }
-  await page.setViewportSize({ width: s.width, height: 844 })
-  await page
-    .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
-    .catch(() => {})
-  // Tailwind's CDN build, web fonts and the lab components settle after load.
-  await page.waitForTimeout(600)
-  const found = await page.evaluate(collectComponents, collect)
-  components[s.path] = found.components
+}
+let previous: { screens?: Record<string, Issue[]>; components?: Record<string, Components>; checkedAt?: string; depsMtime?: number } = {}
+try {
+  previous = JSON.parse(readFileSync(join(ROOT, 'checks.json'), 'utf8'))
+} catch {}
+const currentDeps = Math.max(
+  ...depFiles.map(depMtime),
+  depMtime(config.catalogDir),
+  depMtime(join(config.catalogDir, 'catalog.html')),
+)
+const depsChanged = !previous.checkedAt || (previous.depsMtime ?? 0) < currentDeps
+const screenMtime = (path: string): number => {
+  try {
+    return statSync(join(ROOT, path)).mtimeMs
+  } catch {
+    return Infinity
+  }
+}
+const checkedAt = previous.checkedAt ? Date.parse(previous.checkedAt) : 0
+const todo = screens.filter(
+  (s) => depsChanged || !previous.screens?.[s.path] || screenMtime(s.path) >= checkedAt,
+)
+for (const s of screens) {
+  if (!todo.includes(s)) {
+    results[s.path] = previous.screens![s.path]!
+    if (previous.components?.[s.path]) components[s.path] = previous.components[s.path]
+  }
+}
+const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<void> => {
+  if (worker.visits > 0 && worker.visits % 20 === 0) {
+    // A check loads each screen several times (themes, languages, widths); a fresh browser keeps long
+    // runs alive.
+    await worker.page.close().catch(() => {})
+    await worker.browser.close().catch(() => {})
+    const next = await fresh()
+    worker.browser = next.browser
+    worker.page = next.page
+  }
+  worker.visits++
+  const page = worker.page
+  try {
+    await page.setViewportSize({ width: s.width, height: 844 })
+    await page
+      .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
+      .catch(() => {})
+    // Tailwind's CDN build, web fonts and the lab components settle after load.
+    await page.waitForTimeout(600)
+    const found = await page.evaluate(collectComponents, collect)
+    components[s.path] = found.components
   const own = await page.evaluate(() => document.documentElement.dataset.theme || '')
   const base = own || themes[0]!
   const layout = await page.evaluate(audit, auditOpts)
@@ -86,15 +136,15 @@ for (const [i, s] of screens.entries()) {
   const seen = new Set(layout.map((i) => `${i.type} ${i.selector}`))
   const themed: Issue[] = []
   for (const theme of themes.filter((t) => t !== base)) {
-    await setTheme(theme)
+    await setTheme(page, theme)
     for (const i of await page.evaluate(audit, auditOpts))
       if (i.type === 'contrast' || !seen.has(`${i.type} ${i.selector}`))
         themed.push({ ...i, theme, message: `${theme} theme: ${i.message}` })
-    if (shots) await shoot(s, theme)
+    if (shots) await shoot(page, s, theme)
   }
-  if (themes.length > 1) await setTheme(base)
+  if (themes.length > 1) await setTheme(page, base)
   const typed = typeIssues(levels, await page.evaluate(collectText))
-  if (shots) await shoot(s)
+  if (shots) await shoot(page, s)
   // A catalog: every control at rest, hovered, focused and pressed (states.ts), then its contrast in each theme.
   const states: Issue[] = []
   if (s.kind === 'components') {
@@ -102,10 +152,10 @@ for (const [i, s] of screens.entries()) {
     states.push(...own.issues)
     stateRows[s.path] = own.rows
     for (const theme of themes.filter((t) => t !== base)) {
-      await setTheme(theme)
+      await setTheme(page, theme)
       states.push(...(await catalogStates(page, s.path, { crop: false, theme })).issues.filter((i) => i.type === 'state-contrast'))
     }
-    if (themes.length > 1) await setTheme(base)
+    if (themes.length > 1) await setTheme(page, base)
   }
   // The other languages, in the screen's own theme. Reported once per element and kind, in the first locale.
   const unknownSeen = new Set<string>()
@@ -152,7 +202,7 @@ for (const [i, s] of screens.entries()) {
           message: `${locale}: no translation for ${lacks.join(' ')}`,
         })
     }
-    if (shots) await shoot(s, undefined, locale)
+    if (shots) await shoot(page, s, undefined, locale)
   }
   // The edges of the widths this variant covers (config widths) and the breakpoints inside them, in its own theme
   // and language: what breaks only when the window is narrower or wider than the frame it was drawn in.
@@ -166,25 +216,45 @@ for (const [i, s] of screens.entries()) {
       seen.add(key)
       themed.push({ ...i, width, message: `at ${width}px: ${i.message}` })
     }
-    if (shots) await shoot({ ...s, width }, undefined, undefined, `${width}px`)
+    if (shots) await shoot(page, { ...s, width }, undefined, undefined, `${width}px`)
   }
   await page.setViewportSize({ width: s.width, height: 844 })
-  results[s.path] = [
-    ...layout,
-    ...themed,
-    ...typed,
-    ...reuseIssues(s.path, found),
-    ...colourIssues(s.path),
-    ...states,
-  ]
+    results[s.path] = [
+      ...layout,
+      ...themed,
+      ...typed,
+      ...reuseIssues(s.path, found),
+      ...colourIssues(s.path),
+      ...states,
+    ]
+  } catch (e) {
+    // A dead page must not kill the other workers: record the crash visibly, retry next run.
+    results[s.path] = [
+      {
+        severity: 'error',
+        type: 'check-crashed',
+        message: `check crashed on this screen (${String(e).split('\n')[0]}): rerun to retry`,
+      } as Issue,
+    ]
+    console.error(`check: ${s.path} crashed, recorded and continuing`)
+  }
 }
-await browser.close()
+let cursor = 0
+// One screen per worker at a time: workers pull from the queue, so a page is never shared.
+const drive = async (worker: Worker): Promise<void> => {
+  while (cursor < todo.length) await checkOne(todo[cursor++]!, worker)
+}
+await Promise.all(pool.map((w) => drive(w)))
+await Promise.all(pool.map(async (w) => {
+  await w.page.close().catch(() => {})
+  await w.browser.close().catch(() => {})
+}))
 // The states sheet: the catalogs checked now, and the rows of the others from their last check.
 if (Object.keys(stateRows).length)
   writeStatesSheet(stateRows, listScreens().filter((s) => s.kind === 'components').map((s) => s.path))
 server.close()
 
-async function setTheme(theme: string) {
+async function setTheme(page: Worker['page'], theme: string) {
   await page.evaluate((t) => {
     document.documentElement.dataset.theme = t
   }, theme)
@@ -192,7 +262,13 @@ async function setTheme(theme: string) {
 }
 
 /** A page-tall render; renders in another theme or language than the screen's own get a --<theme> suffix. */
-async function shoot(s: { path: string; width: number }, theme?: string, locale?: string, at?: string) {
+async function shoot(
+  page: Worker['page'],
+  s: { path: string; width: number },
+  theme?: string,
+  locale?: string,
+  at?: string,
+) {
   const height = await page.evaluate(() => document.documentElement.scrollHeight)
   await page.setViewportSize({ width: s.width, height: Math.max(844, Math.min(height, MAX_RENDER_HEIGHT)) })
   mkdirSync(join(ROOT, 'renders'), { recursive: true })
@@ -202,11 +278,6 @@ async function shoot(s: { path: string; width: number }, theme?: string, locale?
   await page.setViewportSize({ width: s.width, height: 844 })
 }
 
-// Merge with the last results, so a filtered run still compares components with every other screen.
-let previous: { screens?: Record<string, Issue[]>; components?: Record<string, Components> } = {}
-try {
-  previous = JSON.parse(readFileSync(join(ROOT, 'checks.json'), 'utf8'))
-} catch {}
 const exists = new Set(listScreens().map((s) => s.path))
 const keep = <T>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([p]) => exists.has(p)))
 const allComponents = keep({ ...previous.components, ...components })
@@ -234,7 +305,7 @@ for (const s of screens) {
 }
 writeFileSync(
   join(ROOT, 'checks.json'),
-  `${JSON.stringify({ checkedAt: new Date().toISOString(), screens: keep({ ...previous.screens, ...results }), components: allComponents }, null, 2)}\n`,
+  `${JSON.stringify({ checkedAt: new Date().toISOString(), depsMtime: currentDeps, screens: keep({ ...previous.screens, ...results }), components: allComponents }, null, 2)}\n`,
 )
 console.log(
   `\n${screens.length} screens checked, ${errors} errors. Results in design/checks.json (badges on the canvas).`,
