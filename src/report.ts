@@ -81,28 +81,32 @@ const fresh = async () => {
   return { browser, page, visits: 0 }
 }
 const pool = await Promise.all(Array.from({ length: Math.min(CONCURRENCY, todo.length) }, fresh))
-let nextWorker = 0
 /** Component families cropped per visited screen, merged into the cache. */
 const visitedKinds: Record<string, Set<string>> = {}
-const visit = async (s: (typeof screens)[number]): Promise<void> => {
-  const worker = pool[nextWorker++ % pool.length]!
-  const { page } = worker
-  if (worker.visits > 0 && worker.visits % 50 === 0) {
-    // Chromium gets fragile after hundreds of page loads; a fresh browser keeps long runs alive.
-    await worker.page.close().catch(() => {})
-    await worker.browser.close().catch(() => {})
-    const next = await fresh()
-    pool[pool.indexOf(worker)] = next
-    return visit(s)
-  }
-  worker.visits++
-  await page.setViewportSize({ width: s.width, height: 844 })
-  await page
-    .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
-    .catch(() => {})
-  await page.waitForTimeout(600)
-  const found = await page.evaluate(collectComponents, collectOptions())
-  known[s.path] = found.components
+let cursor = 0
+// One screen per worker at a time: workers pull from the queue, so a page is never shared.
+const runOne = async (
+  s: (typeof screens)[number],
+  worker: Awaited<ReturnType<typeof fresh>>,
+): Promise<void> => {
+  try {
+    if (worker.visits > 0 && worker.visits % 50 === 0) {
+      // Chromium gets fragile after hundreds of page loads; a fresh browser keeps long runs alive.
+      await worker.page.close().catch(() => {})
+      await worker.browser.close().catch(() => {})
+      const next = await fresh()
+      worker.browser = next.browser
+      worker.page = next.page
+    }
+    worker.visits++
+    const page = worker.page
+    await page.setViewportSize({ width: s.width, height: 844 })
+    await page
+      .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
+      .catch(() => {})
+    await page.waitForTimeout(600)
+    const found = await page.evaluate(collectComponents, collectOptions())
+    known[s.path] = found.components
   visitedKinds[s.path] = new Set<string>()
   for (const [kind, sigs] of Object.entries(found.components)) {
     if (kinds.length && !kinds.includes(kind.split(':')[0]!)) continue
@@ -142,8 +146,17 @@ const visit = async (s: (typeof screens)[number]): Promise<void> => {
     crops[kind]![s.path] = files
   }
   visitedKinds[s.path]!.add('all')
+  } catch (e) {
+    // A dead page must not kill the other workers: the screen keeps no cache entry and is retried next run.
+    delete known[s.path]
+    delete visitedKinds[s.path]
+    console.error(`consistency: skipping ${s.path} (${String(e).split('\n')[0]})`)
+  }
 }
-await Promise.all(todo.map((s) => visit(s)))
+const drive = async (worker: Awaited<ReturnType<typeof fresh>>): Promise<void> => {
+  while (cursor < todo.length) await runOne(todo[cursor++]!, worker)
+}
+await Promise.all(pool.map((w) => drive(w)))
 // Remember what this run saw: visited screens with fresh mtimes, the rest untouched. Screens that are
 // gone leave the cache; their rows leave the report with them.
 const live = new Set(screens.map((s) => s.path))
@@ -152,6 +165,8 @@ for (const [path, hit] of Object.entries(cached)) {
   if (live.has(path) && !todoPaths.has(path)) next[path] = hit
 }
 for (const s of todo) {
+  // Screens that failed keep no cache entry, so the next run retries them.
+  if (!known[s.path]) continue
   const screenCrops: Record<string, string[]> = {}
   for (const [kind, byPath] of Object.entries(crops)) {
     if (byPath[s.path]) screenCrops[kind] = byPath[s.path]
