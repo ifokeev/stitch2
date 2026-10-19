@@ -563,7 +563,15 @@ function tree() {
   item('Languages', 'screens × languages', docOpen('/languages'), () => openDoc('/languages'))
   const all = rows().filter((r) => r.key !== '~components' && r.visible.length)
   head('Screens')
-  const dotOf = (list) => (list.some((s) => s.status === 'approved') ? 'approved' : list.some((s) => s.status === 'review') ? 'review' : 'draft')
+  // A rollup is green only when nothing is pending: like versionsOf, review outranks approved, and archived
+  // versions do not count.
+  const dotOf = (list) => {
+    const live = list.filter((s) => s.status !== 'archived')
+    if (live.some((s) => s.status === 'review')) return 'review'
+    if (live.some((s) => s.status !== 'approved')) return 'draft'
+    if (live.some((s) => s.status === 'approved')) return 'approved'
+    return 'draft'
+  }
   const screenRow = (row, nested) => {
     const name = document.createElement('div')
     name.className = `screen-name${nested ? ' state' : ''}`
