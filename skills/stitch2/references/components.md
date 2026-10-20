@@ -61,6 +61,10 @@ never patch the bundle or restyle the element on a screen. Props are the element
 an empty attribute is true) and its content is children. A component the screens need but the app lacks is
 added to the app first, with the same name.
 
+Keep native field IDs and their external label, ARIA and fragment references stable when nesting components.
+`stitch2/elements` preserves IDs from the element being replaced; only real collisions outside that element
+are renamed, together with references inside the component. Test both cases when changing a shared form.
+
 ## Colours come from DESIGN.md
 
 Every colour on a screen and in a component is one of DESIGN.md's: a token class (`bg-surface`,

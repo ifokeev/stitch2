@@ -53,13 +53,20 @@ export const screenLocale = (): string | undefined =>
  */
 let idCount = 0
 const ID_REFS = ['for', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-owns', 'aria-activedescendant', 'list']
-function uniqueIds(content: DocumentFragment) {
+function uniqueIds(content: DocumentFragment, replacing: Element) {
+  // The element's children are about to be replaced, not duplicated. Their IDs may also be
+  // referenced from outside the component (labels, descriptions and navigation anchors).
+  const occupied = new Set(Array.from(document.querySelectorAll('[id]'))
+    .filter((el) => !replacing.contains(el)).map((el) => el.id))
   const renamed = new Map<string, string>()
   for (const el of Array.from(content.querySelectorAll('[id]'))) {
-    if (!document.getElementById(el.id)) continue
-    const next = el.id + '-s2-' + ++idCount
+    if (!occupied.has(el.id)) continue
+    let next: string
+    do next = el.id + '-s2-' + ++idCount
+    while (occupied.has(next) || content.getElementById(next))
     renamed.set(el.id, next)
     el.id = next
+    occupied.add(next)
   }
   if (!renamed.size) return
   for (const el of Array.from(content.querySelectorAll('*')))
@@ -105,7 +112,7 @@ export function defineElements<C>(components: Record<string, C>, options: Elemen
               if (typeof props[key] === 'string' && !root.hasAttribute(`data-${key}`))
                 root.setAttribute(`data-${key}`, props[key] as string)
           }
-          uniqueIds(t.content)
+          uniqueIds(t.content, this)
           this.replaceWith(t.content)
           if (options.after && !pending++)
             queueMicrotask(() => {
