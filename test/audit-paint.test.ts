@@ -55,6 +55,14 @@ test('explicit pretty content titles can wrap only when their full text fits out
   assert.deepEqual(issues.map((i) => i.selector), ['#clipped', '#nav', '#ordinary'])
 })
 
+test('tooltip copy is not a trigger label, while an actual wrapped label with the same description still fails', async () => {
+  const tooltip = (id: string, opacity: number) => `<span id="${id}" role="tooltip" style="position:absolute;width:90px;white-space:normal;opacity:${opacity}">Model provenance with a detailed description that naturally uses several lines</span>`
+  const icon = (id: string, opacity: number) => `<a id="${id}" href="#" aria-label="Model details" aria-describedby="${id}-hint" style="display:inline-flex;width:44px;height:44px"><svg aria-hidden="true" width="20" height="20"><circle cx="10" cy="10" r="8"/></svg>${tooltip(id + '-hint', opacity)}</a>`
+  const issues = await read(icon('hidden-hint', 0) + icon('visible-hint', 1) +
+    `<button id="wrapped-label" aria-describedby="wrapped-hint" style="width:90px;font:14px/21px sans-serif">Use this longer action${tooltip('wrapped-hint', 0)}</button>`, 'label-wraps')
+  assert.deepEqual(issues.map((i) => i.selector), ['#wrapped-label'])
+})
+
 test('audit measures associated native choice labels, not their compact checkbox and radio artwork', async () => {
   const issues = await read('<style>label{display:flex;align-items:center;width:240px;min-height:44px}input{width:18px;height:18px}</style>' +
     '<label><input id="wrapped" type="checkbox">Keep audio</label>' +
@@ -79,6 +87,19 @@ test('audit retains close-target spacing checks around an associated choice labe
   assert.ok(issues.some((issue) => issue.selector === '#close-choice'))
 })
 
+test('tap targets exclude fully scroll-clipped choices, not small visible choices or below-window controls', async () => {
+  await page.setContent('<style>body{margin:0;font:16px sans-serif}label{display:flex;align-items:center;min-height:44px}input{width:18px;height:18px}</style>' +
+    '<div id="scroll" style="height:100px;overflow:auto"><div style="height:120px"></div><label><input id="valid" type="checkbox">Full choice target</label><input id="small-scrolled" type="checkbox" aria-label="Small choice"></div>' +
+    '<input id="small-visible" type="checkbox" aria-label="Small visible choice"><div style="height:650px"></div><input id="below-window" type="checkbox" aria-label="Below window">')
+  const before = (await page.evaluate(audit, { comfortable: 44 })).filter((i) => i.type === 'tap-target')
+  assert.deepEqual(before.map((i) => i.selector), ['#small-visible', '#below-window'])
+  await page.locator('#scroll').evaluate((el) => { el.scrollTop = el.scrollHeight })
+  const after = (await page.evaluate(audit, { comfortable: 44 })).filter((i) => i.type === 'tap-target')
+  assert.ok(!after.some((i) => i.selector === '#valid'))
+  assert.ok(after.some((i) => i.selector === '#small-scrolled'))
+  assert.ok(after.some((i) => i.selector === '#small-visible'))
+})
+
 test('audit ignores offscreen rail descendants behind nested clips but retains a visibly cut edge label', async () => {
   const issues = await read('<div style="display:flex;width:350px;margin:20px;overflow-x:auto">' +
     '<article style="width:400px;flex:none">First card</article><article style="width:220px;flex:none"><span style="display:block;width:180px;overflow:hidden;white-space:nowrap"><span id="offscreen">Offscreen model title →</span></span></article></div>' +
@@ -90,6 +111,15 @@ test('audit accepts an input action only within its reserved padding, not over e
   const field = (id: string, padding: number, side: 'left' | 'right' = 'right') => `<div style="position:relative;width:260px;margin:20px"><input id="${id}" type="password" value="Some text" style="box-sizing:border-box;width:100%;height:44px;padding-${side}:${padding}px"><button id="${id}-action" aria-label="Reveal" style="position:absolute;${side}:0;top:0;width:44px;height:44px">●</button></div>`
   const issues = await read(field('valid', 44) + field('invalid', 12) + field('left', 44, 'left'), 'control-overlap')
   assert.deepEqual(issues.map((i) => i.selector), ['#invalid-action'])
+})
+
+test('touch spacing recognises a reserved input action but retains genuinely close neighbours', async () => {
+  const field = (id: string, padding: number, side: 'left' | 'right' = 'right') => `<div style="position:relative;width:260px;margin:20px"><input id="${id}" type="text" value="A selected country" style="box-sizing:border-box;width:100%;height:44px;padding-${side}:${padding}px"><button id="${id}-action" aria-label="Open choices" style="position:absolute;${side}:0;top:0;width:44px;height:44px">⌄</button></div>`
+  const issues = await read(field('reserved', 52) + field('intruding', 12) + field('start', 52, 'left') +
+    '<div style="margin:20px"><button id="neighbour-one" style="width:44px">One</button><button id="neighbour-two" style="width:44px">Two</button></div>', 'tap-spacing')
+  assert.ok(!issues.some((i) => ['#reserved', '#reserved-action', '#start', '#start-action'].includes(i.selector)))
+  assert.ok(issues.some((i) => i.selector === '#intruding-action'))
+  assert.ok(issues.some((i) => i.selector === '#neighbour-one' || i.selector === '#neighbour-two'))
 })
 
 test('audit ignores transparent hints and fully clipped accessible inputs, but not visible overflow', async () => {
@@ -171,6 +201,14 @@ test('audit allows a stretched transparent row action, not overlapping painted o
 test('audit does not exempt an empty overlay painted by its pseudo element', async () => {
   const issues = await read('<style>#painted::before{content:"";position:absolute;inset:0;background:red}</style><div style="position:relative;width:300px;height:60px;margin:24px"><button id="painted" aria-label="Open row" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent"></button><a style="position:relative;z-index:1" href="#">Details</a></div>', 'control-overlap')
   assert.equal(issues.length, 1)
+})
+
+test('touch spacing accepts a reachable secondary link above its own empty row action, not blocked or neighbouring controls', async () => {
+  const row = '<div style="position:relative;width:300px;height:44px;margin:24px"><button aria-label="Open row" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent"></button><a id="secondary" href="#" style="position:relative;z-index:1;display:inline-flex;align-items:center;width:100px;height:44px">Details</a></div>'
+  assert.deepEqual(await read(row, 'tap-spacing'), [])
+  assert.ok((await read(row.replace('inset:0;width:100%', 'inset:0;z-index:2;width:100%'), 'tap-spacing')).length > 0)
+  assert.ok((await read(row.replace('background:transparent', 'background:red'), 'tap-spacing')).length > 0)
+  assert.ok((await read('<button style="width:44px">One</button><button style="width:44px">Two</button>', 'tap-spacing')).length > 0)
 })
 
 test('audit retains overlap detection inside a modal while ignoring clipped content outside its scroll port', async () => {

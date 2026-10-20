@@ -231,21 +231,25 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     el.matches('button, a, label, [role=tab], [role=button], [role=switch], th') ||
     /(^|\s)(chip|badge|pill|tag)|rounded-full/.test(String((el as HTMLElement).className ?? ''))
   for (const el of all) {
-    if (!isLabel(el) || text(el).length > 40 || el.querySelector('p, div, li, ul, br')) continue
+    if (!isLabel(el) || el.querySelector('p, div, li, ul, br')) continue
+    // A tooltip describes its trigger but is not its painted control label,
+    // even when hovered. Hidden hints cannot create a wrap or conceal a real
+    // wrapped label by pushing its text beyond the short-label length limit.
+    const labelNodes: Text[] = []
+    const textWalker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    for (let n = textWalker.nextNode(); n; n = textWalker.nextNode())
+      if (n.textContent!.trim() && n.parentElement && shown(n.parentElement) && !n.parentElement.closest('[role=tooltip]'))
+        labelNodes.push(n as Text)
+    if (!labelNodes.length || labelNodes.map((n) => n.textContent).join(' ').trim().length > 40) continue
     // Prose links flow with their sentence; vertical contents titles and fitted disclosure headings can
     // also wrap. Horizontal navigation, tabs and ordinary button labels retain their one-line rule.
     if (proseLink(el) || verticalNavigationLink(el) || disclosureTextFits(el) || readableContentControl(el)) continue
     // A control whose text sits in two or more elements (a list row's title and its meta line) is a composite
     // control, not a label: its lines are laid out on purpose.
-    const holders = new Set<Element>()
-    const textWalker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-    for (let n = textWalker.nextNode(); n; n = textWalker.nextNode())
-      if (n.textContent!.trim() && n.parentElement) holders.add(n.parentElement)
+    const holders = new Set(labelNodes.map((n) => n.parentElement))
     if (holders.size > 1) continue
     // A wrap is one text node breaking across lines; an icon above its label is layout, not a wrap.
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-      if (!n.textContent!.trim()) continue
+    for (const n of labelNodes) {
       // A label allowed two lines on purpose (line-clamp-2: a navigation rail's, under its icon) may wrap.
       if ((parseInt(getComputedStyle(n.parentElement!).getPropertyValue('-webkit-line-clamp')) || 0) > 1) continue
       const range = document.createRange()
@@ -410,6 +414,10 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   for (const el of interactive) {
     if (interactive.some((o) => o !== el && o.contains(el))) continue
     if (proseLink(el)) continue
+    // Scrolling containers can fully clip an otherwise laid-out control. It
+    // has no current hit area to measure; being below the window alone does
+    // not clip it, and the control is checked after scrolling it into view.
+    if (!visibleRects(el).length) continue
     const r = tapRect(el)
     const min = Math.min(r.width, r.height)
     // WCAG 2.2 spacing exception: a smaller target passes when a 24px circle on it touches no other target.
@@ -491,7 +499,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     return q.right <= left + 1 || q.left >= right - 1
   }
   // Behind an open modal (found above) only the modal's own controls count.
-  const solid = interactive.filter((el) => opacity(el) > 0.05 && (!modal || modal.contains(el)))
+  const solid = interactive.filter((el) => opacity(el) > 0.05 && visibleRects(el).length > 0 && (!modal || modal.contains(el)))
   const emptyOverlays = new Set(solid.filter(isEmptyOverlay))
   const controlRects = new Map(solid.map((el) => [el, visibleRects(el)]))
   for (const [i, a] of solid.entries())
@@ -716,6 +724,10 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       const cy = r.top + r.height / 2
       const hit = solid.find((o) => {
         if (o === el || o.contains(el) || el.contains(o) || layer(o) !== layer(el)) return false
+        // A compound input's clear/reveal/list button occupies reserved padding,
+        // not a neighbouring target. The same geometry as overlap checks keeps
+        // insufficient padding and unrelated adjacent controls checked.
+        if (reservedInputAction(el, o) || reservedInputAction(o, el) || emptyOverlay(el, o) || emptyOverlay(o, el)) return false
         const q = tapRect(o)
         const ox = Math.max(0, Math.min(cx + 24, q.right) - Math.max(cx - 24, q.left))
         const oy = Math.max(0, Math.min(cy + 24, q.bottom) - Math.max(cy - 24, q.top))

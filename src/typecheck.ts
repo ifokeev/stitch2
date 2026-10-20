@@ -97,7 +97,7 @@ export function collectText(): TextItem[] {
       // Set in capitals: uppercased by CSS, or typed in capitals (6+ letters, so "RPE" and "PR" don't count).
       upper:
         cs.textTransform === 'uppercase' ||
-        (own === own.toUpperCase() && own.replace(/[^A-Z]/g, '').length >= 6),
+        (!el.closest('td, dd, output') && own === own.toUpperCase() && own.replace(/[^A-Z]/g, '').length >= 6),
       numeric: /^[\d\s.,:×x+\-−–/%]+[a-z]{0,4}$/i.test(own) && /\d/.test(own),
       lines,
       code: Boolean(el.closest('pre, code')),

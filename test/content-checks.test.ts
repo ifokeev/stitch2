@@ -61,3 +61,12 @@ test('code preserves literal case and monospace styles while surrounding UI capi
     assert.equal(items.find((item) => item.selector === '#ui-caps')!.code, false)
   } finally { await page.close() }
 })
+
+test('native data values retain their case without becoming caps labels, while authored uppercase still needs tracking', async () => {
+  const page = await browser.newPage()
+  try {
+    await page.setContent('<style>body{font:14px/21px sans-serif}</style><table><thead><tr><th id="heading">MODEL NAME</th></tr></thead><tbody><tr><td>SAM 3.1, SAM 2</td></tr><tr><td id="styled" style="text-transform:uppercase">active models</td></tr></tbody></table><dl><dt>File types</dt><dd>JPG · JPEG · PNG · WEBP · HEIC · HEIF</dd></dl><output>JSON DATA</output>')
+    const issues = typeIssues([], await page.evaluate(collectText))
+    assert.deepEqual(issues.filter((issue) => issue.type === 'type-caps').map((issue) => issue.selector), ['#heading', '#styled'])
+  } finally { await page.close() }
+})

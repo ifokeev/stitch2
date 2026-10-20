@@ -60,8 +60,10 @@ References, read before the first screen:
    Native checkbox and radio targets include their visible, associated label; the glyph need not be 44px.
    Hidden or noninteractive labels do not enlarge a hit area. Offscreen content in a deliberate horizontal
    rail is not viewport clipping, while a partially visible cut label still needs correction.
-   Literal `<pre>`/`<code>` content keeps its language's case and syntax colours, not UI-label typography;
-   the code container's own authored colours still follow DESIGN.md. Unchanged `source=app` captures are
+   Literal `<pre>`/`<code>` content keeps its language's case and syntax colours, not UI-label typography.
+   Native table-data, definition values and output values keep their supplied case too. Explicit CSS uppercase
+   and column headings still receive the caps-label tracking check.
+   The code container's own authored colours still follow DESIGN.md. Unchanged `source=app` captures are
    not token-migration targets.
    Text running into other text (`text-overlap`) or out of its card (`overflow`) is an error; a short label cut
    short with an ellipsis (`truncated`) is a warning to fix with room, not a smaller size. Google's rules are
@@ -92,6 +94,14 @@ References, read before the first screen:
    unlike horizontal navigation labels. An in-page disclosure (`aria-expanded`, without `aria-haspopup`)
    may have a multiline heading when its height and padding fit the complete text. A text input's clear,
    reveal or list-toggle button may overlap only padding reserved for it, never the editable text area.
+   Such a geometrically contained action is one compound input, not a close neighbour for `tap-spacing`;
+   a button intruding into editable text or an unrelated adjacent control still fails the checks.
+   A transparent stretched row action below its own secondary link is not a competing touch target when
+   browser hit-testing proves that link is reachable; painted, blocking or merely adjacent controls still fail.
+   Fully clipped controls inside scrolling containers have no painted hit area until scrolled into view;
+   this does not exempt visible small controls or content merely below the window.
+   Tooltip copy is reading text, not its trigger's compact label: it may wrap when visible and does not
+   create or hide a `label-wraps` issue on the trigger. The actual painted control label is still checked.
    Cached checks are invalidated when shared components, the catalog or the checker change. A filtered
    rerun refreshes only those screens; it must not make unrelated screens' older checks appear current.
    Motion warnings: `motion-token` (a transition length DESIGN.md doesn't name) and `reduced-motion` (something
