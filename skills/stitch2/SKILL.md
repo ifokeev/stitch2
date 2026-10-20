@@ -90,6 +90,9 @@ References, read before the first screen:
    States sheet (components.md, States).
 6. **Look and critique.** View the render in `<design>/renders/` (crop the first screenful). Score it with the
    rubric in principles.md, fix what fails, repeat 5–6 at most three times.
+   On the canvas, select a later row and zoom out and back while earlier pages/thumbnails load. The selected
+   visible frame keeps its screen position when row heights settle; this does not recenter a frame you pan
+   away from or interrupt a drag. Check the live canvas as well as the saved render before hand-over.
 7. **Hand over.** Set the version's status to `review`, point the user to it on the canvas, and report what
    changed, how you answered their notes, and any rubric item you could not satisfy. The page's empty and loading
    screens go to review with it; for a page without them (a form, a static page), say why. The user approves; only then

@@ -385,6 +385,15 @@ const rows = () => {
 
 // Screens flow left to right and wrap, like a design canvas; each screen's versions stay together.
 function layout() {
+  // Late page/thumbnail heights move later rows. Keep the frame being reviewed
+  // at its current screen position, not at a fresh zoomTo position. A frame the
+  // user has panned away from, or an active drag, must not pull the camera back.
+  const anchor = (() => {
+    if (!selected || selected.el.style.display === 'none' || viewport.classList.contains('panning')) return null
+    const a = selected.el.getBoundingClientRect(), b = viewport.getBoundingClientRect()
+    if (a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom) return null
+    return { frame: selected, x: parseFloat(selected.el.style.left), y: parseFloat(selected.el.style.top) }
+  })()
   for (const n of world.querySelectorAll('.row-label')) n.remove()
   let x = 0, y = 0, lineH = 0, page = ''
   const all = rows()
@@ -435,6 +444,11 @@ function layout() {
   }
   tree()
   sendFilter()
+  if (anchor && selected === anchor.frame && selected.el.style.display !== 'none') {
+    const dx = (anchor.x - parseFloat(selected.el.style.left)) * view.z
+    const dy = (anchor.y - parseFloat(selected.el.style.top)) * view.z
+    if (dx || dy) { view.x += dx; view.y += dy; apply(); return }
+  }
   scheduleSync()
 }
 
