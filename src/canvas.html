@@ -92,6 +92,7 @@
   .frame.ready .device iframe { visibility: visible; }
   .device .shot { display: block; left: 0; pointer-events: none; position: absolute; top: 0; user-select: none; }
   .device .shot:not([src]) { display: none; }
+  .frame.ready .device .shot { visibility: hidden; }
   .device .shield { cursor: pointer; inset: 0; position: absolute; }
   .frame.live .shield { display: none; }
   .frame.changed .device { animation: flash 900ms ease-out; }
@@ -288,7 +289,9 @@ const copyButton = (text, title) => {
   b.onclick = (e) => { e.stopPropagation(); copy(text) }
   return b
 }
-let view = JSON.parse(localStorage.getItem('stitch2-view') ?? 'null') ?? { x: 40, y: 60, z: 0.4 }
+const VIEW_KEY = 'stitch2-view-v2'
+const savedView = JSON.parse(localStorage.getItem(VIEW_KEY) ?? 'null')
+let view = savedView ?? { x: 40, y: 60, z: 0.4 }
 const filters = JSON.parse(localStorage.getItem('stitch2-filters') ?? 'null') ?? { status: 'active' }
 if (typeof filters.device === 'string') { filters.devices = filters.device === 'all' ? [] : [filters.device]; delete filters.device }
 let screens = []
@@ -297,9 +300,9 @@ let reports = { consistency: null, compare: null, states: null }
 let selected = null
 const frames = new Map() // path -> { el, device, img, iframe (while live), screen, height }
 // Heights measured before, so the layout doesn't jump while pictures and pages load.
-const HEIGHTS = JSON.parse(localStorage.getItem('stitch2-heights') ?? '{}')
+const HEIGHTS = JSON.parse(localStorage.getItem('stitch2-heights-v2') ?? '{}')
 let heightsTimer
-const saveHeights = () => { clearTimeout(heightsTimer); heightsTimer = setTimeout(() => localStorage.setItem('stitch2-heights', JSON.stringify(HEIGHTS)), 1000) }
+const saveHeights = () => { clearTimeout(heightsTimer); heightsTimer = setTimeout(() => localStorage.setItem('stitch2-heights-v2', JSON.stringify(HEIGHTS)), 1000) }
 let layoutQueued = false
 /** Many frames measure themselves at once while loading: one layout per animation frame. */
 const scheduleLayout = () => { if (!layoutQueued) { layoutQueued = true; requestAnimationFrame(() => { layoutQueued = false; layout() }) } }
@@ -311,7 +314,7 @@ const apply = () => {
   viewport.style.backgroundSize = `${s}px ${s}px`
   viewport.style.backgroundPosition = `${view.x}px ${view.y}px`
   document.getElementById('zoom').textContent = `${Math.round(view.z * 100)}%`
-  localStorage.setItem('stitch2-view', JSON.stringify(view))
+  localStorage.setItem(VIEW_KEY, JSON.stringify(view))
   scheduleSync()
 }
 const zoomAt = (cx, cy, z) => {
@@ -580,8 +583,11 @@ function measure(f) {
   if (!f.iframe) return
   try {
     const doc = f.iframe.contentDocument
+    // A previously tall iframe supplies a scrollHeight floor even after content shrinks.
+    f.iframe.style.height = `${f.screen.viewportHeight ?? 844}px`
     // As tall as the page, up to MAX_FRAME_HEIGHT: long landing pages are drawn whole.
     setHeight(f, Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0))
+    size(f)
   } catch {}
 }
 
@@ -602,13 +608,13 @@ function size(f) {
   f.img.style.width = w
   if (f.iframe) Object.assign(f.iframe.style, { width: w, height: h })
 }
-const frameSrc = (s) => `/${s.path}?pick${langQuery()}`
+const frameSrc = (s) => `/${s.path}?pick&canvas=${s.viewportHeight ?? 844}${langQuery()}`
 
 // ---- live frames: a screen is a whole page, so only the frames in view, at a zoom where you can work with them,
 // are live (at most MAX_LIVE, nearest the middle first), plus the selected one and those with picked elements.
 // The rest show the picture the server renders (/api/shot). Without pictures (no Chromium), frames in view stay
 // live at any zoom, still at most MAX_LIVE. ----
-const LIVE_ZOOM = 0.3, MAX_LIVE = 12, SHOTS_AT_ONCE = 3
+const LIVE_ZOOM = 0.3, MAX_LIVE = 6, SHOTS_AT_ONCE = 3
 let shotRev = 0, shotErrors = 0, syncTimer
 const shotsFailed = () => shotErrors > 2
 const scheduleSync = () => { clearTimeout(syncTimer); syncTimer = setTimeout(syncLive, 120) }
@@ -637,8 +643,8 @@ function mount(f) {
       f.el.classList.add('ready')
       for (const go of f.waiters.splice(0)) go()
     }, 350)
-    setTimeout(() => measure(f), 1200)
-    setTimeout(() => measure(f), 2500)
+    setTimeout(() => { if (f.iframe === iframe) measure(f) }, 1200)
+    setTimeout(() => { if (f.iframe === iframe) measure(f) }, 2500)
   })
   iframe.src = frameSrc(f.screen)
   f.device.insertBefore(iframe, f.img.nextSibling)
@@ -672,7 +678,8 @@ function shotDone(f, ok) {
   if (!f.img.dataset.loading) return
   delete f.img.dataset.loading
   shotsLoading--
-  if (ok) { shotErrors = 0; if (!f.iframe) setHeight(f, f.img.naturalHeight) } else if (++shotErrors > 2) scheduleSync()
+  if (ok) { shotErrors = 0; if (!f.iframe) setHeight(f, f.img.naturalHeight) } else shotErrors++
+  scheduleSync()
   pumpShots()
 }
 function syncLive() {
@@ -693,9 +700,11 @@ function syncLive() {
     // Frames just out of view stay live while there's room, so panning back and forth doesn't reload them.
     for (const f of kept) { if (live.size >= MAX_LIVE) break; if (f.iframe) live.add(f) }
   }
-  for (const f of frames.values()) if (f.iframe && !live.has(f)) unmount(f)
+  const visible = new Set(near.map(({ f }) => f))
+  // Keep the page until its picture is loaded; switching zoom must never reveal an empty frame.
+  for (const f of frames.values()) if (f.iframe && !live.has(f) && (!visible.has(f) || (f.img.complete && f.img.naturalWidth))) unmount(f)
   for (const f of live) mount(f)
-  shotQueue = near.filter(({ f }) => !f.el.classList.contains('ready')).map(({ f }) => [f, shotUrl(f.screen)])
+  shotQueue = near.map(({ f }) => [f, shotUrl(f.screen)])
   pumpShots()
 }
 
@@ -991,7 +1000,7 @@ async function load(first, given) {
   await loadChecks()
   await loadReports()
   if (selected) inspector(selected)
-  if (first && !localStorage.getItem('stitch2-view')) setTimeout(fit, 1500)
+  if (first && !savedView) setTimeout(fit, 1500)
 }
 
 // ---- filters ----

@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Browser } from '@playwright/test'
 import { messagesFile, sourceLocale } from './i18n.ts'
-import { ROOT } from './screens.ts'
+import { ROOT, meta, tag } from './screens.ts'
 
 /** The tallest picture, in CSS px: the same limit as the canvas frames and check's renders. */
 const MAX_HEIGHT = 20000
@@ -54,6 +54,7 @@ function keyOf(r: ShotRequest): string | null {
   if (!existsSync(file)) return null
   const messages = r.lang && r.lang !== sourceLocale() ? messagesFile(r.lang) : undefined
   const parts = [
+    'viewport-v2',
     r.path,
     statSync(file).mtimeMs,
     sharedStamp(),
@@ -93,8 +94,11 @@ export function shot(base: string, r: ShotRequest): Promise<Buffer> | null {
     browser ??= launch()
     const page = await (await browser).newPage({ viewport: { width: r.width, height: 844 }, deviceScaleFactor: 1 })
     try {
-      const lang = r.lang && r.lang !== sourceLocale() ? `?lang=${encodeURIComponent(r.lang)}` : ''
-      await page.goto(`${base}/${r.path}${lang}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
+      const viewport = Math.min(4000, Math.max(200, Number(meta(readFileSync(join(ROOT, r.path), 'utf8'), tag('frame-height'))) || 844))
+      await page.setViewportSize({ width: r.width, height: viewport })
+      const query = new URLSearchParams({ canvas: String(viewport) })
+      if (r.lang && r.lang !== sourceLocale()) query.set('lang', r.lang)
+      await page.goto(`${base}/${r.path}?${query}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
       if (r.theme) await page.evaluate((t) => { document.documentElement.dataset.theme = t }, r.theme)
       await page.evaluate(() => document.fonts.ready)
       // Tailwind's browser build and the components settle after load.

@@ -19,6 +19,8 @@ export interface Screen {
   title: string
   /** Frame width in px: <meta name="<prefix>-frame-width" content="390">, default 390 (phone). */
   width: number
+  /** Viewport height for vh/svh/dvh layout; independent of the full document height. */
+  viewportHeight: number
   mtime: number
   /** "screen", or "components" for the component catalog. */
   kind: 'screen' | 'components'
@@ -82,6 +84,7 @@ export function listScreens(): Screen[] {
         name,
         title: /<title>([^<]*)<\/title>/i.exec(html)?.[1]?.trim() ?? '',
         width,
+        viewportHeight: Math.min(4000, Math.max(200, Number(meta(html, tag('frame-height'))) || 844)),
         mtime: statSync(file).mtimeMs,
         kind: under(path, config.catalogDir) ? 'components' : 'screen',
         screen: meta(html, tag('screen')) ?? (versioned ? group.split('/').pop()! : name),

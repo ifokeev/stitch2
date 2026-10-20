@@ -17,6 +17,11 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
   `<p>-frame-width` (390 mobile, 1280 desktop) and, written by the user, `<p>-note`. Older files elsewhere
   carry the same tags.
 
+`<p>-frame-height` optionally sets the viewport height the design was drawn at (default 844 px).
+It is not the document height: long pages still appear whole. In canvas frames and their pictures,
+`vh`, `svh`, `dvh` and `lvh` keep this viewport height when the frame grows, so full-height sections
+do not create ever-growing gaps. Width responsiveness stays active.
+
 ## Pages and their screens
 
 A place in the app often has several states or steps: the workout with its number pad, its menu and its discard

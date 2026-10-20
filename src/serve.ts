@@ -16,6 +16,7 @@ import { designPage } from './design-page.ts'
 import { languagesPage } from './languages-page.ts'
 import { annotate } from './pick.ts'
 import { closeShots, sharedChanged, shot } from './shots.ts'
+import { pinViewportHeight } from './viewport.ts'
 
 /**
  * Inlines <link rel="stylesheet" type="text/tailwindcss" href="…">: the Tailwind v4 browser build reads @theme and
@@ -216,7 +217,12 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
     // The canvas loads screens with ?pick: their elements carry source lines for picking.
     if (extname(file) === '.html') {
       const html = inlineTailwind(readFileSync(file, 'utf8'), file)
-      const page = url.searchParams.has('pick') ? annotate(html) : html
+      let page = url.searchParams.has('pick') ? annotate(html) : html
+      if (url.searchParams.has('canvas')) {
+        const requested = Number(url.searchParams.get('canvas')) || 844
+        const height = Math.min(4000, Math.max(200, requested))
+        page = page.replace(/<head(\s[^>]*)?>/i, (head) => head + `<script>(${pinViewportHeight.toString()})(${height})</script>`)
+      }
       const lang = url.searchParams.get('lang')
       if (!lang || lang === sourceLocale()) return res.end(page)
       // After the lines are numbered: the locale's script may span several lines.
