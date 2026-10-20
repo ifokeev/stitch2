@@ -33,6 +33,8 @@ export interface TextItem {
   upper: boolean
   numeric: boolean
   lines: number
+  /** Literal code uses its language's case and monospace conventions, not UI labels. */
+  code?: boolean
 }
 
 /** Runs in the page. Plain JS on purpose: Playwright sends its source to the browser. */
@@ -98,6 +100,7 @@ export function collectText(): TextItem[] {
         (own === own.toUpperCase() && own.replace(/[^A-Z]/g, '').length >= 6),
       numeric: /^[\d\s.,:×x+\-−–/%]+[a-z]{0,4}$/i.test(own) && /\d/.test(own),
       lines,
+      code: Boolean(el.closest('pre, code')),
     })
   }
   return out
@@ -135,7 +138,7 @@ export function typeIssues(levels: Level[], items: TextItem[]): Issue[] {
     out.push({ severity, type, message, selector: t.selector, text: t.text })
   }
   for (const t of items) {
-    if (levels.length && !matchLevel(levels, t)) {
+    if (!t.code && levels.length && !matchLevel(levels, t)) {
       const key = describe(t)
       if (!seen.has(key)) {
         seen.add(key)
@@ -154,9 +157,9 @@ export function typeIssues(levels: Level[], items: TextItem[]): Issue[] {
         t,
         `Wrapped text with cramped line height (${Math.round(t.lineHeight)}px for ${t.size}px type)`,
       )
-    if (t.upper && t.text.length > 2 && t.tracking < 0.03 * t.size)
+    if (!t.code && t.upper && t.text.length > 2 && t.tracking < 0.03 * t.size)
       push('warning', 'type-caps', t, 'Capitals without letter-spacing (use label-caps, +0.06em)')
-    if (t.mono && t.size >= 18 && /\d[.,:]\d/.test(t.text))
+    if (!t.code && t.mono && t.size >= 18 && /\d[.,:]\d/.test(t.text))
       push(
         'warning',
         'type-mono-number',

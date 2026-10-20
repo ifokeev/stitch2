@@ -218,6 +218,8 @@ export function collectComponents(opts: CollectOptions): PageComponents {
     const kind =
       g === 'button'
         ? `button:${variant ?? 'primary'}:${el.getAttribute('data-size') ?? 'md'}`
+        : g === 'card'
+          ? `card:${variant ?? 'default'}:${el.getAttribute('data-layout') ?? 'default'}:${el.getAttribute('data-size') ?? 'default'}`
         : variant
           ? `${g}:${variant}`
           : g

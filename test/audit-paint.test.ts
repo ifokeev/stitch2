@@ -48,6 +48,44 @@ test('audit gives sentence links the inline-target exception without exempting s
   assert.ok(issues.some((i) => i.selector === '#small' && i.severity === 'error'))
 })
 
+test('explicit pretty content titles can wrap only when their full text fits outside compact navigation', async () => {
+  const button = (id: string, style = '') => `<button id="${id}" style="width:120px;font:14px/21px sans-serif;text-align:left;text-wrap:pretty;${style}">A longer content title</button>`
+  const issues = await read(button('content') + button('clipped', 'height:30px;min-height:0;overflow:hidden') +
+    `<nav>${button('nav')}</nav>` + button('ordinary', 'text-wrap:wrap'), 'label-wraps')
+  assert.deepEqual(issues.map((i) => i.selector), ['#clipped', '#nav', '#ordinary'])
+})
+
+test('audit measures associated native choice labels, not their compact checkbox and radio artwork', async () => {
+  const issues = await read('<style>label{display:flex;align-items:center;width:240px;min-height:44px}input{width:18px;height:18px}</style>' +
+    '<label><input id="wrapped" type="checkbox">Keep audio</label>' +
+    '<input id="external" type="radio" name="choice"><label for="external">First choice</label>' +
+    '<label><input id="disabled" type="checkbox" disabled>Unavailable choice</label>', 'tap-target')
+  assert.deepEqual(issues, [])
+})
+
+test('audit does not borrow hidden, mismatched or noninteractive choice labels as hit areas', async () => {
+  const issues = await read('<style>label{display:block;width:240px;height:44px}input{display:block;width:18px;height:18px;margin:24px}</style>' +
+    '<input id="hidden-label" type="checkbox"><label for="hidden-label" style="display:none">Hidden</label>' +
+    '<input id="mismatched-label" type="checkbox"><label for="another-id">Different control</label>' +
+    '<input id="inert-label" type="radio"><label for="inert-label" style="pointer-events:none">Not a hit area</label>' +
+    '<input id="clipped-label" type="checkbox"><label for="clipped-label" style="position:absolute;clip-path:inset(50%)">Clipped</label>' +
+    '<input id="overflow-label" type="checkbox"><div style="width:20px;overflow:hidden"><label for="overflow-label">Only twenty pixels visible</label></div>', 'tap-target')
+  assert.deepEqual(issues.map((i) => i.selector), ['#hidden-label', '#mismatched-label', '#inert-label', '#clipped-label', '#overflow-label'])
+})
+
+test('audit retains close-target spacing checks around an associated choice label', async () => {
+  const issues = await read('<label style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px"><input id="close-choice" type="checkbox" aria-label="Select" style="width:18px;height:18px"></label>' +
+    '<button style="width:44px;margin-left:-4px">Next</button>', 'tap-spacing')
+  assert.ok(issues.some((issue) => issue.selector === '#close-choice'))
+})
+
+test('audit ignores offscreen rail descendants behind nested clips but retains a visibly cut edge label', async () => {
+  const issues = await read('<div style="display:flex;width:350px;margin:20px;overflow-x:auto">' +
+    '<article style="width:400px;flex:none">First card</article><article style="width:220px;flex:none"><span style="display:block;width:180px;overflow:hidden;white-space:nowrap"><span id="offscreen">Offscreen model title →</span></span></article></div>' +
+    '<div style="position:absolute;left:370px;width:20px;overflow:hidden"><span id="cut-label" style="white-space:nowrap">Visible text cut at the edge</span></div>', 'clipped')
+  assert.deepEqual(issues.map((i) => i.selector), ['#cut-label'])
+})
+
 test('audit accepts an input action only within its reserved padding, not over editable text', async () => {
   const field = (id: string, padding: number, side: 'left' | 'right' = 'right') => `<div style="position:relative;width:260px;margin:20px"><input id="${id}" type="password" value="Some text" style="box-sizing:border-box;width:100%;height:44px;padding-${side}:${padding}px"><button id="${id}-action" aria-label="Reveal" style="position:absolute;${side}:0;top:0;width:44px;height:44px">●</button></div>`
   const issues = await read(field('valid', 44) + field('invalid', 12) + field('left', 44, 'left'), 'control-overlap')
@@ -60,6 +98,11 @@ test('audit ignores transparent hints and fully clipped accessible inputs, but n
     '<div style="clip:rect(0px,0px,0px,0px);position:absolute"><span style="position:absolute;left:-60px">Hidden clipped child</span></div>' +
     '<p id="visible-overflow" style="position:absolute;left:-12px">Visible edge problem</p>', 'overflow')
   assert.deepEqual(issues.map((i) => i.selector), ['#visible-overflow'])
+})
+
+test('text margins use painted text, not invisible tooltip descendants of a visible button', async () => {
+  const issues = await read('<button style="position:relative;margin:24px;width:100px">Reference<span style="position:absolute;left:-24px;opacity:0">Hidden tooltip at the edge</span></button><p id="edge" style="margin:0 4px">Visible edge text</p>', 'edge-margin')
+  assert.deepEqual(issues.map((i) => i.selector), ['#edge'])
 })
 
 test('audit excludes zero-clipped labels without hiding visible positioned descendants or top-layer dialogs', async () => {

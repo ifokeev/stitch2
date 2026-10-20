@@ -57,6 +57,12 @@ References, read before the first screen:
    fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text), a hand-built copy of a
    catalog component (`reuse`: use the component or extend it, never rebuild it), and every warning about type
    (`type-*`), components that differ from the catalog (`consistency`) and colour values (`color`).
+   Native checkbox and radio targets include their visible, associated label; the glyph need not be 44px.
+   Hidden or noninteractive labels do not enlarge a hit area. Offscreen content in a deliberate horizontal
+   rail is not viewport clipping, while a partially visible cut label still needs correction.
+   Literal `<pre>`/`<code>` content keeps its language's case and syntax colours, not UI-label typography;
+   the code container's own authored colours still follow DESIGN.md. Unchanged `source=app` captures are
+   not token-migration targets.
    Text running into other text (`text-overlap`) or out of its card (`overflow`) is an error; a short label cut
    short with an ellipsis (`truncated`) is a warning to fix with room, not a smaller size. Google's rules are
    warnings too (`text-small`, `edge-margin`, `measure`, `tap-spacing`, `placeholder-label`, `unnamed-control`,
@@ -78,6 +84,9 @@ References, read before the first screen:
    An empty, transparent stretched row/card action may sit under a secondary link; painted controls or
    partially colliding neighbours still fail. Do not silence an overlap by hiding content or removing its
    accessible label: inspect the visible state and fix actual collisions in the shared component.
+   Content-title controls may explicitly use `text-wrap: pretty` or `balance` when their full text fits
+   inside the control with readable line height. This does not exempt navigation, menus, tabs or toolbars,
+   clipped titles, or ordinary compact action labels. Do not shrink or truncate content to force one line.
    Inline links within a prose sentence may wrap and receive WCAG's inline-target exception, including
    sentences inside list items; standalone links do not. Titles in vertical contents/menu lists may wrap,
    unlike horizontal navigation labels. An in-page disclosure (`aria-expanded`, without `aria-haspopup`)

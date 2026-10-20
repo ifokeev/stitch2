@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { config } from './config.ts'
 import { familyOf } from './consistency.ts'
-import { ROOT } from './screens.ts'
+import { ROOT, meta, tag } from './screens.ts'
 import type { Issue } from './typecheck.ts'
 
 const LITERAL = /(?<![\w&/=-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|(?<![a-zA-Z])(?:rgba?|hsla?)\(\s*[\d.][^)]*\)/g
@@ -18,7 +18,27 @@ const LITERAL = /(?<![\w&/=-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4}
 function literals(source: string, js: boolean): { line: number; value: string; text: string }[] {
   let s = source.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
   if (js) s = s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' ')).replace(/^\s*\/\/.*$/gm, '')
-  else s = s.replace(/<head[\s>][\s\S]*?<\/head>/i, (m) => m.replace(/[^\n]/g, ' '))
+  else {
+    s = s.replace(/<head[\s>][\s\S]*?<\/head>/i, (m) => m.replace(/[^\n]/g, ' '))
+    // Code examples and syntax highlighting are content. Keep the outer tag's
+    // styles so an actual code-container background still follows the theme.
+    s = s.replace(/(<(pre|code)\b[^>]*>)([\s\S]*?)(<\/\2\s*>)/gi,
+      (_, open: string, _tag: string, body: string, close: string) => open + body.replace(/[^\n]/g, ' ') + close)
+    // SVG drawing colours belong to an asset; the outer SVG's class/style
+    // still follows UI tokens (for example a muted search icon).
+    s = s.replace(/(<svg\b[^>]*>)([\s\S]*?)(<\/svg\s*>)/gi,
+      (_, open: string, body: string, close: string) => open + body.replace(/[^\n]/g, ' ') + close)
+    // Documentation can describe a literal colour without painting it. Only
+    // markup attributes are authored styling, not prose or example values.
+    const tags = [...s.matchAll(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g)]
+    let styled = s.replace(/[^\n]/g, ' ')
+    for (const match of tags) {
+      const tag = match[0].replace(/\s(?:data-[\w-]+|on[\w]+)\s*=\s*("[^"]*"|'[^']*')/gi,
+        (attribute) => attribute.replace(/[^\n]/g, ' '))
+      styled = styled.slice(0, match.index) + tag + styled.slice(match.index! + match[0].length)
+    }
+    s = styled
+  }
   const out: { line: number; value: string; text: string }[] = []
   s.split('\n').forEach((text, i) => {
     for (const m of text.matchAll(LITERAL)) {
@@ -35,6 +55,8 @@ const seen = new Set<string>()
 export function colourIssues(path: string): Issue[] {
   if (familyOf(path) !== 'screens') return []
   const html = readFileSync(join(ROOT, path), 'utf8')
+  // Imported captures document the app as it is, not an editable token source.
+  if (meta(html, tag('source')) === 'app') return []
   const found = literals(html, false).map((l) => ({ ...l, file: `${config.designDir}/${path}` }))
   if (path.startsWith(`${config.catalogDir}/`))
     for (const [, src] of html.matchAll(/<script[^>]*\bsrc="\/([^"]+\.js)"/g)) {

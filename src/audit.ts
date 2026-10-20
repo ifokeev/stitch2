@@ -134,13 +134,13 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       (c.display.includes('flex') && c.flexDirection.startsWith('column')) ||
       (c.display.includes('grid') && c.gridTemplateColumns.split(/\s+/).length === 1)
   }
-  const disclosureTextFits = (el: Element) => {
-    if (!el.matches('button[aria-expanded]:not([aria-haspopup])')) return false
+  const contentTextFits = (el: Element) => {
     const c = getComputedStyle(el)
-    if (!['left', 'start'].includes(c.textAlign)) return false
     const r = el.getBoundingClientRect()
     const top = r.top + parseFloat(c.borderTopWidth) + parseFloat(c.paddingTop)
     const bottom = r.bottom - parseFloat(c.borderBottomWidth) - parseFloat(c.paddingBottom)
+    const left = r.left + parseFloat(c.borderLeftWidth) + parseFloat(c.paddingLeft)
+    const right = r.right - parseFloat(c.borderRightWidth) - parseFloat(c.paddingRight)
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
     let found = false
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -149,10 +149,20 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       range.selectNodeContents(n)
       for (const q of range.getClientRects()) {
         found = true
-        if (q.top < top - 1 || q.bottom > bottom + 1) return false
+        if (q.top < top - 1 || q.bottom > bottom + 1 || q.left < left - 1 || q.right > right + 1) return false
       }
     }
     return found
+  }
+  const disclosureTextFits = (el: Element) => el.matches('button[aria-expanded]:not([aria-haspopup])') &&
+    ['left', 'start'].includes(getComputedStyle(el).textAlign) && contentTextFits(el)
+  const readableContentControl = (el: Element) => {
+    if (el.closest('nav, [role=navigation], [role=menu], [role=tablist], [role=toolbar]')) return false
+    const c = getComputedStyle(el)
+    // Pretty/balanced wrapping explicitly authors a content title, not a
+    // compact action label. It still has to fit without clipping or crowding.
+    return ['pretty', 'balance'].includes(c.textWrapStyle) &&
+      parseFloat(c.lineHeight) >= parseFloat(c.fontSize) * 1.3 && contentTextFits(el)
   }
 
   // 1. Nothing past the screen edge, except inside deliberate horizontal scrollers (chip rows).
@@ -167,6 +177,9 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   for (const el of all) {
     const r = el.getBoundingClientRect()
     if (r.right <= W + 1 && r.left >= -1) continue
+    // A nested clip (for example a title's ellipsis) must not hide the fact
+    // that its whole card belongs to a deliberate horizontal scroller.
+    if (visibleRects(el).every((q) => q.right <= 0 || q.left >= W)) continue
     let clip: string | null = null
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
       const ox = getComputedStyle(p).overflowX
@@ -221,7 +234,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     if (!isLabel(el) || text(el).length > 40 || el.querySelector('p, div, li, ul, br')) continue
     // Prose links flow with their sentence; vertical contents titles and fitted disclosure headings can
     // also wrap. Horizontal navigation, tabs and ordinary button labels retain their one-line rule.
-    if (proseLink(el) || verticalNavigationLink(el) || disclosureTextFits(el)) continue
+    if (proseLink(el) || verticalNavigationLink(el) || disclosureTextFits(el) || readableContentControl(el)) continue
     // A control whose text sits in two or more elements (a list row's title and its meta line) is a composite
     // control, not a label: its lines are laid out on purpose.
     const holders = new Set<Element>()
@@ -384,17 +397,27 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       if (['fixed', 'sticky'].includes(getComputedStyle(e).position)) return e
     return null
   }
+  const tapRect = (el: Element) => {
+    if (el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type))
+      for (const label of el.labels ?? []) {
+        if (!shown(label) || label.control !== el || getComputedStyle(label).pointerEvents === 'none') continue
+        const r = visibleRects(label).find((box) => box.right - box.left >= opts.comfortable && box.bottom - box.top >= opts.comfortable)
+        // Associated native labels are part of the hit area, not checkbox artwork.
+        if (r) return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.right - r.left, height: r.bottom - r.top }
+      }
+    return el.getBoundingClientRect()
+  }
   for (const el of interactive) {
     if (interactive.some((o) => o !== el && o.contains(el))) continue
     if (proseLink(el)) continue
-    const r = el.getBoundingClientRect()
+    const r = tapRect(el)
     const min = Math.min(r.width, r.height)
     // WCAG 2.2 spacing exception: a smaller target passes when a 24px circle on it touches no other target.
     const cx = r.left + r.width / 2
     const cy = r.top + r.height / 2
     const crowded = interactive.some((o) => {
       if (o === el || o.contains(el) || el.contains(o) || layerOf(o) !== layerOf(el)) return false
-      const q = o.getBoundingClientRect()
+      const q = tapRect(o)
       const dx = Math.max(q.left - cx, 0, cx - q.right)
       const dy = Math.max(q.top - cy, 0, cy - q.bottom)
       return Math.hypot(dx, dy) < 12
@@ -618,9 +641,15 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   // 6. Google's guidelines (Material 3, Android's app quality guidelines, web.dev, Lighthouse). Warnings: each names
   // the rule it comes from, so a screen can break one on purpose (see skills/stitch2/references/google.md).
   const textRects = (el: Element) => {
-    const range = document.createRange()
-    range.selectNodeContents(el)
-    return [...range.getClientRects()].filter((r) => r.width > 1 && r.height > 1)
+    const rects: DOMRect[] = []
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent!.trim() || !node.parentElement || !shown(node.parentElement) || opacity(node.parentElement) < 0.1) continue
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      rects.push(...range.getClientRects())
+    }
+    return rects.filter((r) => r.width > 1 && r.height > 1)
   }
   const scrollsSideways = (el: Element) => {
     for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
@@ -655,7 +684,8 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     if (rects.length < 2) continue
     const lineChars: { top: number; n: number }[] = []
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-    for (let t = walker.nextNode(); t; t = walker.nextNode())
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+      if (!t.parentElement || !shown(t.parentElement) || opacity(t.parentElement) < 0.1) continue
       for (const m of t.textContent!.matchAll(/\S+\s*/g)) {
         const range = document.createRange()
         range.setStart(t, m.index!)
@@ -665,6 +695,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
         if (line) line.n += m[0].replace(/\s+/g, ' ').length
         else lineChars.push({ top, n: m[0].replace(/\s+/g, ' ').length })
       }
+    }
     if (lineChars.length < 2) continue
     const longest = Math.max(...lineChars.sort((a, b) => a.top - b.top).slice(0, -1).map((l) => l.n))
     if (longest > 80)
@@ -678,14 +709,14 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   if (W < 600)
     for (const el of solid) {
       if (solid.some((o) => o !== el && o.contains(el)) || proseLink(el)) continue
-      const r = el.getBoundingClientRect()
+      const r = tapRect(el)
       if (r.width >= 48 && r.height >= 48) continue
       if (out.some((i) => i.type === 'tap-target' && i.selector === sel(el))) continue
       const cx = r.left + r.width / 2
       const cy = r.top + r.height / 2
       const hit = solid.find((o) => {
         if (o === el || o.contains(el) || el.contains(o) || layer(o) !== layer(el)) return false
-        const q = o.getBoundingClientRect()
+        const q = tapRect(o)
         const ox = Math.max(0, Math.min(cx + 24, q.right) - Math.max(cx - 24, q.left))
         const oy = Math.max(0, Math.min(cy + 24, q.bottom) - Math.max(cy - 24, q.top))
         return ox * oy > 48

@@ -6,6 +6,8 @@ description: Verify that shared elements (tab bar, header, buttons, chips, icon 
 # Verifying design consistency with stitch2
 
 A shared element must be the same everywhere: same size, radius, type, colour, icon set, icons and states.
+Declared card layout and size variants are compared separately: a horizontal row and a media showcase
+have different geometry by design. Each variant still has to match its own catalog reference or peers.
 stitch2 measures this; your job is to read the evidence, decide what is wrong, and fix it at the source. The
 reference is the **component catalog** (the screen in the config's `catalogDir`); without a catalog, the
 majority of screens in the same family.

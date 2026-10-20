@@ -40,3 +40,16 @@ test('collector ignores closed menus and transparent primary fills', async () =>
     await browser.close()
   }
 })
+
+test('card layout and size are declared variants, not accidental visual drift', async () => {
+  const browser = await chromium.launch()
+  try {
+    const browserPage = await browser.newPage()
+    await browserPage.setContent('<div data-s2="card" data-variant="media" data-layout="row" style="width:300px;height:72px;border-radius:12px">Row</div>' +
+      '<div data-s2="card" data-variant="media" data-layout="showcase" data-size="compact" style="width:160px;height:220px;border-radius:16px">Showcase</div>')
+    const found = await browserPage.evaluate(collectComponents, { prefix: 's2', primary: [147, 51, 234] })
+    assert.ok(found.components['card:media:row:default'])
+    assert.ok(found.components['card:media:showcase:compact'])
+    assert.equal(Object.keys(found.components).filter((kind) => kind.startsWith('card:')).length, 2)
+  } finally { await browser.close() }
+})
