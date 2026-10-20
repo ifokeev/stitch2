@@ -340,7 +340,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       const b = bar.getBoundingClientRect()
       const atEdge = edge === 'bottom' ? b.bottom >= H - 4 && b.top > H / 2 : b.top <= 4 && b.bottom < H / 2
       if (!atEdge) continue
-      const drawn = paintedParts(bar).flatMap(visibleRects)
+      const drawn = paintedParts(bar).flatMap((part) => visibleRects(part))
       for (const el of content) {
         if (el.contains(bar)) continue
         const hidden = visibleRects(el).some((r) => drawn.some((q) => {
@@ -362,7 +362,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   const fixedBars = outer.filter(
     (b) => getComputedStyle(b).position === 'fixed' && b.getBoundingClientRect().height < window.innerHeight * 0.8,
   )
-  const parts = (bar: Element) => paintedParts(bar).flatMap(visibleRects)
+  const parts = (bar: Element) => paintedParts(bar).flatMap((part) => visibleRects(part))
   for (const [i, a] of fixedBars.entries())
     for (const b of fixedBars.slice(i + 1)) {
       const hit = parts(a).some((r) =>
@@ -405,7 +405,31 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     if (el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type))
       for (const label of el.labels ?? []) {
         if (!shown(label) || label.control !== el || getComputedStyle(label).pointerEvents === 'none') continue
-        const r = visibleRects(label).find((box) => box.right - box.left >= opts.comfortable && box.bottom - box.top >= opts.comfortable)
+        const sized = (box: Box) => box.right - box.left >= opts.comfortable && box.bottom - box.top >= opts.comfortable
+        let r = visibleRects(label).find(sized)
+        // A row at a scrollport edge can be fully revealed even inside an
+        // overflow-hidden dialog frame. Prove that by scrolling, measuring the
+        // actually exposed area, then restoring every scroll position.
+        if (!r) {
+          const original = label.getBoundingClientRect()
+          const scrolls: { el: Element; left: number; top: number }[] = []
+          for (let p = label.parentElement; p; p = p.parentElement) {
+            const c = getComputedStyle(p)
+            if ((/auto|scroll/.test(c.overflowX) && p.scrollWidth > p.clientWidth) || (/auto|scroll/.test(c.overflowY) && p.scrollHeight > p.clientHeight))
+              scrolls.push({ el: p, left: p.scrollLeft, top: p.scrollTop })
+          }
+          if (scrolls.length && original.width >= opts.comfortable && original.height >= opts.comfortable) {
+            const before = { x: scrollX, y: scrollY }
+            try {
+              label.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
+              const revealed = visibleRects(label).find(sized)
+              if (revealed) r = { left: original.left, top: original.top, right: original.left + revealed.right - revealed.left, bottom: original.top + revealed.bottom - revealed.top }
+            } finally {
+              for (const s of scrolls) { s.el.scrollLeft = s.left; s.el.scrollTop = s.top }
+              window.scrollTo({ left: before.x, top: before.y, behavior: 'instant' })
+            }
+          }
+        }
         // Associated native labels are part of the hit area, not checkbox artwork.
         if (r) return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.right - r.left, height: r.bottom - r.top }
       }

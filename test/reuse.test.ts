@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { chromium } from '@playwright/test'
-import { collectComponents, type PageComponents, reuseIssues } from '../src/consistency.ts'
+import { collectComponents, consistencyIssues, type PageComponents, reuseIssues } from '../src/consistency.ts'
 
 const page = (kinds: string[]): PageComponents =>
   ({ handBuilt: kinds.map((kind) => ({ kind, selector: kind, text: kind })) }) as PageComponents
@@ -52,4 +52,22 @@ test('card layout and size are declared variants, not accidental visual drift', 
     assert.ok(found.components['card:media:showcase:compact'])
     assert.equal(Object.keys(found.components).filter((kind) => kind.startsWith('card:')).length, 2)
   } finally { await browser.close() }
+})
+
+test('consistency compares painted fonts when present, without inventing typography for icon-only controls', () => {
+  const sig = (fields: Record<string, string>) => ({ selector: '#control', text: '', fields })
+  const catalog = { 'button:danger:normal': [sig({ height: '44', radius: '8', font: '14/500/Arial' })] }
+  const icon = sig({ height: '44', radius: '8' })
+  const wrongFont = sig({ height: '44', radius: '8', font: '13/500/Arial' })
+  const results = consistencyIssues({
+    'screens/components/library.html': catalog,
+    'screens/icon/mobile-v1.html': { 'button:danger:normal': [icon] },
+    'screens/drift/mobile-v1.html': { 'button:danger:normal': [wrongFont] },
+    'screens/mixed/mobile-v1.html': { 'button:danger:normal': [icon, catalog['button:danger:normal'][0]!, wrongFont] },
+    'screens/size/mobile-v1.html': { 'button:danger:normal': [sig({ height: '32', radius: '8' })] },
+  }, ['screens/icon/mobile-v1.html', 'screens/drift/mobile-v1.html', 'screens/mixed/mobile-v1.html', 'screens/size/mobile-v1.html'])
+  assert.deepEqual(results['screens/icon/mobile-v1.html'], [])
+  assert.ok(results['screens/drift/mobile-v1.html']!.some((i) => i.message.includes('font')))
+  assert.ok(results['screens/mixed/mobile-v1.html']!.some((i) => i.message.includes('different versions')))
+  assert.ok(results['screens/size/mobile-v1.html']!.some((i) => i.message.includes('height')))
 })

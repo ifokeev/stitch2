@@ -30,6 +30,8 @@ majority of screens in the same family.
    - `reuse`: a lab screen built a catalog component by hand instead of using it.
 4. Look at the crops yourself. Numbers say what differs; the images say whether it matters. A 1 px height
    difference from a border is noise; another icon set, label size or button shape is not.
+   Font comparisons apply when both controls paint a label. An icon/thumb-only control has no label font;
+   its geometry remains checked, and genuine font differences between labelled controls still fail.
 
 ## 2. Decide, per difference
 

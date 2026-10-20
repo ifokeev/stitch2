@@ -100,6 +100,8 @@ References, read before the first screen:
    browser hit-testing proves that link is reachable; painted, blocking or merely adjacent controls still fail.
    Fully clipped controls inside scrolling containers have no painted hit area until scrolled into view;
    this does not exempt visible small controls or content merely below the window.
+   A partly scroll-clipped native choice label retains its full hit-area size only when the scrollport can
+   reveal the minimum target. Permanent clipping and scrollports too small to reveal it still fail.
    Tooltip copy is reading text, not its trigger's compact label: it may wrap when visible and does not
    create or hide a `label-wraps` issue on the trigger. The actual painted control label is still checked.
    Cached checks are invalidated when shared components, the catalog or the checker change. A filtered

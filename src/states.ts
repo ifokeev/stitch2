@@ -159,11 +159,13 @@ export async function catalogStates(page: Page, path: string, opts: { crop: bool
     const noHover = looks.hover?.look === looks.rest?.look
     // Pressed is forced on top of hover: a press that adds nothing to hover shows nothing on a touch screen.
     const noPress = looks.pressed?.look === looks.hover?.look
-    if (!c.field && !c.chosen) {
+    if (c.clickable && !c.field && !c.chosen) {
       if (noHover && noPress) add('state-feedback', who + ': neither hovering nor pressing changes it, so a pointer or a tap gives no feedback (DESIGN.md, hover and pressed)')
       else if (noHover) add('state-hover', who + ': hovering changes nothing, so a pointer gives no feedback (DESIGN.md, hover)')
       else if (noPress) add('state-pressed', who + ': pressing adds nothing to hover, so a tap gives no feedback (DESIGN.md, pressed)')
     }
+    if (!c.clickable && !c.field && looks.focus?.look === looks.rest?.look)
+      add('state-focus', who + ': this keyboard-focusable region needs a visible focus indicator, not hover or pressed feedback')
     // The hand says "this does something" before the click; the arrow over a button reads as plain text.
     const cursor = looks.hover?.cursor
     if (c.clickable && cursor && cursor !== 'pointer')

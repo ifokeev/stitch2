@@ -100,6 +100,15 @@ test('tap targets exclude fully scroll-clipped choices, not small visible choice
   assert.ok(after.some((i) => i.selector === '#small-visible'))
 })
 
+test('partially scroll-clipped native choice rows keep their revealable hit size, unlike permanent clips', async () => {
+  const row = (id: string, overflow: string, height: number) => `<div style="height:${height}px;overflow:hidden;width:240px;margin:20px"><div style="height:100%;overflow:${overflow}"><div style="height:60px"></div><label style="display:flex;align-items:center;height:44px"><input id="${id}" type="checkbox" style="width:18px;height:18px">Choice</label></div></div>`
+  const issues = await read(row('scroll-choice', 'auto', 90) + row('permanent-choice', 'hidden', 90) + row('tiny-scrollport', 'auto', 30).replace('height:60px', 'height:0px'), 'tap-target')
+  assert.ok(!issues.some((i) => i.selector === '#scroll-choice'))
+  assert.ok(issues.some((i) => i.selector === '#permanent-choice'))
+  assert.ok(issues.some((i) => i.selector === '#tiny-scrollport'))
+  assert.deepEqual(await page.locator('div[style*="height:100%"]') .evaluateAll((nodes) => nodes.map((n) => n.scrollTop)), [0, 0, 0])
+})
+
 test('audit ignores offscreen rail descendants behind nested clips but retains a visibly cut edge label', async () => {
   const issues = await read('<div style="display:flex;width:350px;margin:20px;overflow-x:auto">' +
     '<article style="width:400px;flex:none">First card</article><article style="width:220px;flex:none"><span style="display:block;width:180px;overflow:hidden;white-space:nowrap"><span id="offscreen">Offscreen model title →</span></span></article></div>' +

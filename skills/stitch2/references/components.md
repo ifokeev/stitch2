@@ -45,7 +45,9 @@ clickable element that is not a button or a link gets `role="button"` (and a key
 it the hand. Override the cursor only with a reason (`cursor-grab` on a drag handle).
 
 The catalog shows each component in each of its **data states** (selected, done, active, disabled, error, with
-and without an icon). Hover, focus and pressed are not drawn by hand: `stitch2 check` on the catalog forces them on
+and without an icon). Keyboard-focusable reading or scrolling regions are not click actions and need no hover
+or pressed feedback, but must show a visible focus indicator (`state-focus`). Actual actions retain those checks.
+Hover, focus and pressed are not drawn by hand: `stitch2 check` on the catalog forces them on
 every control and writes the **States** sheet (canvas sidebar), each control at rest, hovered, focused and
 pressed side by side. It reports a control that gives no feedback (**state-feedback**, **state-hover**,
 **state-pressed**: pressing adds nothing to hover, so a tap shows nothing) and text that loses contrast in a state

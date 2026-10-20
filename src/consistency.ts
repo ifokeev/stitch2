@@ -313,6 +313,11 @@ const NAMES: Record<string, [string, string]> = {
 }
 export const nameOf = (kind: string) => NAMES[kind]?.[0] ?? kind.replace(/:/g, ' ')
 const key = (s: Sig) => JSON.stringify(s.fields)
+// An icon/thumb-only control has no painted typography to compare with a
+// labelled example. Its geometry still matches, and two actual fonts must match.
+const differences = (a: Sig, b: Sig) => Object.keys({ ...a.fields, ...b.fields })
+  .filter((f) => !(f === 'font' && (!a.fields.font || !b.fields.font)) && a.fields[f] !== b.fields[f])
+const matches = (a: Sig, b: Sig) => differences(a, b).length === 0
 
 /** Issues for the screens in `paths`, comparing with every screen whose components are known. */
 export function consistencyIssues(
@@ -329,7 +334,7 @@ export function consistencyIssues(
     const peers = (families.get(familyOf(path)) ?? []).filter((p) => p !== path)
     for (const [kind, sigs] of Object.entries(known[path] ?? {})) {
       // The catalog shows every variant of a component side by side; a screen shows one.
-      if (sigs.length > 1 && MEASURED.has(kind.split(':')[0]!) && !catalogs.includes(path))
+      if (sigs.some((a, i) => sigs.slice(i + 1).some((b) => !matches(a, b))) && MEASURED.has(kind.split(':')[0]!) && !catalogs.includes(path))
         issues.push({
           severity: 'warning',
           type: 'consistency',
@@ -345,10 +350,9 @@ export function consistencyIssues(
       if (catalogs.includes(path)) continue
       if (reference.length) {
         const mine = sigs[0]!
-        if (reference.some((r) => key(r) === key(mine))) continue
+        if (reference.some((r) => matches(r, mine))) continue
         const ref = reference[0]!
-        const diffs = Object.keys({ ...mine.fields, ...ref.fields })
-          .filter((f) => mine.fields[f] !== ref.fields[f])
+        const diffs = differences(mine, ref)
           .map((f) => `${f} ${mine.fields[f] ?? '–'} (catalog ${ref.fields[f] ?? '–'})`)
         issues.push({
           severity: 'warning',
@@ -374,7 +378,7 @@ export function consistencyIssues(
       if (!top) continue
       // No majority: report when this screen matches none of its peers either.
       if (top.n < 2 || ranked[1]?.n === top.n) {
-        if (!votes.has(key(mine)) && peers.filter((p) => known[p]?.[kind]).length >= 2)
+        if (![...votes.values()].some((v) => matches(mine, v.sig)) && peers.filter((p) => known[p]?.[kind]).length >= 2)
           issues.push({
             severity: 'warning',
             type: 'consistency',
@@ -384,9 +388,8 @@ export function consistencyIssues(
           })
         continue
       }
-      if (key(mine) === key(top.sig)) continue
-      const diffs = Object.keys({ ...mine.fields, ...top.sig.fields })
-        .filter((f) => mine.fields[f] !== top.sig.fields[f])
+      if (matches(mine, top.sig)) continue
+      const diffs = differences(mine, top.sig)
         .map((f) => `${f} ${mine.fields[f] ?? '–'} (others ${top.sig.fields[f] ?? '–'})`)
       issues.push({
         severity: 'warning',
