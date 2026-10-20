@@ -300,9 +300,13 @@ let reports = { consistency: null, compare: null, states: null }
 let selected = null
 const frames = new Map() // path -> { el, device, img, iframe (while live), screen, height }
 // Heights measured before, so the layout doesn't jump while pictures and pages load.
-const HEIGHTS = JSON.parse(localStorage.getItem('stitch2-heights-v2') ?? '{}')
+// Height semantics changed when live frames began loading at their authored
+// viewport. Do not carry a pre-fix cache into this layout: one stale 20k page
+// is enough to create a giant gap before its iframe is visited.
+const HEIGHT_KEY = 'stitch2-heights-v3'
+const HEIGHTS = JSON.parse(localStorage.getItem(HEIGHT_KEY) ?? '{}')
 let heightsTimer
-const saveHeights = () => { clearTimeout(heightsTimer); heightsTimer = setTimeout(() => localStorage.setItem('stitch2-heights-v2', JSON.stringify(HEIGHTS)), 1000) }
+const saveHeights = () => { clearTimeout(heightsTimer); heightsTimer = setTimeout(() => localStorage.setItem(HEIGHT_KEY, JSON.stringify(HEIGHTS)), 1000) }
 let layoutQueued = false
 /** Many frames measure themselves at once while loading: one layout per animation frame. */
 const scheduleLayout = () => { if (!layoutQueued) { layoutQueued = true; requestAnimationFrame(() => { layoutQueued = false; layout() }) } }
@@ -630,21 +634,40 @@ function mount(f) {
   const iframe = document.createElement('iframe')
   iframe.setAttribute('scrolling', 'no')
   f.iframe = iframe
+  // A remounted frame can still have a cached full-page height. Start the
+  // document at its authored viewport so vh/svh/dvh rules are evaluated
+  // against the screen, not against the previous page height.
   size(f)
+  iframe.style.height = `${f.screen.viewportHeight ?? 844}px`
+  const waitForStyles = async () => {
+    const doc = iframe.contentDocument
+    if (!doc || doc.readyState !== 'complete') return false
+    try { await doc.fonts?.ready } catch {}
+    // Browser-built Tailwind and late stylesheet links can settle just after
+    // load. Do not measure or reveal the live page until that layout pass.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    // `load` also fires for the initial about:blank document. Compare the
+    // loaded document itself with the current iframe target (which may have
+    // changed for a language/theme reload while this mount was pending).
+    return f.iframe === iframe && iframe.contentDocument === doc && doc.readyState === 'complete' && doc.location.href === iframe.src
+  }
   iframe.addEventListener('load', () => {
     if (f.iframe !== iframe) return
-    applyTheme(f)
-    measure(f)
-    clearTimeout(f.reveal)
-    // Tailwind's browser build and the components settle just after load: the picture stays until then.
-    f.reveal = setTimeout(() => {
-      if (f.iframe !== iframe) return
+    void (async () => {
+      if (!(await waitForStyles()) || f.iframe !== iframe) return
+      applyTheme(f)
       measure(f)
-      f.el.classList.add('ready')
-      for (const go of f.waiters.splice(0)) go()
-    }, 350)
-    setTimeout(() => { if (f.iframe === iframe) measure(f) }, 1200)
-    setTimeout(() => { if (f.iframe === iframe) measure(f) }, 2500)
+      clearTimeout(f.reveal)
+      // The picture stays until the complete, styled page has been measured.
+      f.reveal = setTimeout(() => {
+        if (f.iframe !== iframe) return
+        measure(f)
+        f.el.classList.add('ready')
+        for (const go of f.waiters.splice(0)) go()
+      }, 350)
+      setTimeout(() => { if (f.iframe === iframe) measure(f) }, 1200)
+      setTimeout(() => { if (f.iframe === iframe) measure(f) }, 2500)
+    })()
   })
   iframe.src = frameSrc(f.screen)
   f.device.insertBefore(iframe, f.img.nextSibling)

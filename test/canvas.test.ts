@@ -44,7 +44,7 @@ const fixture = `<!doctype html>
     .trailing { height: 3000px; padding: 80px; background: linear-gradient(#334155, #0f172a) }
   </style>
 </head><body><main id="sentinel" class="generator-main"><div class="marker"></div></main><div class="trailing">Trailing content</div>
-<script>setTimeout(() => { const style = document.createElement('style'); style.textContent = '.dynamic-probe { position: absolute; height: 100dvh; opacity: 0; }'; document.head.append(style); const probe = document.createElement('i'); probe.id = 'dynamic-probe'; probe.className = 'dynamic-probe'; document.body.append(probe); }, 25)</script>
+<script>window.__stitch2InitialInnerHeight = innerHeight; setTimeout(() => { const style = document.createElement('style'); style.textContent = '.dynamic-probe { position: absolute; height: 100dvh; opacity: 0; }'; document.head.append(style); const probe = document.createElement('i'); probe.id = 'dynamic-probe'; probe.className = 'dynamic-probe'; document.body.append(probe); }, 25)</script>
 </body></html>`
 
 before(async () => {
@@ -78,11 +78,12 @@ after(async () => {
 test('canvas keeps a full-height desktop screen bounded and visible through zoom/remount', { concurrency: false }, async () => {
   browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1800, height: 900 } })
-  // A pre-fix canvas used this cache key. Seed both generations so stale local state cannot hide the regression.
+  // Seed every cache generation so stale local state cannot hide the regression.
   await page.addInitScript(() => {
     const stale = JSON.stringify({ 'screens/video-generator/desktop-v1.html@1280': 20_000 })
     localStorage.setItem('stitch2-heights', stale)
     localStorage.setItem('stitch2-heights-v2', stale)
+    localStorage.setItem('stitch2-heights-v3', stale)
   })
   // Gate the first thumbnail request. The live iframe must remain visible while this response is pending.
   let releaseShot!: () => void
@@ -124,6 +125,11 @@ test('canvas keeps a full-height desktop screen bounded and visible through zoom
     assert.equal(
       await page.locator('.frame iframe').evaluate((iframe) => Math.round(Number.parseFloat(getComputedStyle(iframe.contentDocument!.querySelector('#dynamic-probe')!).height))),
       844,
+    )
+    assert.equal(
+      await page.locator('.frame iframe').evaluate((iframe) => (iframe.contentWindow as typeof iframe.contentWindow & { __stitch2InitialInnerHeight?: number }).__stitch2InitialInnerHeight),
+      844,
+      'the live page must load at its authored viewport before canvas measurement',
     )
 
     // Deselect and fit while the first shot is still pending. A selected frame is intentionally pinned live;
