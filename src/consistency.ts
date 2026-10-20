@@ -21,19 +21,43 @@ export type Components = Record<string, Sig[]>
 export interface PageComponents {
   components: Components
   handBuilt: { kind: string; selector: string; text: string }[]
+  /** Provenance declared by the page. App snapshots are faithful renders, not component implementations. */
+  source?: string
 }
 
 export interface CollectOptions {
   /** Component marker: elements with data-<prefix>="name". */
   prefix: string
   /** DESIGN.md's primary colour as [r, g, b]: filled buttons in it are primary buttons. */
-  primary: number[]
+  primary?: number[]
 }
 
 /** The options for collectComponents from the config and DESIGN.md's primary colour. */
 export function collectOptions(): CollectOptions {
-  const hex = (readDesign().colors.primary ?? '#000000').replace('#', '')
-  return { prefix: config.prefix, primary: [0, 2, 4].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) }
+  const design = readDesign()
+  // DESIGN.md projects created by stitch2 have `colors.primary`; projects that use a richer palette often name
+  // the same role and reference it from components.button-primary. Resolve that reference here. Falling back to
+  // black made every transparent element look like a primary button.
+  const component = design.components['button-primary']?.backgroundColor
+  const ref = /^\{colors\.([\w.-]+)\}$/.exec(component ?? '')?.[1]
+  const value = design.colors.primary ?? (ref ? design.colors[ref] : undefined) ?? component
+  const primary = parseColour(value)
+  return { prefix: config.prefix, ...(primary ? { primary } : {}) }
+}
+
+/** CSS colours accepted in DESIGN.md, represented as RGB for the page-side detector. */
+function parseColour(value: string | undefined): number[] | undefined {
+  if (!value) return undefined
+  const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value.trim())?.[1]
+  if (hex) {
+    const expanded = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex
+    return [0, 2, 4].map((i) => Number.parseInt(expanded.slice(i, i + 2), 16))
+  }
+  const rgb = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(value.trim())
+  if (!rgb) return undefined
+  return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])].every(Number.isFinite)
+    ? [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
+    : undefined
 }
 
 /** Runs in the page. Plain JS on purpose: Playwright sends its source to the browser. */
@@ -94,11 +118,33 @@ export function collectComponents(opts: CollectOptions): PageComponents {
       })
   const iconSet = (root: Element) => [...new Set(icons(root).map(([s]) => s))].join('+')
   const box = (el: Element) => el.getBoundingClientRect()
-  const ember = (el: Element) => getComputedStyle(el).backgroundColor.includes(opts.primary.join(', '))
+  const ember = (el: Element) => {
+    if (!opts.primary) return false
+    const background = getComputedStyle(el).backgroundColor.trim()
+    // Computed sRGB backgrounds are rgb()/rgba() in supported browsers. Do not extract arbitrary numbers from
+    // oklch(), color-mix() or a CSS variable that did not resolve: a false primary match is worse than no match.
+    const values = /^rgba?\(/i.test(background) ? background.match(/[\d.]+/g)?.map(Number) ?? [] : []
+    const alpha = values.length > 3 ? values[3]! : 1
+    return (
+      alpha >= 0.05 &&
+      values.length >= 3 &&
+      opts.primary.every((value, i) => Math.abs(value - values[i]!) <= 2)
+    )
+  }
   const visible = (el: Element) => {
     const r = box(el)
     const c = getComputedStyle(el)
-    return r.width > 0 && r.height > 0 && c.visibility !== 'hidden' && c.display !== 'none'
+    if (r.width <= 0 || r.height <= 0 || c.visibility === 'hidden' || c.display === 'none') return false
+    // A closed <details> exposes only its summary. Its descendants can still have boxes in a static snapshot,
+    // especially when the snapshot was captured at a responsive breakpoint.
+    const closed = el.closest('details:not([open])')
+    if (closed && !closed.querySelector(':scope > summary')?.contains(el)) return false
+    // Match audit/type checks: clipped screen-reader-only nodes and transparent ancestors are not drawn.
+    if (r.width <= 1 && r.height <= 1 && c.position === 'absolute') return false
+    if (c.clip === 'rect(0px, 0px, 0px, 0px)' || c.clipPath === 'inset(100%)') return false
+    let opacity = 1
+    for (let e: Element | null = el; e; e = e.parentElement) opacity *= Number(getComputedStyle(e).opacity)
+    return opacity >= 0.05
   }
 
   const sigOf = (kind: string, el: Element): Sig => {
@@ -242,7 +288,8 @@ export function collectComponents(opts: CollectOptions): PageComponents {
     )
       found('section', el)
   }
-  return { components, handBuilt }
+  const source = document.querySelector(`meta[name="${opts.prefix}-source"]`)?.getAttribute('content') ?? undefined
+  return { components, handBuilt, ...(source ? { source } : {}) }
 }
 
 /** The components whose look is measured and compared; the rest follow their content (see sigOf). */
@@ -353,7 +400,9 @@ export function consistencyIssues(
 
 /** Lab screens build catalog components with the components, not by hand. */
 export function reuseIssues(path: string, page: PageComponents): Issue[] {
-  if (familyOf(path) !== 'screens') return []
+  // App snapshots preserve the exact product markup for visual review. They are not authored by the lab and cannot
+  // truthfully be rewritten to custom elements; only hand-authored lab screens are checked for component reuse.
+  if (familyOf(path) !== 'screens' || page.source === 'app') return []
   return page.handBuilt.slice(0, 10).map((h) => ({
     severity: 'error' as const,
     type: 'reuse',

@@ -74,6 +74,35 @@ export function designThemes(): string[] {
   }
 }
 
+/** Convert a CSS length from DESIGN.md to pixels. CSS rem uses the 16px root; em and percentages use `relative`. */
+function cssLength(value: string | number | undefined, relative: number, unitless: 'px' | 'relative'): number {
+  if (value === undefined || value === null) return 0
+  if (typeof value === 'number') return unitless === 'relative' ? value * relative : value
+  const match = /^(-?(?:\d+|\d*\.\d+))\s*(px|rem|em|%)?$/i.exec(value.trim())
+  if (!match) return 0
+  const n = Number(match[1])
+  switch ((match[2] ?? '').toLowerCase()) {
+    case 'rem':
+      return n * 16
+    case 'em':
+    case '%':
+      return n * relative * (match[2] === '%' ? 0.01 : 1)
+    case 'px':
+      return n
+    default:
+      return unitless === 'relative' ? n * relative : n
+  }
+}
+
+/** Keep an authored font stack intact, quoting only a single family whose name needs it. */
+export function cssFontStack(value: string | undefined): string {
+  const stack = value?.trim() ?? ''
+  if (!stack) return ''
+  if (stack.includes(',') || /^['"].*['"]$/.test(stack) || /^[\w-]+$/.test(stack) || /^var\(/i.test(stack))
+    return stack
+  return `"${stack.replaceAll('"', '\\"')}"`
+}
+
 /** A type level in pixels, for comparing with computed styles. */
 export interface Level {
   name: string
@@ -86,17 +115,19 @@ export interface Level {
 
 export function typeLevels(design = readDesign()): Level[] {
   return Object.entries(design.typography).map(([name, t]) => {
-    const size = Number.parseFloat(String(t.fontSize))
-    const lh = String(t.lineHeight)
+    const size = cssLength(t.fontSize, 16, 'px')
+    const lineHeightValue = t.lineHeight
+    const lineHeight =
+      typeof lineHeightValue === 'string' && lineHeightValue.trim().toLowerCase() === 'normal'
+        ? size * 1.2
+        : cssLength(lineHeightValue, size, 'relative')
     return {
       name,
       mono: /mono/i.test(t.fontFamily ?? ''),
       size,
       weight: Number(t.fontWeight ?? 400),
-      lineHeight: lh.endsWith('px') ? Number.parseFloat(lh) : Number.parseFloat(lh) * size,
-      tracking: t.letterSpacing?.endsWith('em')
-        ? Number.parseFloat(t.letterSpacing) * size
-        : Number.parseFloat(t.letterSpacing ?? '0') || 0,
+      lineHeight,
+      tracking: cssLength(t.letterSpacing, size, 'px'),
     }
   })
 }

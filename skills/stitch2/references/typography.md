@@ -6,6 +6,9 @@ project's DESIGN.md defines the levels (front matter `typography`); `stitch2 tok
 `.type-<level>` class, `stitch2 check` warns about text that is not one of them, and `stitch2 type` lists every
 style a screen uses.
 
+Use CSS lengths for the type scale (`px`, `rem`, `em`); checks normalize them to rendered pixels
+using a 16px root. A font-family list stays a CSS stack, not one quoted family name.
+
 ## 1. A type scale is a short list of levels
 
 Google's DESIGN.md format suggests 9–15 levels, each fixing family, size, line height, weight and tracking

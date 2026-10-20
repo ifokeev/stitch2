@@ -76,6 +76,11 @@ series) is added to DESIGN.md first, with a line in the prose saying where it is
   a primary-filled button, a pill chip, a header icon button, a caps label). A screen that duplicates a
   component instead of using it is not handed over: use the component, or extend it (step 4 of the ladder)
   when it cannot do what the screen needs.
+- The reuse detector reports what is actually drawn: descendants of a closed `<details>`, screen-reader-only or
+  clipped nodes, and elements hidden by a transparent ancestor are ignored. This keeps collapsed menus and
+  accessibility-only labels from becoming false component errors. A faithful app snapshot marked with
+  `<meta name="<prefix>-source" content="app">` is a visual baseline, not a component implementation, so its
+  markup is not reuse-checked; make a new lab-authored version before editing the snapshot.
 - **consistency**: a component whose size, radius, font, icon set or icons differ from the catalog's version
   (or, without a catalog, from the majority of screens in its family), or that appears in two versions on one
   screen. `stitch2 consistency` shows the same as cropped images; see the stitch2-consistency skill.

@@ -25,7 +25,7 @@ import {
   SchemeVibrant,
 } from '@material/material-color-utilities'
 import { config as lab } from './config.ts'
-import { readDesign } from './design-md.ts'
+import { cssFontStack, readDesign } from './design-md.ts'
 import { POINTER, writeExports } from './exports.ts'
 import { ROOT } from './screens.ts'
 
@@ -98,7 +98,7 @@ const typeDecls: Record<string, string[]> = {}
 const typeRules = Object.entries(design.typography).map(([name, t]) => {
   const fallback = `var(--${lab.prefix}-font-${/mono/i.test(t.fontFamily ?? '') ? 'mono' : 'sans'}-fallback)`
   const decl = [
-    `font: ${t.fontWeight} ${t.fontSize}/${t.lineHeight} "${t.fontFamily}", ${fallback}`,
+    `font: ${t.fontWeight} ${t.fontSize}/${t.lineHeight} ${cssFontStack(t.fontFamily) || 'sans-serif'}, ${fallback}`,
     `letter-spacing: ${t.letterSpacing ?? '0em'}`,
     t.fontFeature ? `font-feature-settings: ${t.fontFeature}` : '',
     name.endsWith('-caps') ? 'text-transform: uppercase' : '',

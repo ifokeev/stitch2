@@ -13,7 +13,7 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
   (`mobile-v3.html` and `desktop-v3.html` are v3). A new version takes the next free N across the screen's
   variants; a variant added to an existing version takes that version's N (a desktop for v3 is
   `desktop-v3.html`, never v4). A version may start with one variant and get the others later.
-  Its head carries `<p>-screen`, `<p>-page` (see Pages), `<p>-device` (mobile | desktop), `<p>-status`, `<p>-source` (stitch | lab),
+  Its head carries `<p>-screen`, `<p>-page` (see Pages), `<p>-device` (mobile | desktop), `<p>-status`, `<p>-source` (stitch | lab | app),
   `<p>-frame-width` (390 mobile, 1280 desktop) and, written by the user, `<p>-note`. Older files elsewhere
   carry the same tags.
 
@@ -21,6 +21,12 @@ and build on it. Meta tag names below use the project's prefix (`<p>`, from `sti
 It is not the document height: long pages still appear whole. In canvas frames and their pictures,
 `vh`, `svh`, `dvh` and `lvh` keep this viewport height when the frame grows, so full-height sections
 do not create ever-growing gaps. Width responsiveness stays active.
+
+`source=app` means an unchanged capture of a running application's rendered DOM,
+not a hand-authored design. Layout and visual checks still apply; the `reuse`
+rule does not demand replacing its already-rendered framework components with
+lab elements. Keep the import URL as provenance. A new design based on a capture
+uses `source=lab` and the shared component catalog, not the snapshot exception.
 
 ## Pages and their screens
 

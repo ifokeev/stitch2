@@ -40,6 +40,11 @@ majority of screens in the same family.
 | Two versions of one component on a screen | Pick the catalog's; if both are needed, they are two variants: add the variant to the component |
 | The catalog itself is missing the variant a screen needs | Add it to the component and the catalog first, then use it |
 
+The reuse check only considers what is drawn. Descendants of a closed `<details>`, clipped or screen-reader-only
+nodes, and elements hidden by a transparent ancestor are excluded. Screens imported as faithful app snapshots may
+declare `<meta name="<prefix>-source" content="app">`; those baselines are checked visually, but are not expected to
+contain the lab's custom elements. Create a new lab-authored version before changing one.
+
 Never fix consistency by editing one screen to imitate another by hand, and never edit an approved version:
 make the next version.
 

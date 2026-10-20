@@ -33,8 +33,8 @@ export interface Screen {
    */
   page: string
   device: 'mobile' | 'tablet' | 'desktop'
-  /** Where the version came from: stitch, lab or trial. */
-  source: 'stitch' | 'lab' | 'trial'
+  /** Where the version came from: app snapshot, generated draft or authored design. */
+  source: 'stitch' | 'lab' | 'trial' | 'app'
   /** Short version label: "v3", "Stitch", "Trial 2". */
   version: string
   status: Status
