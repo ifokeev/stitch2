@@ -7,8 +7,10 @@
  */
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
-import { config } from './config.ts'
+import { fingerprintPaths } from './cache.ts'
+import { CONFIG_FILE, config } from './config.ts'
 import {
   type Components,
   collectComponents,
@@ -34,6 +36,8 @@ const esc = (s: unknown) =>
 
 interface CachedScreen {
   mtime: number
+  deps?: string
+  sourceKey?: string
   components: Components
   /** Component kinds cropped for this screen ('all' after an unfiltered run). */
   kinds: string[]
@@ -45,15 +49,16 @@ const KNOWN_FILE = join(out, 'known.json')
 const cached: Record<string, CachedScreen> = existsSync(KNOWN_FILE)
   ? (JSON.parse(readFileSync(KNOWN_FILE, 'utf8')) as Record<string, CachedScreen>)
   : {}
+const deps = fingerprintPaths([
+  ...['DESIGN.md', 'tokens.css', 'tokens.json', 'components', config.catalogDir].map((p) => join(ROOT, p)),
+  ...(CONFIG_FILE ? [CONFIG_FILE] : []),
+  fileURLToPath(new URL('.', import.meta.url)),
+])
+const sourceKeys = Object.fromEntries(screens.map((s) => [s.path, fingerprintPaths([join(ROOT, s.path)])]))
 // A screen needs a visit when it is new, changed, or lacks crops for the requested kinds.
 const needsVisit = (path: string): boolean => {
   const hit = cached[path]
-  if (!hit) return true
-  try {
-    if (statSync(join(ROOT, path)).mtimeMs !== hit.mtime) return true
-  } catch {
-    return true
-  }
+  if (!hit || hit.deps !== deps || hit.sourceKey !== sourceKeys[path]) return true
   if (!kinds.length) return !hit.kinds.includes('all')
   return !kinds.every((k) => hit.kinds.includes(k) || hit.kinds.includes('all'))
 }
@@ -145,7 +150,7 @@ const runOne = async (
     crops[kind] ??= {}
     crops[kind]![s.path] = files
   }
-  visitedKinds[s.path]!.add('all')
+  if (!kinds.length) visitedKinds[s.path]!.add('all')
   } catch (e) {
     // A dead page must not kill the other workers: the screen keeps no cache entry and is retried next run.
     delete known[s.path]
@@ -171,13 +176,15 @@ for (const s of todo) {
   for (const [kind, byPath] of Object.entries(crops)) {
     if (byPath[s.path]) screenCrops[kind] = byPath[s.path]
   }
-  const prev = cached[s.path]
+  const prev = cached[s.path]?.deps === deps && cached[s.path]?.sourceKey === sourceKeys[s.path] ? cached[s.path] : undefined
   const families = new Set([...(prev?.kinds ?? []), ...(visitedKinds[s.path] ?? [])])
   if (!kinds.length) families.add('all')
   else for (const k of kinds) families.add(k)
   try {
     next[s.path] = {
       mtime: statSync(join(ROOT, s.path)).mtimeMs,
+      deps,
+      sourceKey: sourceKeys[s.path],
       components: known[s.path]!,
       kinds: [...families],
       crops: { ...(prev?.crops ?? {}), ...screenCrops },

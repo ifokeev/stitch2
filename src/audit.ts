@@ -32,6 +32,25 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     if (out.filter((i) => i.type === type).length >= 10) return
     out.push({ severity, type, message, selector: sel(el), text: text(el) })
   }
+  const overflowClips = (el: Element, ancestor: Element) => {
+    // Overflow does not clip an absolutely/fixed positioned descendant whose containing block lies
+    // outside that ancestor. This differs from clip-path and matters for overlays in zero-sized wrappers.
+    for (let e: Element | null = el; e && e !== ancestor; e = e.parentElement) {
+      const position = getComputedStyle(e).position
+      if (position !== 'absolute' && position !== 'fixed') continue
+      let block: Element | null = null
+      for (let p = e.parentElement; p; p = p.parentElement) {
+        const c = getComputedStyle(p)
+        if ((position === 'absolute' && c.position !== 'static') || c.transform !== 'none' || c.filter !== 'none' || c.perspective !== 'none' ||
+          /paint|layout|strict|content/.test(c.contain) || /transform|filter|perspective/.test(c.willChange)) {
+          block = p
+          break
+        }
+      }
+      if (!block || !ancestor.contains(block)) return false
+    }
+    return true
+  }
   const shown = (el: Element) => {
     const cs = getComputedStyle(el)
     if (cs.display === 'none' || cs.visibility === 'hidden') return false
@@ -41,6 +60,19 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     const r = el.getBoundingClientRect()
     // Text kept for screen readers only (Tailwind's sr-only: a 1px box, clipped away) is not drawn.
     if (r.width <= 1 && r.height <= 1 && cs.position === 'absolute') return false
+    // Opacity, clipping and content-visibility belong to ancestors too. These nodes can have large boxes
+    // outside the page without painting anything there (a tooltip at rest or an accessible file input).
+    if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true })) return false
+    const topLayer = el.closest(':modal, :popover-open')
+    for (let e: Element | null = el; e; e = e.parentElement) {
+      const c = getComputedStyle(e)
+      if (c.clip === 'rect(0px, 0px, 0px, 0px)' || /^inset\((50|100)%\)$/.test(c.clipPath)) return false
+      if (e !== el && (c.overflowX !== 'visible' || c.overflowY !== 'visible')) {
+        const q = e.getBoundingClientRect()
+        if (((c.overflowX !== 'visible' && q.width <= 0) || (c.overflowY !== 'visible' && q.height <= 0)) && overflowClips(el, e)) return false
+      }
+      if (e === topLayer) break
+    }
     return r.width > 0 && r.height > 0
   }
   const opacity = (el: Element) => {
@@ -52,6 +84,76 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   const inSvg = (el: Element) => !!el.closest('svg') && el.tagName.toLowerCase() !== 'svg'
   const all = [...document.body.querySelectorAll('*')].filter((el) => shown(el) && !inSvg(el))
   const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+  type Box = { left: number; top: number; right: number; bottom: number }
+  const intersect = (a: Box, b: Box): Box => ({
+    left: Math.max(a.left, b.left), top: Math.max(a.top, b.top),
+    right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom),
+  })
+  const area = (r: Box, minimum = 0) => r.right - r.left > minimum && r.bottom - r.top > minimum
+  // Inline controls have one rectangle per line; their bounding rectangle includes empty corners between
+  // lines. Compare the fragments the browser draws, clipped on each axis by their scrolling ancestors.
+  const visibleRects = (el: Element): Box[] => {
+    let rects: Box[] = [...el.getClientRects()]
+    const topLayer = el.closest(':modal, :popover-open')
+    if (topLayer === el) return rects.filter((r) => area(r))
+    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+      const c = getComputedStyle(e)
+      if ((c.overflowX !== 'visible' || c.overflowY !== 'visible') && overflowClips(el, e)) {
+        const r = e.getBoundingClientRect()
+        rects = rects.map((q) => intersect(q, {
+          left: c.overflowX === 'visible' ? -Infinity : r.left,
+          right: c.overflowX === 'visible' ? Infinity : r.right,
+          top: c.overflowY === 'visible' ? -Infinity : r.top,
+          bottom: c.overflowY === 'visible' ? Infinity : r.bottom,
+        }))
+      }
+      // Top-layer elements escape their ancestors' overflow, but their own scrolling still clips children.
+      if (e === topLayer) break
+    }
+    return rects.filter((r) => area(r))
+  }
+  const proseLink = (el: Element) => {
+    if (!el.matches('a') || getComputedStyle(el).display !== 'inline' || el.closest('nav, header, [role=navigation], [role=tablist], [role=menu]')) return false
+    const context = el.closest('p, li, blockquote, dd, figcaption')
+    if (!context) return false
+    // WCAG's inline-target exception is for links within a sentence, not a list of standalone links.
+    const walker = document.createTreeWalker(context, NodeFilter.SHOW_TEXT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode())
+      if (n.textContent!.trim() && !n.parentElement?.closest('a, button')) return true
+    return false
+  }
+  const verticalNavigationLink = (el: Element) => {
+    if (!el.matches('a') || !el.closest('nav, [role=navigation]')) return false
+    const row = el.closest('li')
+    const list = row?.parentElement ?? el.parentElement
+    if (!list) return false
+    const c = getComputedStyle(list)
+    // A vertical contents/menu list can contain sentence-length titles. Horizontal bars and tab rows
+    // retain their one-line label rule; wrapping them is not a substitute for responsive navigation.
+    return (c.display === 'block' && (row ? !getComputedStyle(row).display.startsWith('inline') : getComputedStyle(el).display === 'block')) ||
+      (c.display.includes('flex') && c.flexDirection.startsWith('column')) ||
+      (c.display.includes('grid') && c.gridTemplateColumns.split(/\s+/).length === 1)
+  }
+  const disclosureTextFits = (el: Element) => {
+    if (!el.matches('button[aria-expanded]:not([aria-haspopup])')) return false
+    const c = getComputedStyle(el)
+    if (!['left', 'start'].includes(c.textAlign)) return false
+    const r = el.getBoundingClientRect()
+    const top = r.top + parseFloat(c.borderTopWidth) + parseFloat(c.paddingTop)
+    const bottom = r.bottom - parseFloat(c.borderBottomWidth) - parseFloat(c.paddingBottom)
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    let found = false
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent!.trim() || !n.parentElement || !shown(n.parentElement)) continue
+      const range = document.createRange()
+      range.selectNodeContents(n)
+      for (const q of range.getClientRects()) {
+        found = true
+        if (q.top < top - 1 || q.bottom > bottom + 1) return false
+      }
+    }
+    return found
+  }
 
   // 1. Nothing past the screen edge, except inside deliberate horizontal scrollers (chip rows).
   if (document.documentElement.scrollWidth > W + 1)
@@ -117,6 +219,9 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     /(^|\s)(chip|badge|pill|tag)|rounded-full/.test(String((el as HTMLElement).className ?? ''))
   for (const el of all) {
     if (!isLabel(el) || text(el).length > 40 || el.querySelector('p, div, li, ul, br')) continue
+    // Prose links flow with their sentence; vertical contents titles and fitted disclosure headings can
+    // also wrap. Horizontal navigation, tabs and ordinary button labels retain their one-line rule.
+    if (proseLink(el) || verticalNavigationLink(el) || disclosureTextFits(el)) continue
     // A control whose text sits in two or more elements (a list row's title and its meta line) is a composite
     // control, not a label: its lines are laid out on purpose.
     const holders = new Set<Element>()
@@ -159,10 +264,17 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   })
   // Behind an open modal the page is inert and covered, so only the modal's own bars count.
   // An open modal: the element may be 0px itself when everything in it is fixed (Headless UI's Dialog).
-  const modal = [...document.querySelectorAll('[aria-modal="true"]')].find((m) => {
+  const modals = [...document.querySelectorAll('dialog:modal, [aria-modal="true"]')].filter((m) => {
     const cs = getComputedStyle(m)
     return cs.display !== 'none' && cs.visibility !== 'hidden' && [m, ...m.querySelectorAll('*')].some(shown)
   })
+  // Native dialogs enter the top layer in opening order, which need not match document order. Hit-testing
+  // their centres identifies the active one; focus also covers zero-sized ARIA modal wrappers.
+  const modal = modals.find((m) => {
+    const r = m.getBoundingClientRect()
+    const hit = document.elementFromPoint(Math.max(0, Math.min(W - 1, r.left + r.width / 2)), Math.max(0, Math.min(innerHeight - 1, r.top + r.height / 2)))
+    return hit?.closest('dialog:modal, [aria-modal="true"]') === m
+  }) ?? document.activeElement?.closest('dialog:modal, [aria-modal="true"]') ?? modals.at(-1)
   const outer = bars.filter((b) => !bars.some((o) => o !== b && o.contains(b)) && (!modal || modal.contains(b)))
   const content = all.filter(
     (el) =>
@@ -171,6 +283,38 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       (ownText(el) || el.matches('button, input, select, textarea, img, svg, canvas, video')) &&
       opacity(el) > 0.5,
   )
+  const painted = (el: Element) => {
+    const cs = getComputedStyle(el)
+    return (
+      ownText(el) ||
+      el.matches('svg, img, button, input') ||
+      !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ||
+      Number.parseFloat(cs.borderTopWidth) > 0
+    )
+  }
+  const paintedParts = (bar: Element) => [bar, ...bar.querySelectorAll('*')].filter((e) => shown(e) && !inSvg(e) && painted(e))
+  const barCovers = (bar: Element, el: Element, rect: Box) => {
+    // Geometry alone cannot tell which thing is on top: a menu or a modal can overlap a header while
+    // painting in front of it. Sample the actual intersection and ask the browser about paint order.
+    // Pointer-events:none must not hide a genuinely covering bar from that test.
+    const styles = [bar, el].map((e) => ({ e: e as HTMLElement, value: (e as HTMLElement).style.getPropertyValue('pointer-events'), priority: (e as HTMLElement).style.getPropertyPriority('pointer-events') }))
+    for (const { e } of styles) e.style.setProperty('pointer-events', 'auto', 'important')
+    try {
+      for (const fx of [0.1, 0.5, 0.9])
+        for (const fy of [0.1, 0.5, 0.9]) {
+          const x = rect.left + (rect.right - rect.left) * fx
+          const y = rect.top + (rect.bottom - rect.top) * fy
+          const hits = document.elementsFromPoint(x, y)
+          const first = hits[0]
+          if (first && bar.contains(first) && hits.some((hit) => el === hit || el.contains(hit))) return true
+        }
+      return false
+    } finally {
+      for (const { e, value, priority } of styles)
+        if (value) e.style.setProperty('pointer-events', value, priority)
+        else e.style.removeProperty('pointer-events')
+    }
+  }
   const covered = async (edge: 'top' | 'bottom') => {
     window.scrollTo(0, edge === 'bottom' ? document.documentElement.scrollHeight : 0)
     await frame()
@@ -179,12 +323,14 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
       const b = bar.getBoundingClientRect()
       const atEdge = edge === 'bottom' ? b.bottom >= H - 4 && b.top > H / 2 : b.top <= 4 && b.bottom < H / 2
       if (!atEdge) continue
+      const drawn = paintedParts(bar).flatMap(visibleRects)
       for (const el of content) {
         if (el.contains(bar)) continue
-        const r = el.getBoundingClientRect()
-        const overlapY = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top)
-        const overlapX = Math.min(r.right, b.right) - Math.max(r.left, b.left)
-        if (overlapY > 4 && overlapX > 4)
+        const hidden = visibleRects(el).some((r) => drawn.some((q) => {
+          const overlap = intersect(intersect(r, q), { left: 0, top: 0, right: W, bottom: H })
+          return area(overlap, 4) && barCovers(bar, el, overlap)
+        }))
+        if (hidden)
           push(
             'error',
             `under-${edge}-bar`,
@@ -196,20 +342,10 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   }
   // 3b. Fixed bars never overlap one another, including what sticks out of them (a raised tab-bar button
   // reaching into a docked timer). Compares the painted parts: backgrounds, borders, text, icons, controls.
-  const painted = (el: Element) => {
-    const cs = getComputedStyle(el)
-    return (
-      ownText(el) ||
-      el.matches('svg, img, button, input') ||
-      !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) ||
-      Number.parseFloat(cs.borderTopWidth) > 0
-    )
-  }
   const fixedBars = outer.filter(
     (b) => getComputedStyle(b).position === 'fixed' && b.getBoundingClientRect().height < window.innerHeight * 0.8,
   )
-  const parts = (bar: Element) =>
-    [bar, ...bar.querySelectorAll('*')].filter((e) => shown(e) && !inSvg(e) && painted(e)).map((e) => e.getBoundingClientRect())
+  const parts = (bar: Element) => paintedParts(bar).flatMap(visibleRects)
   for (const [i, a] of fixedBars.entries())
     for (const b of fixedBars.slice(i + 1)) {
       const hit = parts(a).some((r) =>
@@ -250,7 +386,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   }
   for (const el of interactive) {
     if (interactive.some((o) => o !== el && o.contains(el))) continue
-    if (el.matches('a') && el.closest('p')) continue
+    if (proseLink(el)) continue
     const r = el.getBoundingClientRect()
     const min = Math.min(r.width, r.height)
     // WCAG 2.2 spacing exception: a smaller target passes when a 24px circle on it touches no other target.
@@ -287,32 +423,59 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   const layer = layerOf
   // The part of a control its scrolling or clipping ancestors show: a link scrolled out of a nav strip is not drawn
   // where its box would be.
-  const visibleBox = (el: Element) => {
-    const r = el.getBoundingClientRect()
-    let { left, top, right, bottom } = r
-    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
-      const cs = getComputedStyle(e)
-      if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue
-      const c = e.getBoundingClientRect()
-      if (cs.overflowX !== 'visible') {
-        left = Math.max(left, c.left)
-        right = Math.min(right, c.right)
-      }
-      if (cs.overflowY !== 'visible') {
-        top = Math.max(top, c.top)
-        bottom = Math.min(bottom, c.bottom)
-      }
+  const isEmptyOverlay = (el: Element) => {
+    if (!['absolute', 'fixed'].includes(getComputedStyle(el).position) || text(el) || el.querySelector('svg, img, canvas, video, input')) return false
+    const c = getComputedStyle(el)
+    if (!/rgba\(0, 0, 0, 0\)|transparent/.test(c.backgroundColor) || c.backgroundImage !== 'none' || c.boxShadow !== 'none' ||
+      [c.borderTopWidth, c.borderRightWidth, c.borderBottomWidth, c.borderLeftWidth].some((v) => parseFloat(v) > 0)) return false
+    for (const pseudo of ['::before', '::after']) {
+      const p = getComputedStyle(el, pseudo)
+      if (p.content !== 'none' && p.content !== 'normal' && p.display !== 'none') return false
     }
-    return { left, top, right, bottom }
+    return true
+  }
+  const emptyOverlay = (el: Element, other: Element) => {
+    if (!emptyOverlays.has(el)) return false
+    const r = el.getBoundingClientRect(), q = other.getBoundingClientRect()
+    // A stretched card/row action underneath its own secondary link is intentional. An empty control
+    // merely colliding with a neighbour, or a painted button covering another control, is still an error.
+    if (!(r.left <= q.left && r.right >= q.right && r.top <= q.top && r.bottom >= q.bottom && (r.width > q.width + 2 || r.height > q.height + 2))) return false
+    // Transparency alone does not prove that this pattern works: an invisible action above the link
+    // blocks it. Ask the browser whether the secondary control is actually reachable. Scroll the window
+    // only when necessary to hit-test an offscreen row; leave nested scroll positions and final scroll intact.
+    const before = { x: scrollX, y: scrollY }
+    try {
+      if (q.bottom <= 0 || q.top >= innerHeight) window.scrollTo({ top: scrollY + q.top - innerHeight / 2, behavior: 'instant' })
+      return visibleRects(other).some((box) => {
+        const onScreen = intersect(box, { left: 0, top: 0, right: W, bottom: innerHeight })
+        if (!area(onScreen)) return false
+        const hit = document.elementFromPoint((onScreen.left + onScreen.right) / 2, (onScreen.top + onScreen.bottom) / 2)
+        return !!hit && other.contains(hit)
+      })
+    } finally {
+      if (scrollX !== before.x || scrollY !== before.y) window.scrollTo({ left: before.x, top: before.y, behavior: 'instant' })
+    }
+  }
+  const reservedInputAction = (field: Element, action: Element) => {
+    if (!field.matches('input') || !action.matches('button, [role=button]') || !field.parentElement?.contains(action)) return false
+    if (!['text', 'search', 'email', 'url', 'tel', 'password', 'number'].includes((field as HTMLInputElement).type)) return false
+    const r = field.getBoundingClientRect(), q = action.getBoundingClientRect()
+    if (q.left < r.left - 1 || q.right > r.right + 1 || q.top < r.top - 1 || q.bottom > r.bottom + 1) return false
+    const c = getComputedStyle(field)
+    const left = r.left + parseFloat(c.borderLeftWidth) + parseFloat(c.paddingLeft)
+    const right = r.right - parseFloat(c.borderRightWidth) - parseFloat(c.paddingRight)
+    // A clear/reveal/list toggle may occupy padding reserved for it, but never the editable text area.
+    return q.right <= left + 1 || q.left >= right - 1
   }
   // Behind an open modal (found above) only the modal's own controls count.
   const solid = interactive.filter((el) => opacity(el) > 0.05 && (!modal || modal.contains(el)))
+  const emptyOverlays = new Set(solid.filter(isEmptyOverlay))
+  const controlRects = new Map(solid.map((el) => [el, visibleRects(el)]))
   for (const [i, a] of solid.entries())
     for (const b of solid.slice(i + 1)) {
       if (a.contains(b) || b.contains(a) || layer(a) !== layer(b)) continue
-      const r = visibleBox(a)
-      const q = visibleBox(b)
-      if (Math.min(r.right, q.right) - Math.max(r.left, q.left) > 2 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 2)
+      if (reservedInputAction(a, b) || reservedInputAction(b, a) || emptyOverlay(a, b) || emptyOverlay(b, a)) continue
+      if (controlRects.get(a)!.some((r) => controlRects.get(b)!.some((q) => area(intersect(r, q), 2))))
         push('error', 'control-overlap', b, `Overlaps another control (“${text(a).slice(0, 30) || a.getAttribute('aria-label') || a.tagName.toLowerCase()}”): give them room`)
     }
 
@@ -514,7 +677,7 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
   // Compared like overlaps (4b): behind an open modal only its own controls, and within one layer.
   if (W < 600)
     for (const el of solid) {
-      if (solid.some((o) => o !== el && o.contains(el)) || (el.matches('a') && el.closest('p'))) continue
+      if (solid.some((o) => o !== el && o.contains(el)) || proseLink(el)) continue
       const r = el.getBoundingClientRect()
       if (r.width >= 48 && r.height >= 48) continue
       if (out.some((i) => i.type === 'tap-target' && i.selector === sel(el))) continue

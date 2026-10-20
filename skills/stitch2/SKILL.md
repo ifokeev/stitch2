@@ -69,6 +69,22 @@ References, read before the first screen:
    An issue tagged with a width ("at 1024px: …") breaks at an edge of the windows the variant covers: fix it with a
    responsive rule in the screen, or a new variant when the layout's structure has to change (screens.md, Widths).
    Widths include the breakpoints inside the range; `narrow-layout` is a phone column left in a wide window.
+   Overlap checks compare the drawn fragments of wrapped inline controls, not the empty corners of their
+   bounding boxes. For fixed bars, the browser's paint order decides coverage: a menu painted in front of a
+   header is not hidden by it. Native modal dialogs and ARIA modals limit coverage and control comparisons
+   to the active dialog. Transparent hints, fully clipped accessible inputs and content in zero-sized
+   overflow-clipped wrappers are not drawn controls. Positioned descendants whose containing block lies
+   outside that wrapper, and top-layer dialogs, remain checked because the wrapper does not clip them.
+   An empty, transparent stretched row/card action may sit under a secondary link; painted controls or
+   partially colliding neighbours still fail. Do not silence an overlap by hiding content or removing its
+   accessible label: inspect the visible state and fix actual collisions in the shared component.
+   Inline links within a prose sentence may wrap and receive WCAG's inline-target exception, including
+   sentences inside list items; standalone links do not. Titles in vertical contents/menu lists may wrap,
+   unlike horizontal navigation labels. An in-page disclosure (`aria-expanded`, without `aria-haspopup`)
+   may have a multiline heading when its height and padding fit the complete text. A text input's clear,
+   reveal or list-toggle button may overlap only padding reserved for it, never the editable text area.
+   Cached checks are invalidated when shared components, the catalog or the checker change. A filtered
+   rerun refreshes only those screens; it must not make unrelated screens' older checks appear current.
    Motion warnings: `motion-token` (a transition length DESIGN.md doesn't name) and `reduced-motion` (something
    still moves when the person asked for less); see motion.md. On the catalog, `state-*` warnings come from the
    States sheet (components.md, States).

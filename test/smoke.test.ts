@@ -115,6 +115,26 @@ test('the starter catalog and screen pass the checks', () => {
   assert.ok(rows.length > 0 && rows[0].crops.pressed, JSON.stringify(rows?.[0]))
 })
 
+test('a filtered check refreshes only its own shared-dependency cache keys', () => {
+  const checksFile = join(dir, 'design/checks.json')
+  const keys = () => JSON.parse(readFileSync(checksFile, 'utf8')).cacheKeys as Record<string, string>
+  const first = keys()
+  const home = 'screens/home/mobile-v1.html'
+  const plan = 'screens/plan/mobile-v3.html'
+  assert.ok(first[home] && first[plan])
+  // Editing an imported dependency must invalidate consumers without touching their HTML or catalog.
+  writeFileSync(join(dir, 'design/components/cache-probe.css'), 'button { min-height: 44px }')
+  stitch2('check', home, '--locales', 'none')
+  const filtered = keys()
+  assert.notEqual(filtered[home], first[home])
+  assert.equal(filtered[plan], first[plan], 'an unvisited screen must retain its old key')
+  stitch2('check', plan, '--locales', 'none')
+  const next = keys()
+  assert.notEqual(next[plan], first[plan], 'the second filtered run must revisit the other screen')
+  assert.equal(next[home], filtered[home])
+  rmSync(join(dir, 'design/components/cache-probe.css'))
+})
+
 test('with a light theme, check also runs the screens in it', () => {
   // setup --primary writes both themes; the renders show the second one with a suffix.
   assert.match(readFileSync(join(dir, 'design/DESIGN.md'), 'utf8'), /\n  light-/)

@@ -52,6 +52,8 @@ make the next version.
 
 1. Re-run `stitch2 check` and `stitch2 consistency`: the fixed screens show "matches" in the report and no
    `reuse`/`consistency` warnings.
+   Changes to shared components or the catalog invalidate their cached checks. A filtered check does not
+   refresh screens it did not visit; run the full check before making a whole-project consistency claim.
 2. Tell the user, per component, which screens matched, which you fixed (and how: component used, component
    extended, new version), and which differ on purpose (drafts you left, with the reason). Point to the report
    on the canvas so they can see it.

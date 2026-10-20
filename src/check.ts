@@ -16,9 +16,11 @@
  * Screens run four at a time; reruns only visit screens that changed since design/checks.json (or
  * everything DESIGN.md, the tokens, the components or the catalog changed since).
  */
-import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
+import { fingerprintPaths } from './cache.ts'
 import { colourIssues } from './colours.ts'
 import { CONFIG_FILE, checkWidths, config } from './config.ts'
 import {
@@ -67,45 +69,30 @@ const components: Record<string, Components> = {}
 const stateRows: Record<string, StateRow[]> = {}
 // Screens unchanged since the last green run keep their results when nothing they depend on changed
 // (DESIGN.md, tokens, components, the catalog): reruns then only visit what actually changed.
-const depFiles = ['DESIGN.md', 'tokens.css', 'tokens.json']
-const depMtime = (p: string): number => {
-  try {
-    return statSync(join(ROOT, p)).mtimeMs
-  } catch {
-    return 0
-  }
-}
 let previous: {
   screens?: Record<string, Issue[]>
   components?: Record<string, Components>
   checkedAt?: string
-  depsMtime?: number
-  runKey?: string
+  cacheKeys?: Record<string, string>
 } = {}
 try {
   previous = JSON.parse(readFileSync(join(ROOT, 'checks.json'), 'utf8'))
 } catch {}
-const currentDeps = Math.max(
-  ...depFiles.map(depMtime),
-  depMtime(config.catalogDir),
-  depMtime(join(config.catalogDir, 'catalog.html')),
-  ...(CONFIG_FILE ? [depMtime(CONFIG_FILE)] : []),
-)
-const depsChanged = !previous.checkedAt || (previous.depsMtime ?? 0) < currentDeps
+const currentDeps = fingerprintPaths([
+  ...['DESIGN.md', 'tokens.css', 'tokens.json', 'components', config.catalogDir].map((p) => join(ROOT, p)),
+  ...(CONFIG_FILE ? [CONFIG_FILE] : []),
+  fileURLToPath(new URL('.', import.meta.url)),
+])
 // Renders are the point of --shots: every screen is visited, nothing is skipped.
 // ...as are explicit locales: different flags check different things.
 const runKey = JSON.stringify({ locales, shots })
-const skipping = !shots && !depsChanged && previous.runKey !== undefined && previous.runKey === runKey
-const screenMtime = (path: string): number => {
-  try {
-    return statSync(join(ROOT, path)).mtimeMs
-  } catch {
-    return Infinity
-  }
-}
-const checkedAt = previous.checkedAt ? Date.parse(previous.checkedAt) : 0
+// Each screen remembers its own inputs. A filtered run cannot bless unvisited screens after a shared edit.
+const cacheKeys = Object.fromEntries(screens.map((s) => [
+  s.path, `${currentDeps}:${runKey}:${fingerprintPaths([join(ROOT, s.path)])}`,
+]))
 const todo = screens.filter(
-  (s) => !skipping || !previous.screens?.[s.path] || screenMtime(s.path) >= checkedAt,
+  (s) => shots || !previous.screens?.[s.path] || previous.cacheKeys?.[s.path] !== cacheKeys[s.path]
+    || previous.screens[s.path].some((i) => i.type === 'check-crashed'),
 )
 for (const s of screens) {
   if (!todo.includes(s)) {
@@ -291,7 +278,10 @@ async function shoot(
 
 const exists = new Set(listScreens().map((s) => s.path))
 const keep = <T>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([p]) => exists.has(p)))
-const allComponents = keep({ ...previous.components, ...components })
+const freshPreviousComponents = Object.fromEntries(Object.entries(previous.components ?? {})
+  .filter(([path]) => previous.cacheKeys?.[path]?.startsWith(`${currentDeps}:`)
+    && previous.cacheKeys[path]!.endsWith(`:${fingerprintPaths([join(ROOT, path)])}`)))
+const allComponents = keep({ ...freshPreviousComponents, ...components })
 // Archived versions are history: they do not vote on how a component should look.
 const archived = new Set(
   listScreens()
@@ -316,7 +306,7 @@ for (const s of screens) {
 }
 writeFileSync(
   join(ROOT, 'checks.json'),
-  `${JSON.stringify({ checkedAt: new Date().toISOString(), depsMtime: currentDeps, runKey, screens: keep({ ...previous.screens, ...results }), components: allComponents }, null, 2)}\n`,
+  `${JSON.stringify({ checkedAt: new Date().toISOString(), cacheKeys: keep({ ...previous.cacheKeys, ...cacheKeys }), screens: keep({ ...previous.screens, ...results }), components: allComponents }, null, 2)}\n`,
 )
 console.log(
   `\n${screens.length} screens checked, ${errors} errors. Results in design/checks.json (badges on the canvas).`,
