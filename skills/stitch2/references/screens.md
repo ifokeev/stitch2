@@ -171,13 +171,31 @@ doesn't cover it is drawn at its nearest edge and faded, because the app shows a
 - A desktop screen is a layout for its range, not a stretched phone: a side navigation instead of the bar,
   list-detail with both panes, extra columns for feeds.
 
+## App states
+
+When the product looks different signed in or out, on another plan or for another role, do not draw a copy of each
+screen per state. Draw it once, let its CSS and scripts answer to an attribute on `<html>`, and list the states as
+`modes` in `stitch2.config.json`:
+
+```json
+"modes": [
+  { "name": "auth", "label": "Account", "values": [{ "value": "guest", "label": "Guest" }, { "value": "user", "label": "Signed in" }] }
+]
+```
+
+The canvas sidebar then has a dropdown for each mode. A value sets the attribute (`data-auth="user"`; `attribute`
+names another) on every screen, live frames and the pictures of the rest, and "As drawn" puts each screen back to what
+its file says. `m` cycles the first mode. A screen is still written for the state it shows (a signed-in account page has
+`data-auth="user"` in its file); modes show the other states of the same screen. `stitch2 check` runs on the screens as
+drawn, not in each state, so open the other states on the canvas and look at them before hand-over.
+
 ## The canvas
 
 `stitch2 canvas` → http://localhost:4400. The sidebar lists DESIGN.md (drawn as tokens and rules), Components
 (the catalog for the variants the filter shows; a click steps through them), the consistency report and app
 comparison (each with when it last ran, or how many covered screens changed since), Languages, and every screen
-with its versions. Filters: status (active, approved, needs review, all), versions, variants, theme, width and
-language. The reports and Languages follow the filters too: they show only the screens the canvas shows. Selecting a version opens the inspector: status, note, checks, and
+with its versions. Filters: status (active, approved, needs review, all), versions, variants, theme, width,
+language and each app state (`modes`). The reports and Languages follow the filters too: they show only the screens the canvas shows. Selecting a version opens the inspector: status, note, checks, and
 Copy for its reference. Pick mode (`p`) highlights the element under the pointer; a click copies its reference,
 Shift-click collects several (Copy all, Add to note). Keys: `/` search, `j`/`k` next and previous, `a` approve,
-`p` pick, `f` fit, `0` actual size, double-click to use a frame, `Esc` to leave.
+`p` pick, `f` fit, `m` next app state, `0` actual size, double-click to use a frame, `Esc` to leave.

@@ -42,6 +42,8 @@ file that already exists. From there the agent spends its effort on the design.
   A width switch (`W`) shows every screen at the narrowest or widest window its layout covers.
   With languages configured, a Language switch (`L`) shows every screen in one of them, and the Languages page
   shows a screen side by side in each.
+  With app states configured (`modes`: signed in or out, a plan, a role), a dropdown for each (`M` cycles the first)
+  shows every screen in one of them, live pages and pictures alike, or as drawn.
   Pick mode (`P`) highlights any element of a screen and copies a reference with its source line, such as
   `home mobile v1 (design/screens/home/mobile-v1.html:36) <gg-button> “Start Push”`; Shift-click collects
   several to copy at once or add to the version's note.

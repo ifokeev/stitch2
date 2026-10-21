@@ -3,7 +3,7 @@
  * components), so a canvas with a hundred of them stalls the browser; the canvas keeps only the screens in view live
  * and draws the rest from these. One headless Chromium renders them, three at a time, and they are kept on disk
  * (os.tmpdir()/stitch2-shots), keyed by everything that changes the picture: the screen file, the files screens
- * share (tokens, components, stylesheets), the theme, the language and its messages, and the width.
+ * share (tokens, components, stylesheets), the theme, the modes, the language and its messages, and the width.
  */
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
@@ -25,6 +25,8 @@ export interface ShotRequest {
   width: number
   theme?: string
   lang?: string
+  /** Attributes set on the page's <html> before the picture: the app states picked in the canvas (config modes). */
+  modes?: Record<string, string>
 }
 
 let shared: number | undefined
@@ -59,6 +61,7 @@ function keyOf(r: ShotRequest): string | null {
     statSync(file).mtimeMs,
     sharedStamp(),
     r.theme ?? '',
+    JSON.stringify(Object.entries(r.modes ?? {}).sort(([a], [b]) => a.localeCompare(b))),
     r.lang ?? '',
     messages && existsSync(messages) ? statSync(messages).mtimeMs : '',
     r.width,
@@ -100,6 +103,8 @@ export function shot(base: string, r: ShotRequest): Promise<Buffer> | null {
       if (r.lang && r.lang !== sourceLocale()) query.set('lang', r.lang)
       await page.goto(`${base}/${r.path}?${query}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
       if (r.theme) await page.evaluate((t) => { document.documentElement.dataset.theme = t }, r.theme)
+      const attributes = Object.entries(r.modes ?? {})
+      if (attributes.length) await page.evaluate((list) => { for (const [name, value] of list) document.documentElement.setAttribute(name, value) }, attributes)
       await page.evaluate(() => document.fonts.ready)
       // Tailwind's browser build and the components settle after load.
       await page.waitForTimeout(400)

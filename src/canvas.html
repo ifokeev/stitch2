@@ -44,6 +44,7 @@
   /* Theme and language: native dropdowns drawn like the versions and variants ones. */
   .pick { appearance: none; background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23a1a1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 12px 8px; border: 1px solid var(--edge); border-radius: 8px; color: var(--text); cursor: pointer; font: inherit; padding: 5px 30px 5px 8px; width: 100%; }
   .pick[hidden] { display: none; }
+  #modeFilters { display: contents; }
   #tree { flex: 1; overflow: auto; padding: 6px 8px 16px; }
   #tree h4 { color: var(--faint); font-size: 11px; letter-spacing: .06em; margin: 14px 6px 6px; text-transform: uppercase; }
   .item { align-items: center; background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; display: flex; gap: 8px; padding: 6px 8px; text-align: left; width: 100%; }
@@ -142,6 +143,7 @@
     <details id="versionFilter" class="multi" hidden title="Show only the versions you pick (several at once), or all of them"><summary>All versions</summary><div class="menu"></div></details>
     <details id="variantFilter" class="multi" hidden title="Show only the variants you pick: mobile, tablet, desktop (several at once), or all of them"><summary>All variants</summary><div class="menu"></div></details>
     <select id="themeFilter" class="pick" hidden title="Show every screen in this theme (T)" aria-label="Theme"></select>
+    <div id="modeFilters"></div>
     <select id="widthFilter" class="pick" title="Show every screen at the narrowest or widest window its variant covers, or at one breakpoint (W)" aria-label="Width"></select>
     <select id="langFilter" class="pick" title="Show every screen in this language (L)" aria-label="Language"></select>
   </header>
@@ -179,13 +181,20 @@ let designDir = 'design'
 let THEMES = ['dark']
 let theme = localStorage.getItem('stitch2-theme') ?? 'dark'
 const themed = () => THEMES.length > 1
+// Modes: app states (signed in or out, a plan, a role) every screen can be shown in. Each sets an attribute on the
+// screen's document, like the theme; "As drawn" leaves a screen as its file has it. Pictures of the screens that are
+// not live ask the server for the same states (?mode=name:value).
+let MODES = []
+const modePick = {} // mode name -> picked value, '' for as drawn
+const modeValueLabel = (m, v) => (v ? (m.values.find((x) => x.value === v)?.label ?? v) : 'As drawn')
+const modeNotes = () => MODES.filter((m) => modePick[m.name]).map((m) => `${m.label}: ${modeValueLabel(m, modePick[m.name])}`)
 // Languages: screens reload in the one picked (?lang=…); the source language shows them as written.
 let LANGS = ['en']
 let SOURCE = 'en'
 let lang = localStorage.getItem('stitch2-lang') ?? 'en'
 const langQuery = () => (lang === SOURCE ? '' : `&lang=${encodeURIComponent(lang)}`)
 const themeNote = () =>
-  [themed() && theme !== THEMES[0] ? `in the ${theme} theme` : '', lang !== SOURCE ? `in ${lang}` : '']
+  [themed() && theme !== THEMES[0] ? `in the ${theme} theme` : '', lang !== SOURCE ? `in ${lang}` : '', ...modeNotes()]
     .filter(Boolean)
     .map((s) => ' ' + s)
     .join(',')
@@ -244,6 +253,33 @@ function widthOptions() {
   wsel.innerHTML = `<option value="drawn">Drawn width</option><option value="narrow">Narrowest: ${edge(0)}</option><option value="wide">Widest: ${edge(1)}</option>${at}`
   if (!widthModes().includes(widthMode)) widthMode = 'drawn'
   wsel.value = widthMode
+}
+// The document's own value is kept the first time, so "As drawn" puts it back.
+const authored = new WeakMap()
+function applyModes(f) {
+  if (!f.iframe) return
+  let root
+  try { root = f.iframe.contentDocument.documentElement } catch { return }
+  if (!root) return
+  const was = authored.get(root) ?? authored.set(root, {}).get(root)
+  for (const m of MODES) {
+    if (!(m.attribute in was)) was[m.attribute] = root.getAttribute(m.attribute)
+    const value = modePick[m.name] || was[m.attribute]
+    if (value == null) root.removeAttribute(m.attribute)
+    else root.setAttribute(m.attribute, value)
+  }
+}
+function setMode(name, value) {
+  const m = MODES.find((x) => x.name === name)
+  if (!m) return
+  modePick[name] = m.values.some((x) => x.value === value) ? value : ''
+  localStorage.setItem(`stitch2-mode-${name}`, modePick[name])
+  const sel = document.querySelector(`#modeFilters [data-mode="${name}"]`)
+  if (sel) sel.value = modePick[name]
+  for (const f of frames.values()) applyModes(f)
+  if (selected) inspector(selected)
+  summary()
+  scheduleSync()
 }
 function applyTheme(f) {
   if (!themed() || !f.iframe) return
@@ -640,6 +676,7 @@ function shotUrl(s) {
   const q = new URLSearchParams({ path: s.path, width: String(s.width), m: String(Math.round(s.mtime)), r: String(shotRev) })
   if (themed()) q.set('theme', theme)
   if (lang !== SOURCE) q.set('lang', lang)
+  for (const m of MODES) if (modePick[m.name]) q.append('mode', `${m.name}:${modePick[m.name]}`)
   return `/api/shot?${q}`
 }
 const pinned = (f) => f === selected || f.el.classList.contains('live') || picked.some((p) => p.f === f)
@@ -670,6 +707,7 @@ function mount(f) {
     void (async () => {
       if (!(await waitForStyles()) || f.iframe !== iframe) return
       applyTheme(f)
+      applyModes(f)
       measure(f)
       clearTimeout(f.reveal)
       // The picture stays until the complete, styled page has been measured.
@@ -1176,6 +1214,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeDoc(); select(null) }
   if (e.key === 'f' || e.key === 'F') fit()
   if ((e.key === 't' || e.key === 'T') && themed()) setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])
+  if ((e.key === 'm' || e.key === 'M') && MODES.length) { const m = MODES[0], all = ['', ...m.values.map((v) => v.value)]; setMode(m.name, all[(all.indexOf(modePick[m.name]) + 1) % all.length]) }
   if (e.key === 'l' || e.key === 'L') setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length])
   if (e.key === 'w' || e.key === 'W') { const m = widthModes(); setWidth(m[(m.indexOf(widthMode) + 1) % m.length]) }
   if (e.key === '0') zoomAt((innerWidth - SIDE) / 2, innerHeight / 2, 1)
@@ -1214,6 +1253,20 @@ fetch('/api/config').then((r) => r.json()).then((c) => {
   pick.innerHTML = THEMES.map((t) => `<option value="${t}">${t[0].toUpperCase()}${t.slice(1)} theme</option>`).join('')
   pick.onchange = () => setTheme(pick.value)
   setTheme(theme)
+  MODES = c.modes ?? []
+  MODES.forEach((m, i) => {
+    const stored = localStorage.getItem(`stitch2-mode-${m.name}`) ?? ''
+    modePick[m.name] = m.values.some((v) => v.value === stored) ? stored : ''
+    const sel = document.createElement('select')
+    sel.className = 'pick'
+    sel.dataset.mode = m.name
+    sel.setAttribute('aria-label', m.label)
+    sel.title = `Show every screen with ${m.label.toLowerCase()} set to one of these, or as drawn${i === 0 ? ' (M)' : ''}`
+    for (const v of ['', ...m.values.map((x) => x.value)]) sel.add(new Option(`${m.label}: ${modeValueLabel(m, v)}`, v))
+    sel.value = modePick[m.name]
+    sel.onchange = () => setMode(m.name, sel.value)
+    document.getElementById('modeFilters').append(sel)
+  })
   WIDTHS = c.widths ?? {}
   BREAKPOINTS = c.breakpoints ?? {}
   const wsel = document.getElementById('widthFilter')

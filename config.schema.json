@@ -77,6 +77,31 @@
       "items": { "type": "string" },
       "description": "The themes every screen must work in, by their data-theme value. Defaults to DESIGN.md's: dark (the plain colours), plus light when it has light-* colours. The canvas switches between them and check runs in each."
     },
+    "modes": {
+      "type": "array",
+      "description": "App states every screen can be shown in, picked from the canvas sidebar: signed in or out, a plan, a role. The pick is an attribute on each screen's <html>, so the screens' own CSS and scripts answer to it. The dropdown also offers the screens as drawn, which leaves each one as its file has it.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "values"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "The id: lowercase letters, digits and hyphens. The canvas remembers the pick under it." },
+          "label": { "type": "string", "description": "Shown before each value in the dropdown. Defaults to the name, capitalized." },
+          "attribute": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "The attribute on the screen's <html> that carries the value. Defaults to data-<name>." },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "description": "What the canvas can show every screen as: a value, or a value with its label.",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object", "additionalProperties": false, "required": ["value"], "properties": { "value": { "type": "string" }, "label": { "type": "string" } } }
+              ]
+            }
+          }
+        }
+      }
+    },
     "i18n": {
       "type": "object",
       "additionalProperties": false,

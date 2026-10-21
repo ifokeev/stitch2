@@ -9,7 +9,7 @@ import { existsSync, readdirSync, readFileSync, statSync, watch } from 'node:fs'
 import { createServer, type ServerResponse } from 'node:http'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { breakpoints, CONFIG_FILE, checkWidths, config, widthRanges } from './config.ts'
+import { breakpoints, CONFIG_FILE, checkWidths, config, modeAttributes, modes, widthRanges } from './config.ts'
 import { designThemes } from './design-md.ts'
 import { allLocales, localeScript, sourceLocale } from './i18n.ts'
 import { designPage } from './design-page.ts'
@@ -161,7 +161,7 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
       return
     }
     if (url.pathname === '/api/config')
-      return json({ ...config, themes: designThemes(), locales: allLocales(), sourceLocale: sourceLocale(), widths: widthRanges(), breakpoints: breakpoints(), checkWidths: Object.fromEntries(Object.keys(widthRanges()).map((d) => [d, checkWidths(d)])) })
+      return json({ ...config, modes: modes(), themes: designThemes(), locales: allLocales(), sourceLocale: sourceLocale(), widths: widthRanges(), breakpoints: breakpoints(), checkWidths: Object.fromEntries(Object.keys(widthRanges()).map((d) => [d, checkWidths(d)])) })
     if (url.pathname === '/api/screens') return json(listScreens())
     if (url.pathname === '/api/reports') return json(reportStates())
     // A picture of a screen, for the frames the canvas doesn't keep live (off screen, or too small to read).
@@ -172,6 +172,7 @@ export function startServer(port: number): Promise<{ port: number; close: () => 
         width: Math.min(4000, Math.max(200, Number(q.get('width')) || 390)),
         theme: q.get('theme') || undefined,
         lang: q.get('lang') || undefined,
+        modes: modeAttributes(q.getAll('mode')),
       })
       if (!job) {
         res.writeHead(404, { 'content-type': 'text/plain' })

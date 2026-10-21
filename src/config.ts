@@ -5,6 +5,21 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
+/**
+ * An app state every screen can be shown in, picked from the canvas sidebar: signed in or out, a plan, a role. The pick
+ * is an attribute on each screen's <html> (data-auth="user"), so the screens' own CSS and scripts answer to it.
+ */
+export interface ModeConfig {
+  /** The id: lowercase letters, digits and hyphens. The canvas remembers the pick under it. */
+  name: string
+  /** Shown before each value in the dropdown; defaults to the name, capitalized. */
+  label?: string
+  /** The attribute on the screen's <html> that carries the value; defaults to data-<name>. */
+  attribute?: string
+  /** What the canvas can show every screen as: a value, or a value with its label. "As drawn" is always offered too. */
+  values: (string | { value: string; label?: string })[]
+}
+
 export interface LabConfig {
   /** Shown on the canvas. */
   name: string
@@ -48,6 +63,11 @@ export interface LabConfig {
   skills: string[]
   /** Paths under designDir a sandbox leaves out besides screens (notes that would give the trial away). */
   sandboxExclude?: string[]
+  /**
+   * App states shown across all screens (see ModeConfig). The canvas has a dropdown for each, with the screens as drawn
+   * first; picking a value sets its attribute on every screen, live ones and the pictures of the rest.
+   */
+  modes?: ModeConfig[]
   /** The live app, for stitch2 compare (see compare.ts): its URL, a sign-in script and a route per screen. */
   app?: {
     url: string
@@ -123,6 +143,45 @@ export function checkWidths(device: string): number[] {
   if (!range) return []
   const inside = Object.values(breakpoints()).filter((b) => b > range[0] && b < range[1])
   return [...new Set([range[0], ...inside, range[1]])].sort((a, b) => a - b)
+}
+export interface Mode {
+  name: string
+  label: string
+  attribute: string
+  values: { value: string; label: string }[]
+}
+const MODE_NAME = /^[a-z][a-z0-9-]*$/
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+/** The configured modes, checked: a name or attribute that isn't plain, a repeat, or a mode without values is left out. */
+export function modes(): Mode[] {
+  const out: Mode[] = []
+  for (const m of Array.isArray(config.modes) ? config.modes : []) {
+    if (typeof m?.name !== 'string' || !MODE_NAME.test(m.name) || out.some((o) => o.name === m.name)) continue
+    const attribute = m.attribute ?? `data-${m.name}`
+    if (!MODE_NAME.test(attribute)) continue
+    const values: Mode['values'] = []
+    for (const v of Array.isArray(m.values) ? m.values : []) {
+      const value = typeof v === 'string' ? v : v?.value
+      if (typeof value !== 'string' || !value || /[\s"'<>=&:]/.test(value) || values.some((x) => x.value === value)) continue
+      values.push({ value, label: (typeof v === 'object' && v.label) || capitalize(value) })
+    }
+    if (values.length) out.push({ name: m.name, label: m.label ?? capitalize(m.name), attribute, values })
+  }
+  return out
+}
+/**
+ * The attributes a request asks for, from its "name:value" pairs; a pair that isn't a configured mode and value is
+ * ignored, so an address can only set what the config offers.
+ */
+export function modeAttributes(pairs: string[]): Record<string, string> {
+  const picked: Record<string, string> = {}
+  for (const pair of pairs) {
+    const at = pair.indexOf(':')
+    const mode = modes().find((m) => m.name === pair.slice(0, at))
+    const value = pair.slice(at + 1)
+    if (at > 0 && mode?.values.some((v) => v.value === value)) picked[mode.attribute] = value
+  }
+  return picked
 }
 /** The design folder, with a trailing slash. */
 export const ROOT = join(resolve(BASE, config.designDir), '/')
