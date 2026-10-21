@@ -79,7 +79,7 @@
     },
     "modes": {
       "type": "array",
-      "description": "App states every screen can be shown in, picked from the canvas sidebar: signed in or out, a plan, a role. The pick is an attribute on each screen's <html>, so the screens' own CSS and scripts answer to it. The dropdown also offers the screens as drawn, which leaves each one as its file has it.",
+      "description": "App states every screen can be shown in, picked from the canvas sidebar: signed in or out, a plan, a role. The pick is an attribute on each screen's <html>, so the screens' own CSS and scripts answer to it. The dropdown also offers the screens as drawn, which leaves each one as its file has it. stitch2 check also runs each screen in every value its file does not already have, one mode at a time, and tags what only shows there.",
       "items": {
         "type": "object",
         "additionalProperties": false,

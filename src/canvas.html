@@ -920,7 +920,10 @@ function inspector(f) {
     li.querySelector('code').textContent = i.selector
     li.onclick = () => {
       const r = rangeOf(s)
-      if (i.width && r && i.width !== s.width) { setWidth(i.width === r[0] ? 'narrow' : i.width === r[1] ? 'wide' : `at:${i.width}`); setTimeout(() => locate(f, i.selector), 900) }
+      // An issue found in another app state: show every screen in it, then find the element.
+      const [mode, value] = i.mode ? i.mode.split(':') : []
+      if (mode && modePick[mode] !== value) { setMode(mode, value); setTimeout(() => locate(f, i.selector), 600) }
+      else if (i.width && r && i.width !== s.width) { setWidth(i.width === r[0] ? 'narrow' : i.width === r[1] ? 'wide' : `at:${i.width}`); setTimeout(() => locate(f, i.selector), 900) }
       else locate(f, i.selector)
     }
     ul.append(li)

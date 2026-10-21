@@ -16,6 +16,8 @@ export interface Issue {
   locale?: string
   /** Set when the issue shows only at another window width: the edge of its variant's range (config widths). */
   width?: number
+  /** Set when the issue shows only in another app state (config modes): "name:value", as the canvas sidebar names it. */
+  mode?: string
 }
 
 export interface TextItem {

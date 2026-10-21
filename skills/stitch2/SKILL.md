@@ -77,6 +77,8 @@ References, read before the first screen:
    An issue tagged with a width ("at 1024px: …") breaks at an edge of the windows the variant covers: fix it with a
    responsive rule in the screen, or a new variant when the layout's structure has to change (screens.md, Widths).
    Widths include the breakpoints inside the range; `narrow-layout` is a phone column left in a wide window.
+   An issue tagged with an app state ("Signed in: …"; `modes` in the config, screens.md) shows only in that state: fix it in
+   the screen's rules for that state, and look at its render (`--auth-user.png`). Clicking it on the canvas shows the state.
    Overlap checks compare the drawn fragments of wrapped inline controls, not the empty corners of their
    bounding boxes. For fixed bars, the browser's paint order decides coverage: a menu painted in front of a
    header is not hidden by it. Native modal dialogs and ARIA modals limit coverage and control comparisons
@@ -127,7 +129,7 @@ References, read before the first screen:
 |---|---|
 | `setup [--name N --primary #hex] [options]` | Sets a project up in one step; keeps every file that exists |
 | `canvas` | The canvas at http://localhost:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
-| `check [filter] [--shots] [--strict] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme and check language, and at both ends of each variant's widths; `--shots` saves renders |
+| `check [filter] [--shots] [--strict] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme, app state and check language, and at both ends of each variant's widths; `--shots` saves renders |
 | `i18n [filter] [--locale l] [--suggest]` | Message keys screens use that the source or a locale lacks, and text with no key (stitch2-i18n) |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |

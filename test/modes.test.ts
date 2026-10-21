@@ -47,6 +47,10 @@ before(async () => {
     mkdirSync(join(dir, 'design/screens', name!), { recursive: true })
     writeFileSync(join(dir, 'design/screens', name!, 'desktop-v1.html'), screen(name!, auth!))
   }
+  writeFileSync(
+    join(dir, 'design/checks.json'),
+    JSON.stringify({ checkedAt: new Date().toISOString(), screens: { 'screens/home/desktop-v1.html': [{ severity: 'warning', type: 'tap-target', message: 'Signed in: Small tap target', selector: 'h1', text: 'home', mode: 'auth:user' }] } }),
+  )
   writeFileSync(join(dir, 'stitch2.config.json'), JSON.stringify({ name: 'modes fixture', designDir: 'design', screenDirs: ['screens'], prefix: 's2', skills: [], modes }))
   const port = await freePort()
   base = `http://127.0.0.1:${port}`
@@ -134,6 +138,22 @@ test('the sidebar sets a state on every screen, restores each as drawn, remember
     await page.keyboard.press('m')
     assert.equal(await page.locator('#modeFilters select').nth(0).inputValue(), 'guest')
     assert.deepEqual(await state('data-auth'), { home: 'guest', account: 'guest' })
+  } finally {
+    await page.close()
+  }
+})
+
+test('an issue found in an app state shows that state when it is clicked', { concurrency: false }, async () => {
+  browser ??= await chromium.launch()
+  const page = await browser.newPage({ viewport: { width: 1700, height: 900 } })
+  try {
+    await page.goto(base, { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => document.querySelectorAll('.frame.ready iframe').length === 2)
+    assert.equal(await page.locator('#modeFilters select').nth(0).inputValue(), '')
+    await page.locator('.frame', { hasText: 'home' }).first().locator('.label').click()
+    await page.locator('#inspector li.warning').click()
+    await page.waitForFunction(() => (document.querySelector('#modeFilters select') as HTMLSelectElement).value === 'user')
+    assert.equal(await page.locator('.frame iframe').first().evaluate((f) => (f as HTMLIFrameElement).contentDocument!.documentElement.getAttribute('data-auth')), 'user')
   } finally {
     await page.close()
   }

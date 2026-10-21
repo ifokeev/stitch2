@@ -65,7 +65,8 @@ export interface LabConfig {
   sandboxExclude?: string[]
   /**
    * App states shown across all screens (see ModeConfig). The canvas has a dropdown for each, with the screens as drawn
-   * first; picking a value sets its attribute on every screen, live ones and the pictures of the rest.
+   * first; picking a value sets its attribute on every screen, live ones and the pictures of the rest. stitch2 check also
+   * runs each screen in every value its file does not already have, one mode at a time.
    */
   modes?: ModeConfig[]
   /** The live app, for stitch2 compare (see compare.ts): its URL, a sign-in script and a route per screen. */

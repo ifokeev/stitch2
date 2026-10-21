@@ -186,8 +186,10 @@ screen per state. Draw it once, let its CSS and scripts answer to an attribute o
 The canvas sidebar then has a dropdown for each mode. A value sets the attribute (`data-auth="user"`; `attribute`
 names another) on every screen, live frames and the pictures of the rest, and "As drawn" puts each screen back to what
 its file says. `m` cycles the first mode. A screen is still written for the state it shows (a signed-in account page has
-`data-auth="user"` in its file); modes show the other states of the same screen. `stitch2 check` runs on the screens as
-drawn, not in each state, so open the other states on the canvas and look at them before hand-over.
+`data-auth="user"` in its file); modes show the other states of the same screen. `stitch2 check` also runs each screen in every
+value its own file does not have, one mode at a time (modes are not combined), and tags what only shows there with the
+state ("Signed in: …"); clicking such an issue on the canvas shows that state. With `--shots` each state is rendered too
+(`<screen>--auth-user.png`): look at it before hand-over.
 
 ## The canvas
 

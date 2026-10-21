@@ -59,7 +59,7 @@ file that already exists. From there the agent spends its effort on the design.
   icon-only controls without a name, more than five bottom-navigation destinations and controls without visible
   focus. Motion: transitions whose length isn't one of DESIGN.md's motion tokens, and anything that still moves
   with reduced motion on. Each screen is also run in long and right-to-left
-  pseudo-languages and your locales (see below).
+  pseudo-languages and your locales (see below), and, with `modes`, in each app state it is not drawn in.
 - **States** (from `stitch2 check` on the component catalog): every control at rest, hovered, focused and
   pressed, forced through Chromium so the components need nothing extra, side by side on one sheet; with
   warnings for a control that gives no feedback and text that loses contrast in a state.
@@ -262,7 +262,7 @@ layout first, then a shorter natural word, never a smaller type size.
 | `stitch2 init --name N --primary #hex [options]` | Writes a complete DESIGN.md from a few choices |
 | `stitch2 extract <url or file…>` | Writes a DESIGN.md measured from an existing site or screens |
 | `stitch2 canvas` | The canvas at http://localhost:4400 (`PORT` and `HOST` to change) |
-| `stitch2 check [filter] [--shots] [--strict] [--locales l,…]` | All checks, in every theme and check language; `--shots` saves renders to `<design>/renders/` (`--light.png`, `--pseudo.png`…) |
+| `stitch2 check [filter] [--shots] [--strict] [--locales l,…]` | All checks, in every theme, app state and check language; `--shots` saves renders to `<design>/renders/` (`--light.png`, `--pseudo.png`, `--auth-user.png`…) |
 | `stitch2 i18n [filter] [--locale l] [--suggest] [--json]` | Message keys the source or a locale lacks, and screen text with no key |
 | `stitch2 consistency [kind…]` | The consistency report, `<design>/consistency/index.html` |
 | `stitch2 type [filter] [--json]` | The type audit |

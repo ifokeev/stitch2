@@ -167,6 +167,43 @@ test('check renders each variant at both ends of the widths it covers, and at th
   writeFileSync(configFile, saved)
 })
 
+test('check runs each app state a screen is not drawn in, and tags what only shows there', () => {
+  const configFile = join(dir, 'stitch2.config.json')
+  const saved = readFileSync(configFile, 'utf8')
+  writeFileSync(
+    configFile,
+    JSON.stringify({ ...JSON.parse(saved), modes: [{ name: 'account', values: [{ value: 'guest', label: 'Guest' }, { value: 'member', label: 'Member' }] }] }, null, 2),
+  )
+  // A line that is wider than the phone frame, drawn only for a member.
+  const home = readFileSync(join(dir, 'design/screens/home/mobile-v1.html'), 'utf8')
+  const member = '<style>.members { display: none } html[data-account="member"] .members { display: block; width: 600px }</style><p class="members">A members-only line that is wider than the phone</p></main>'
+  const screenFile = (html: string) => {
+    mkdirSync(join(dir, 'design/screens/gated'), { recursive: true })
+    writeFileSync(join(dir, 'design/screens/gated/mobile-v1.html'), html)
+  }
+  const checked = () =>
+    JSON.parse(readFileSync(join(dir, 'design/checks.json'), 'utf8')).screens['screens/gated/mobile-v1.html'] as { type: string; mode?: string; message: string }[]
+
+  // Drawn without the attribute: both states are checked, and only the member one overflows.
+  screenFile(home.replace('</main>', member))
+  stitch2('check', 'gated', '--shots')
+  const states = checked().filter((i) => i.mode)
+  assert.ok(states.some((i) => i.type === 'overflow' && i.mode === 'account:member' && i.message.startsWith('Member: ')), JSON.stringify(checked()))
+  assert.ok(!states.some((i) => i.mode === 'account:guest'), 'the guest state is fine')
+  assert.ok(!checked().some((i) => i.type === 'overflow' && !i.mode), 'fits as drawn')
+  assert.ok(existsSync(join(dir, 'design/renders/screens__gated__mobile-v1--account-member.png')))
+  assert.ok(existsSync(join(dir, 'design/renders/screens__gated__mobile-v1--account-guest.png')))
+
+  // Drawn as a member: that state is the screen's own, so it is checked once, untagged; only the guest is added.
+  screenFile(home.replace('<html', '<html data-account="member"').replace('</main>', member))
+  stitch2('check', 'gated', '--shots')
+  assert.ok(checked().some((i) => i.type === 'overflow' && !i.mode), 'the drawn state reports as before')
+  assert.ok(!checked().some((i) => i.mode === 'account:member'), 'the state the screen is drawn in is not checked again')
+
+  rmSync(join(dir, 'design/screens/gated'), { recursive: true })
+  writeFileSync(configFile, saved)
+})
+
 test('setup again keeps every existing file', () => {
   const before = readFileSync(join(dir, 'design/components/af.js'), 'utf8')
   const out = stitch2('setup', '--name', 'Something else', '--primary', '#FF0000')

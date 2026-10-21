@@ -5,13 +5,16 @@
  * the canvas shows as badges.
  * Every screen is checked in its own theme, then again in each other theme DESIGN.md defines (designThemes):
  * colours change there, so contrast is checked again, tagged with the theme.
+ * Then in each app state (config modes), one mode at a time and in the screen's own theme: a screen is checked with
+ * every value its own file does not already have, and what only shows there (a bar that overflows signed in, a control
+ * that crowds another) is tagged with the state.
  * Then again in each check language (i18n.ts: the pseudo-languages and the config's): layout problems that
  * show only there (a label running into its neighbour, text cut off, a control drawn backwards right to left),
  * and keys a locale has no translation for, tagged with the locale. Last, each variant at both ends of the widths
  * it covers (config widths: mobile 360–599, desktop 1024–1920 by default) and at every breakpoint inside them
  * (config breakpoints, Tailwind's by default), tagged with the width.
  * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none]
- *   --shots   also save page-tall renders to design/renders/ (one per theme, language and width)
+ *   --shots   also save page-tall renders to design/renders/ (one per theme, app state, language and width)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
  * Screens run four at a time; reruns only visit screens that changed since design/checks.json (or
  * everything DESIGN.md, the tokens, the components or the catalog changed since).
@@ -22,7 +25,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 import { fingerprintPaths } from './cache.ts'
 import { colourIssues } from './colours.ts'
-import { CONFIG_FILE, checkWidths, config } from './config.ts'
+import { CONFIG_FILE, checkWidths, config, modes } from './config.ts'
 import {
   type Components,
   collectComponents,
@@ -49,6 +52,7 @@ const screens = listScreens().filter((s) => !filters.length || filters.some((f) 
 
 const levels = typeLevels()
 const themes = designThemes()
+const appModes = modes()
 const collect = collectOptions()
 /** What the layout audit needs: the comfortable tap size and DESIGN.md's motion durations. */
 const auditOpts = { comfortable: config.comfortableTarget, durations: (() => { try { return motionDurations() } catch { return [] } })() }
@@ -141,6 +145,21 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
     if (shots) await shoot(page, s, theme)
   }
   if (themes.length > 1) await setTheme(page, base)
+  // The app states: each value the screen is not drawn in, one mode at a time, then the screen's own value again.
+  for (const mode of appModes) {
+    const drawn = await page.evaluate((attribute) => document.documentElement.getAttribute(attribute), mode.attribute)
+    for (const value of mode.values.filter((v) => v.value !== drawn)) {
+      await setAttribute(page, mode.attribute, value.value)
+      for (const i of await page.evaluate(audit, auditOpts)) {
+        const key = `${i.type} ${i.selector}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        themed.push({ ...i, ...(i.type === 'contrast' ? { theme: base } : {}), mode: `${mode.name}:${value.value}`, message: `${value.label}: ${i.message}` })
+      }
+      if (shots) await shoot(page, s, undefined, undefined, `${mode.name}-${value.value}`)
+    }
+    await setAttribute(page, mode.attribute, drawn)
+  }
   const typed = typeIssues(levels, await page.evaluate(collectText))
   if (shots) await shoot(page, s)
   // A catalog: every control at rest, hovered, focused and pressed (states.ts), then its contrast in each theme.
@@ -259,7 +278,18 @@ async function setTheme(page: Worker['page'], theme: string) {
   await page.waitForTimeout(150)
 }
 
-/** A page-tall render; renders in another theme or language than the screen's own get a --<theme> suffix. */
+async function setAttribute(page: Worker['page'], attribute: string, value: string | null) {
+  await page.evaluate(
+    ([name, to]) => {
+      if (to === null) document.documentElement.removeAttribute(name!)
+      else document.documentElement.setAttribute(name!, to)
+    },
+    [attribute, value],
+  )
+  await page.waitForTimeout(150)
+}
+
+/** A page-tall render; renders in another theme, app state or language than the screen's own get a --<name> suffix. */
 async function shoot(
   page: Worker['page'],
   s: { path: string; width: number },
