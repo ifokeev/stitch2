@@ -71,7 +71,8 @@ the rest are judged from the render. Where Google and DESIGN.md disagree, DESIGN
 ## Components
 
 - **Navigation bar:** three to five destinations, each an icon with a one-line label; more destinations go to a
-  rail, a drawer or a page **(check: nav-destinations; label-wraps)**.
+  rail, a drawer or a page **(check: nav-destinations; label-wraps)**. The check counts the destinations in one row:
+  a panel stacked above them in the same bar (a running workout's Resume and Discard, a player) is not a destination.
 - **Button emphasis:** filled for the one main action, tonal or outlined for secondary, text buttons for
   low-emphasis; one floating action button at most.
 - **Icon-only controls have a name** that says what they do ("Share", not "Share button"); repeated items in a

@@ -368,6 +368,16 @@ test("audit: Google's rules (type size, margins, line length, targets, labels, n
     assert.equal(of('placeholder-label').length, 1)
     assert.equal(of('unnamed-control').length, 1)
     assert.equal(of('nav-destinations').length, 1)
+    // A bar that carries a panel above its four destinations (a running workout's Resume and Discard) holds four
+    // destinations; six in one row are too many wherever the panel is.
+    await page.setContent(
+      '<body style="margin:0;font:16px sans-serif"><nav style="position:fixed;bottom:0;left:0;right:0"><div style="display:flex">' +
+        ['Resume', 'Discard'].map((l) => '<button style="flex:1;height:48px">' + l + '</button>').join('') +
+        '</div><div style="display:flex">' +
+        ['Workout', 'Coach', 'History', 'Profile'].map((l) => '<a href="#" style="flex:1;height:64px;text-align:center">' + l + '</a>').join('') +
+        '</div></nav></body>',
+    )
+    assert.equal((await page.evaluate(audit, { comfortable: 32 })).filter((i) => i.type === 'nav-destinations').length, 0)
     // The two plain buttons have outline:none and nothing else on focus; the .ok ones have a ring, inputs the browser's.
     assert.equal(issues.filter((i) => i.type === 'focus-visible').length, 2, JSON.stringify(issues.filter((i) => i.type === 'focus-visible')))
     // Line length, on a desktop-wide page: the uncapped paragraph runs past 75 characters, the capped one does not.

@@ -797,8 +797,16 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     const items = [...el.querySelectorAll('a[href], button, [role=tab]')].filter(
       (i) => shown(i) && !i.parentElement?.closest('a[href], button, [role=tab]'),
     )
-    if (items.length > 5)
-      push('warning', 'nav-destinations', el, items.length + " destinations in the bottom navigation: Material's navigation bar holds 3–5")
+    // The destinations stand in one row. A panel above them (a workout that is running, a player) belongs to the bar
+    // but is not a destination: the widest row counts.
+    const tops = items.map((i) => i.getBoundingClientRect().top).sort((a, b) => a - b)
+    let widest = 0
+    for (let from = 0, row = 0; row < tops.length; row++) {
+      if (tops[row]! - tops[from]! > 12) from = row
+      widest = Math.max(widest, row - from + 1)
+    }
+    if (widest > 5)
+      push('warning', 'nav-destinations', el, widest + " destinations in the bottom navigation: Material's navigation bar holds 3–5")
   }
 
   // 6h. Keyboard focus is visible (Material's focus state, web.dev, WCAG 2.4.7): focusing a control changes how
