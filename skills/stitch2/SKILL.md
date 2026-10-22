@@ -108,6 +108,9 @@ References, read before the first screen:
    create or hide a `label-wraps` issue on the trigger. The actual painted control label is still checked.
    Cached checks are invalidated when shared components, the catalog or the checker change. A filtered
    rerun refreshes only those screens; it must not make unrelated screens' older checks appear current.
+   The first unfiltered run after such a change visits every screen and can take many minutes on a large project:
+   it prints `check: n/total …` with an estimate to stderr, so leave it running and read that, and do not start a
+   second `check` beside it. Stopping it (Ctrl-C, kill) keeps the finished screens; the next run visits only the rest.
    Motion warnings: `motion-token` (a transition length DESIGN.md doesn't name) and `reduced-motion` (something
    still moves when the person asked for less); see motion.md. On the catalog, `state-*` warnings come from the
    States sheet (components.md, States).

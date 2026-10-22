@@ -262,7 +262,7 @@ layout first, then a shorter natural word, never a smaller type size.
 | `stitch2 init --name N --primary #hex [options]` | Writes a complete DESIGN.md from a few choices |
 | `stitch2 extract <url or file…>` | Writes a DESIGN.md measured from an existing site or screens |
 | `stitch2 canvas` | The canvas at http://localhost:4400 (`PORT` and `HOST` to change) |
-| `stitch2 check [filter] [--shots] [--strict] [--locales l,…]` | All checks, in every theme, app state and check language; `--shots` saves renders to `<design>/renders/` (`--light.png`, `--pseudo.png`, `--auth-user.png`…) |
+| `stitch2 check [filter] [--shots] [--strict] [--locales l,…]` | All checks, in every theme, app state and check language; `--shots` saves renders to `<design>/renders/` (`--light.png`, `--pseudo.png`, `--auth-user.png`…). Reruns visit only the screens that changed; after a change to stitch2, DESIGN.md, the tokens, the components or the catalog every screen is visited again, which takes minutes on a large project. Progress is printed to stderr, and `checks.json` is saved as screens finish and when the run is stopped (Ctrl-C), so the next run continues where it left off |
 | `stitch2 i18n [filter] [--locale l] [--suggest] [--json]` | Message keys the source or a locale lacks, and screen text with no key |
 | `stitch2 consistency [kind…]` | The consistency report, `<design>/consistency/index.html` |
 | `stitch2 type [filter] [--json]` | The type audit |

@@ -4,7 +4,7 @@
  * Run: pnpm test
  */
 import assert from 'node:assert/strict'
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -509,5 +509,50 @@ test('audit: a phone column in a tablet-wide window is narrow-layout; a short ce
     assert.equal((await page.evaluate(audit, { comfortable: 32 })).filter((i) => i.type === 'narrow-layout').length, 0)
   } finally {
     await browser.close()
+  }
+})
+
+test('a stopped check keeps the screens it finished and says how far it got; the next run visits only the rest', { timeout: 240_000 }, async () => {
+  const home = readFileSync(join(dir, 'design/screens/home/mobile-v1.html'), 'utf8')
+  const names = Array.from({ length: 13 }, (_, i) => `resume-${i + 1}`)
+  // More screens than the four a run visits at once, so the first finish while the rest are still queued
+  for (const name of names) {
+    mkdirSync(join(dir, `design/screens/${name}`), { recursive: true })
+    writeFileSync(
+      join(dir, `design/screens/${name}/mobile-v1.html`),
+      home.replace(/<meta name="af-screen" content="[^"]*" \/>/, `<meta name="af-screen" content="${name}" />`),
+    )
+  }
+  try {
+    const run = ['check', 'resume-', '--locales', 'none']
+    const child = spawn(process.execPath, [cli, ...run], { cwd: dir, stdio: ['ignore', 'ignore', 'pipe'] })
+    const exit = new Promise<number | null>((resolve) => child.on('exit', (code) => resolve(code)))
+    let log = ''
+    await new Promise<void>((resolve) =>
+      child.stderr.on('data', (chunk) => {
+        log += chunk
+        if (/check: 1\/13 /.test(log)) resolve()
+      }),
+    )
+    child.kill('SIGTERM')
+    assert.equal(await exit, 143)
+    // It said what it was doing, screen by screen, and what the stop kept
+    assert.match(log, /check: visiting all 13 screens/)
+    assert.match(log, /check: 1\/13 screens\/resume-\d+\/mobile-v1\.html \(\d+ s/)
+    assert.match(log, /check: stopped with \d+ of 13 screens finished; they are kept/)
+    const saved = JSON.parse(readFileSync(join(dir, 'design/checks.json'), 'utf8')) as { cacheKeys: Record<string, string>; screens: Record<string, unknown> }
+    const kept = Object.keys(saved.cacheKeys).filter((p) => p.includes('/resume-'))
+    assert.ok(kept.length >= 1 && kept.length < 13, String(kept.length))
+    for (const p of kept) assert.ok(saved.screens[p], p)
+
+    // The next run continues with what is left
+    const again = spawnSync(process.execPath, [cli, ...run], { cwd: dir, encoding: 'utf8' })
+    assert.equal(again.status, 0, again.stderr)
+    assert.match(again.stderr, new RegExp(`check: visiting ${13 - kept.length} of 13 screens; the others are unchanged`))
+    assert.match(again.stdout, /13 screens checked, 0 errors/)
+    const done = JSON.parse(readFileSync(join(dir, 'design/checks.json'), 'utf8')) as { cacheKeys: Record<string, string> }
+    assert.equal(Object.keys(done.cacheKeys).filter((p) => p.includes('/resume-')).length, 13)
+  } finally {
+    for (const name of names) rmSync(join(dir, `design/screens/${name}`), { recursive: true, force: true })
   }
 })

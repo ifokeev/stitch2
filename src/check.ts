@@ -17,9 +17,12 @@
  *   --shots   also save page-tall renders to design/renders/ (one per theme, app state, language and width)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
  * Screens run four at a time; reruns only visit screens that changed since design/checks.json (or
- * everything DESIGN.md, the tokens, the components or the catalog changed since).
+ * everything DESIGN.md, the tokens, the components, the catalog or stitch2 itself changed since: a first run after
+ * that visits every screen and takes minutes on a large project). Progress goes to stderr, one line per screen
+ * ("check: 37/588 …, about 14 min left"). design/checks.json is saved as screens finish and when the run is stopped
+ * (Ctrl-C, kill), so the next run continues with the screens that are left instead of starting over.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
@@ -61,7 +64,8 @@ const server = await startServer(0)
 const MAX_RENDER_HEIGHT = 20000
 
 const fresh = async () => {
-  const browser = await chromium.launch()
+  // Signals are handled below: a stopped run saves what it has before the browsers close.
+  const browser = await chromium.launch({ handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
   return { browser, page, visits: 0 }
 }
@@ -104,6 +108,64 @@ for (const s of screens) {
     if (previous.components?.[s.path]) components[s.path] = previous.components[s.path]
   }
 }
+const exists = new Set(listScreens().map((s) => s.path))
+const keep = <T>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([p]) => exists.has(p)))
+const freshPreviousComponents = Object.fromEntries(Object.entries(previous.components ?? {})
+  .filter(([path]) => previous.cacheKeys?.[path]?.startsWith(`${currentDeps}:`)
+    && previous.cacheKeys[path]!.endsWith(`:${fingerprintPaths([join(ROOT, path)])}`)))
+
+// What this run has finished is saved while it runs, not only at the end: a run that is stopped, killed or crashes
+// keeps its screens (their cache keys are current), and the next run visits only the rest. Written to a temporary
+// file and renamed, so the canvas never reads half a file.
+const writeChecks = (data: { cacheKeys: Record<string, string>; screens: Record<string, Issue[]>; components: Record<string, Components> }) => {
+  const file = join(ROOT, 'checks.json')
+  writeFileSync(`${file}.tmp`, `${JSON.stringify({ checkedAt: new Date().toISOString(), ...data }, null, 2)}\n`)
+  renameSync(`${file}.tmp`, file)
+}
+/** Screens finished in this run. Catalogs wait for the end: their States sheet is only written then. */
+const finished: string[] = []
+let lastSaved = Date.now()
+const saveProgress = () => {
+  const keys = { ...previous.cacheKeys }
+  const rows = { ...previous.screens }
+  for (const p of finished) {
+    keys[p] = cacheKeys[p]!
+    rows[p] = results[p]!
+  }
+  writeChecks({ cacheKeys: keep(keys), screens: keep(rows), components: keep({ ...freshPreviousComponents, ...components }) })
+  lastSaved = Date.now()
+}
+const note = (line: string) => process.stderr.write(`check: ${line}\n`)
+const duration = (seconds: number) =>
+  seconds < 90 ? `${Math.round(seconds)} s` : seconds < 5400 ? `${Math.round(seconds / 60)} min` : `${(seconds / 3600).toFixed(1)} h`
+const sharedChanged =
+  !!previous.cacheKeys && screens.length > 0 && screens.every((s) => !previous.cacheKeys![s.path]?.startsWith(`${currentDeps}:`))
+if (!todo.length) note(`all ${screens.length} screens are unchanged since the last run`)
+else if (todo.length < screens.length)
+  note(`visiting ${todo.length} of ${screens.length} screens; the others are unchanged since the last run`)
+else
+  note(
+    `visiting all ${screens.length} screens` +
+      (shots
+        ? ' (--shots renders every one)'
+        : sharedChanged
+          ? ' (DESIGN.md, the tokens, the components, the catalog or stitch2 itself changed, which rechecks every screen)'
+          : ''),
+  )
+if (todo.length > 40) note('this takes a while: the finished screens are kept, so stopping it (Ctrl-C) loses nothing')
+let stopping = false
+let finalising = false
+for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]] as const)
+  process.on(signal, () => {
+    // Everything is visited: the last write below is quick, and a partial save must not replace it.
+    if (finalising) process.exit(code)
+    if (stopping) return
+    stopping = true
+    saveProgress()
+    note(`stopped with ${finished.length} of ${todo.length} screens finished; they are kept, run it again to continue`)
+    const closed = Promise.all(pool.map((w) => w.browser.close().catch(() => {})))
+    void Promise.race([closed, new Promise((r) => setTimeout(r, 3000))]).finally(() => process.exit(code))
+  })
 const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<void> => {
   if (worker.visits > 0 && worker.visits % 20 === 0) {
     // A check loads each screen several times (themes, languages, widths); a fresh browser keeps long
@@ -253,15 +315,35 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
         message: `check crashed on this screen (${String(e).split('\n')[0]}): rerun to retry`,
       } as Issue,
     ]
-    console.error(`check: ${s.path} crashed, recorded and continuing`)
+    if (!stopping) console.error(`check: ${s.path} crashed (${String(e).split('\n')[0]}), recorded and continuing`)
   }
 }
 let cursor = 0
+const startedAt = Date.now()
+let completed = 0
+const progress = (path: string, seconds: number) => {
+  completed++
+  const left = todo.length - completed
+  const eta = completed >= 3 && left > 0 ? `, about ${duration(((Date.now() - startedAt) / 1000 / completed) * left)} left` : ''
+  note(`${completed}/${todo.length} ${path} (${duration(seconds)}${eta})`)
+}
 // One screen per worker at a time: workers pull from the queue, so a page is never shared.
 const drive = async (worker: Worker): Promise<void> => {
-  while (cursor < todo.length) await checkOne(todo[cursor++]!, worker)
+  while (cursor < todo.length && !stopping) {
+    const s = todo[cursor++]!
+    const began = Date.now()
+    await checkOne(s, worker)
+    // A stopped run closes the browsers under the screens still being checked: those are not results.
+    if (stopping) return
+    if (s.kind !== 'components') finished.push(s.path)
+    progress(s.path, (Date.now() - began) / 1000)
+    if (Date.now() - lastSaved > 15_000) saveProgress()
+  }
 }
 await Promise.all(pool.map((w) => drive(w)))
+// A stopped run has saved and is closing the browsers; the handler above ends the process.
+if (stopping) await new Promise(() => {})
+finalising = true
 await Promise.all(pool.map(async (w) => {
   await w.page.close().catch(() => {})
   await w.browser.close().catch(() => {})
@@ -306,11 +388,6 @@ async function shoot(
   await page.setViewportSize({ width: s.width, height: 844 })
 }
 
-const exists = new Set(listScreens().map((s) => s.path))
-const keep = <T>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([p]) => exists.has(p)))
-const freshPreviousComponents = Object.fromEntries(Object.entries(previous.components ?? {})
-  .filter(([path]) => previous.cacheKeys?.[path]?.startsWith(`${currentDeps}:`)
-    && previous.cacheKeys[path]!.endsWith(`:${fingerprintPaths([join(ROOT, path)])}`)))
 const allComponents = keep({ ...freshPreviousComponents, ...components })
 // Archived versions are history: they do not vote on how a component should look.
 const archived = new Set(
@@ -334,10 +411,11 @@ for (const s of screens) {
   for (const i of issues.filter((i) => i.severity === 'error'))
     console.log(`    ${i.type}: ${i.message}${i.text ? ` — “${i.text}”` : ''}`)
 }
-writeFileSync(
-  join(ROOT, 'checks.json'),
-  `${JSON.stringify({ checkedAt: new Date().toISOString(), cacheKeys: keep({ ...previous.cacheKeys, ...cacheKeys }), screens: keep({ ...previous.screens, ...results }), components: allComponents }, null, 2)}\n`,
-)
+writeChecks({
+  cacheKeys: keep({ ...previous.cacheKeys, ...cacheKeys }),
+  screens: keep({ ...previous.screens, ...results }),
+  components: allComponents,
+})
 console.log(
   `\n${screens.length} screens checked, ${errors} errors. Results in design/checks.json (badges on the canvas).`,
 )
