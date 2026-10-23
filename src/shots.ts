@@ -39,8 +39,12 @@ function sharedStamp(): number {
       if (e.isDirectory()) {
         if (depth === 0 && OUTPUTS.has(e.name)) continue
         if (depth < 4) walk(join(dir, e.name), depth + 1)
-      } else if (!e.name.endsWith('.html') && !(depth === 0 && REPORTS.has(e.name)))
-        newest = Math.max(newest, statSync(join(dir, e.name)).mtimeMs)
+      } else if (!e.name.endsWith('.html') && !(depth === 0 && REPORTS.has(e.name))) {
+        // A link to nothing (a symlinked folder that is not there on this machine) is not a file that can change a picture.
+        try {
+          newest = Math.max(newest, statSync(join(dir, e.name)).mtimeMs)
+        } catch {}
+      }
     }
   }
   walk(ROOT, 0)

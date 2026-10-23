@@ -677,6 +677,10 @@ const frameSrc = (s) => `/${s.path}?pick&canvas=${s.viewportHeight ?? 844}${lang
 // The rest show the picture the server renders (/api/shot). Without pictures (no Chromium), frames in view stay
 // live at any zoom, still at most MAX_LIVE. ----
 const LIVE_ZOOM = 0.3, MAX_LIVE = 6, SHOTS_AT_ONCE = 3
+// A picture costs the server a whole page render. A frame narrower than MIN_SHOT_PX on screen shows nothing you could read, so it is not
+// asked for (fit-all with hundreds of screens would otherwise queue a render of every one, and again after every shared file or link change),
+// and at most SHOTS_QUEUED pictures wait at a time, the nearest to the middle first; as they arrive the next ones are asked for.
+const MIN_SHOT_PX = 64, SHOTS_QUEUED = 24
 let shotRev = 0, shotErrors = 0, syncTimer
 const shotsFailed = () => shotErrors > 2
 const scheduleSync = () => { clearTimeout(syncTimer); syncTimer = setTimeout(syncLive, 120) }
@@ -787,7 +791,11 @@ function syncLive() {
   // Keep the page until its picture is loaded; switching zoom must never reveal an empty frame.
   for (const f of frames.values()) if (f.iframe && !live.has(f) && (!visible.has(f) || (f.img.complete && f.img.naturalWidth))) unmount(f)
   for (const f of live) mount(f)
-  shotQueue = near.map(({ f }) => [f, shotUrl(f.screen)])
+  shotQueue = near
+    .filter(({ f }) => f.screen.width * view.z >= MIN_SHOT_PX)
+    .map(({ f }) => [f, shotUrl(f.screen)])
+    .filter(([f, url]) => f.img.getAttribute('src') !== url)
+    .slice(0, SHOTS_QUEUED)
   pumpShots()
 }
 
@@ -1168,12 +1176,14 @@ events.onmessage = async (e) => {
   // (tokens.tailwind.css), the components.
   const shared = paths.some((p) => /\.(css|js|mjs)$/.test(p) || p.startsWith('components/'))
   if (shared) shotRev++
-  for (const f of frames.values()) {
-    if (shared || html.includes(f.screen.path)) {
-      f.iframe?.contentWindow?.location.reload()
-      f.el.classList.remove('changed'); void f.el.offsetWidth; f.el.classList.add('changed')
-    }
+  // One reflow for all the frames that flash, not one each: approving a version can touch every screen that linked to it.
+  const touched = [...frames.values()].filter((f) => shared || html.includes(f.screen.path))
+  for (const f of touched) {
+    f.iframe?.contentWindow?.location.reload()
+    f.el.classList.remove('changed')
   }
+  void viewport.offsetWidth
+  for (const f of touched) f.el.classList.add('changed')
   scheduleSync()
 }
 
