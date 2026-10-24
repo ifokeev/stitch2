@@ -654,6 +654,33 @@ function measure(f) {
 }
 
 const minHeight = (s) => (bigFrame(s) ? 800 : 844)
+/** Whether two addresses are the same page: the same place, whatever their query or hash say. */
+function samePage(a, b) {
+  try { const x = new URL(a), y = new URL(b); return x.origin === y.origin && x.pathname === y.pathname } catch { return false }
+}
+/**
+ * A page keeps growing after it loads: a table fetches its rows, an image arrives, a font swaps in. The measurements at load and in the first
+ * seconds catch what is there by then; this watches the page itself, so the frame is as tall as its page whenever the page changes size. The
+ * observer belongs to the loaded document and is replaced when the page reloads.
+ */
+function watchSize(f, iframe) {
+  f.sizeWatch?.disconnect()
+  f.sizeWatch = null
+  try {
+    const doc = iframe.contentDocument
+    const Observer = iframe.contentWindow?.ResizeObserver
+    if (!doc || !Observer) return
+    let queued
+    const watch = new Observer(() => {
+      clearTimeout(queued)
+      // Wait for the page to settle: a table draws many rows in a few frames, and one measure after them is enough.
+      queued = setTimeout(() => { if (f.sizeWatch === watch && f.iframe === iframe) measure(f) }, 80)
+    })
+    watch.observe(doc.documentElement)
+    if (doc.body) watch.observe(doc.body)
+    f.sizeWatch = watch
+  } catch {}
+}
 function setHeight(f, h) {
   h = Math.min(MAX_FRAME_HEIGHT, Math.max(minHeight(f.screen), h))
   HEIGHTS[`${f.screen.path}@${f.screen.width}`] = h
@@ -712,7 +739,9 @@ function mount(f) {
     // `load` also fires for the initial about:blank document. Compare the
     // loaded document itself with the current iframe target (which may have
     // changed for a language/theme reload while this mount was pending).
-    return f.iframe === iframe && iframe.contentDocument === doc && doc.readyState === 'complete' && doc.location.href === iframe.src
+    // The address is compared without its query: a page may rewrite its own
+    // (a table that keeps its state there), and that is still the same page.
+    return f.iframe === iframe && iframe.contentDocument === doc && doc.readyState === 'complete' && samePage(doc.location.href, iframe.src)
   }
   iframe.addEventListener('load', () => {
     if (f.iframe !== iframe) return
@@ -731,6 +760,7 @@ function mount(f) {
       }, 350)
       setTimeout(() => { if (f.iframe === iframe) measure(f) }, 1200)
       setTimeout(() => { if (f.iframe === iframe) measure(f) }, 2500)
+      watchSize(f, iframe)
     })()
   })
   iframe.src = frameSrc(f.screen)
@@ -739,6 +769,8 @@ function mount(f) {
 function unmount(f) {
   if (!f.iframe) return
   clearTimeout(f.reveal)
+  f.sizeWatch?.disconnect()
+  f.sizeWatch = null
   // Cleared first: a page still loading can fire its load event as it's removed.
   const iframe = f.iframe
   f.iframe = null
