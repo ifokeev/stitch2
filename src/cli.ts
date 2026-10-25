@@ -29,6 +29,8 @@ const COMMANDS: Record<string, [string, string]> = {
   type: ['type.ts', '[filter] [--json]  Every text style a screen uses, by type level'],
   tokens: ['tokens.ts', 'Generate tokens.css and tailwind.tokens.js from DESIGN.md, and the exports in the config'],
   compare: ['compare.ts', '[screen…] [--strict]  The live app against the approved screens ("app" in the config)'],
+  look: ['look.ts', '[screen…] [--width N,N | --drawn] [--strict]  Text in the live app against the approved screens: font, size, weight, colour…'],
+  geometry: ['geometry.ts', '[screen…] [--width N,N | --drawn] [--strict]  Where things sit in the live app against the approved screens, at every width'],
   elements: ['build-elements.ts', '<entry> [--out file]  Bundle the project\'s components (defineElements) for the screens'],
   lint: ['', "Google's DESIGN.md linter on the project's DESIGN.md"],
   i18n: [

@@ -139,6 +139,8 @@ References, read before the first screen:
 | `screens [name] [--status s] [--json] [--strict]` | Every version with its status and the user's note, and anything that makes the current version unclear |
 | `approve <path or filter…>` | Approves variants for the user (only on their word); every earlier version of the screen on that device is archived |
 | `compare [screen…]` | The live app against the approved versions: missing or extra components, order, looks; a side-by-side report |
+| `look [screen…] [--width N,N \| --drawn]` | How the app's text is drawn against the approved versions (font, size, weight, spacing, colour), at every width |
+| `geometry [screen…] [--width N,N \| --drawn]` | Where the app's components and text sit against the approved versions: size, left edge, space between neighbours, arrangement |
 | `elements <entry>` | Bundles the app's components, turned into elements with `stitch2/elements`, for the screens |
 | `tokens` | `tokens.css` (colours, `.type-*` classes) and `tailwind.tokens.js` from DESIGN.md |
 | `lint` | Google's DESIGN.md linter |

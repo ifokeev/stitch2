@@ -21,33 +21,20 @@
  * Usage: stitch2 compare [screen…] [--strict]
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { chromium, type Page } from '@playwright/test'
+import { join } from 'node:path'
 import { audit, LAYOUT_ERRORS } from './audit.ts'
-import { BASE, config, widthRange } from './config.ts'
+import { config, widthRange } from './config.ts'
 import { type Components, collectComponents, collectOptions } from './consistency.ts'
-import { listScreens, ROOT } from './screens.ts'
+import { openLive } from './live.ts'
+import { ROOT } from './screens.ts'
 import { filterSnippet } from './report-filter.ts'
-import { startServer } from './serve.ts'
 
-type Route = string | { path: string; prepare?: string; signedOut?: boolean }
-const app = config.app
-if (!app?.url || !app.routes) {
-  console.error('stitch2 compare: add an "app" section with "url" and "routes" to stitch2.config.json')
-  process.exit(1)
-}
 const args = process.argv.slice(2)
 const only = args.filter((a) => !a.startsWith('--'))
 const strict = args.includes('--strict')
-const routeOf = (screen: string): { path: string; prepare?: string; signedOut?: boolean } | undefined => {
-  const r = app.routes[screen] as Route | undefined
-  return typeof r === 'string' ? { path: r } : r
-}
-const versions = listScreens().filter(
-  (s) => s.kind === 'screen' && s.status === 'approved' && routeOf(s.screen) && (!only.length || only.includes(s.screen)),
-)
-const unmapped = [...new Set(listScreens().filter((s) => s.status === 'approved' && !routeOf(s.screen)).map((s) => s.screen))]
+const live = await openLive('compare', only, 2)
+const { versions, unmapped } = live
+const app = { url: live.appUrl }
 
 /** Runs in the page: every marked component in document order, and the top-level ones (not inside another). */
 function structure(prefix: string) {
@@ -94,59 +81,28 @@ interface Result {
   match: number
 }
 
-const load = async (file: string) => (await import(pathToFileURL(resolve(BASE, file)).href)).default as (o: { page: Page; url: string }) => Promise<void>
-const settle = async (page: Page) => {
-  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {})
-  await page.waitForTimeout(800)
-}
-
 const out = join(ROOT, 'compare')
 mkdirSync(out, { recursive: true })
-const server = await startServer(0)
-const browser = await chromium.launch()
-const context = await browser.newContext({ deviceScaleFactor: 2 })
-const signIn = await context.newPage()
-if (app.signIn) await (await load(app.signIn))({ page: signIn, url: app.url })
-await signIn.close()
-const design = await browser.newPage({ deviceScaleFactor: 2 })
-const signedIn = await context.newPage()
-// Sign-in and other public pages often redirect a signed-in visitor, so they get a context of their own.
-const signedOut = await (await browser.newContext({ deviceScaleFactor: 2 })).newPage()
 const results: Result[] = []
 const opts = collectOptions()
+/** The version that is open: its design page and its app page. */
+let pair: Awaited<ReturnType<typeof live.open>> | undefined
 
 /**
  * One version against its app page at one width. The first call opens both pages (and runs prepare); the edges
  * then only resize them, which reflows the layout, keeps the prepared state (a sheet open) and saves the reloads.
  */
 async function compareAt(s: (typeof versions)[number], width: number, open: boolean) {
-  const route = routeOf(s.screen)!
-  const live = route.signedOut ? signedOut : signedIn
-  const url = new URL(route.path, app!.url).href
-  const height = width > 700 ? 800 : 844
-  for (const p of [design, live]) await p.setViewportSize({ width, height })
   const findings: Finding[] = []
-  if (!open) await live.waitForTimeout(500)
-  else {
-    await design.goto(`http://127.0.0.1:${server.port}/${s.path}`).catch(() => {})
-    await settle(design)
-    await live.goto(url).catch(() => {})
-    await settle(live)
-  }
-  if (open && route.prepare) {
-    // A failing prepare is this version's error; the run goes on with the others.
-    try {
-      await (await load(route.prepare))({ page: live, url: app!.url })
-    } catch (e) {
-      const message = (e instanceof Error ? e.message : String(e)).split('\n')[0]
-      findings.push({ severity: 'error', type: 'prepare', message: `${route.prepare} failed: ${message}` })
-    }
-    await settle(live)
-  }
-  const [d, a] = [await design.evaluate(structure, config.prefix), await live.evaluate(structure, config.prefix)]
+  if (open) {
+    pair = await live.open(s)
+    if (pair.prepareError) findings.push({ severity: 'error', type: 'prepare', message: pair.prepareError })
+  } else await live.resize(width)
+  const { design, live: page, url } = pair!
+  const [d, a] = [await design.evaluate(structure, config.prefix), await page.evaluate(structure, config.prefix)]
   const [dc, ac]: Components[] = [
     (await design.evaluate(collectComponents, opts)).components,
-    (await live.evaluate(collectComponents, opts)).components,
+    (await page.evaluate(collectComponents, opts)).components,
   ]
   const missing = Object.keys(d.counts).filter((k) => !a.counts[k])
   const extra = Object.keys(a.counts).filter((k) => !d.counts[k])
@@ -173,19 +129,19 @@ async function compareAt(s: (typeof versions)[number], width: number, open: bool
   }
   // The same layout rules check runs on the screens, on the app: a control squeezed over another shows up here
   // even when the screen never drew that state.
-  for (const i of await live.evaluate(audit, { comfortable: config.comfortableTarget }))
+  for (const i of await page.evaluate(audit, { comfortable: config.comfortableTarget }))
     if (i.severity === 'error' && LAYOUT_ERRORS.includes(i.type))
       findings.push({ severity: 'error', type: i.type, message: `${i.message} (“${i.text}”)` })
   const kinds = Object.keys(d.counts)
   const match = kinds.length ? Math.round((100 * kinds.filter((k) => a.counts[k]).length) / kinds.length) : 100
-  return { findings, match, url, live }
+  return { findings, match, url }
 }
 
 for (const s of versions) {
-  const { findings, match, url, live } = await compareAt(s, s.width, true)
+  const { findings, match, url } = await compareAt(s, s.width, true)
   const base = `${s.screen}-${s.device}`
-  await design.screenshot({ path: join(out, `${base}-design.png`), fullPage: true })
-  await live.screenshot({ path: join(out, `${base}-app.png`), fullPage: true })
+  await pair!.design.screenshot({ path: join(out, `${base}-design.png`), fullPage: true })
+  await pair!.live.screenshot({ path: join(out, `${base}-app.png`), fullPage: true })
   const seen = new Set(findings.map((f) => `${f.type} ${f.message}`))
   for (const width of widthRange(s.device) ?? []) {
     if (width === s.width) continue
@@ -201,8 +157,7 @@ for (const s of versions) {
   console.log(`${errors ? '✗' : '✓'} ${base.padEnd(30)} ${String(match).padStart(3)}% of the design's components · ${errors} errors, ${findings.length - errors} warnings`)
   for (const f of findings.filter((f) => f.severity === 'error')) console.log(`    ${f.type}: ${f.message}`)
 }
-await browser.close()
-server.close()
+await live.close()
 
 const esc = (v: unknown) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 const rows = results

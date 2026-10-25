@@ -191,6 +191,27 @@ put a page into the state the design shows (open a sheet, start a workout). The 
 an error on that version and the run goes on. When it opens a modal, wait for something inside it (a marked
 component): dialog roots are often zero-sized wrappers, which Playwright reports as hidden.
 
+### Does it look the same, and sit in the same place?
+
+Compare says which components are there. Two more commands take the same routes and ask what that cannot see: the
+words inside them, and where they land.
+
+- `stitch2 look [screen…]` pairs the texts of a screen and its app page by their words and reports the ones drawn
+  differently: font, size, weight, letter spacing, line height, colour, case, alignment, decoration. The same
+  difference on many texts is one line with a count and the app's tag and classes, so it can be found in the source.
+  Text on one side only (data differs between a mock-up and the app) is counted, not reported.
+- `stitch2 geometry [screen…]` pairs the boxes of shared components and texts the same way and reports a box that
+  has another size or left edge, two neighbours with another space between them, and a pair arranged differently
+  (a title beside its icon in the design, under it in the app). Vertical position alone is not compared, because
+  data of another length moves everything below it. A box in a row that holds text only one page has is not blamed
+  for being pushed sideways, and boxes of a list that shows the same items in another order are left out.
+
+Both run each version at the width it is drawn at, at both ends of its variant's width range and at every
+breakpoint inside it (the widths `check` renders): a title that fits at 1440px and wraps under its icon at 1024px
+shows up. `--width 360,1280` picks the widths, `--drawn` uses only the drawn width (a quick pass over everything),
+and `--strict` exits with an error when anything differs. Results are also written to `look.json` and
+`geometry.json` in the design folder.
+
 ### In your own tests: every language, every width
 
 The layout rules are a plain function you can run on any page, so an app's own Playwright tests can check what
@@ -270,6 +291,8 @@ layout first, then a shorter natural word, never a smaller type size.
 | `stitch2 approve <path or filter…>` | Approve variants (the user's decision); every earlier version is archived |
 | `stitch2 tokens` | Tokens from DESIGN.md |
 | `stitch2 compare [screen…]` | The live app against the approved screens (`app` in the config) |
+| `stitch2 look [screen…] [--width N,N \| --drawn]` | Text in the live app against the approved screens: font, size, weight, colour |
+| `stitch2 geometry [screen…] [--width N,N \| --drawn]` | Where things sit in the live app against the approved screens, at every width |
 | `stitch2 elements <entry>` | Bundle your components (`stitch2/elements`) for the screens |
 | `stitch2 lint` | Google's DESIGN.md linter |
 | `stitch2 localize [filter]` | Copies a screen's remote images into its `assets/` folder |
