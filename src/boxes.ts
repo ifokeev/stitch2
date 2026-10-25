@@ -110,7 +110,8 @@ export interface Compared {
 }
 
 /** How far apart two measurements may be before they differ: sub-pixel layout and rounding. */
-export const TOLERANCE = { place: 2, size: 2, height: 3, gap: 3 }
+/** A text's width also takes in the space before or after it in its text node, which differs with how the markup is written. */
+export const TOLERANCE = { place: 2, size: 2, textWidth: 4, height: 3, gap: 3 }
 
 const px = (v: number) => Math.round(v)
 
@@ -181,7 +182,8 @@ export function compareBoxes(design: Box[], app: Box[]): Compared {
     const a = app[j]!
     // What a component holds sets its height: where one page has text the other lacks, only its width is compared.
     const holds = d.kind === 'component' && (inside(looseDesign, d) || inside(looseApp, a))
-    if (Math.abs(d.w - a.w) > TOLERANCE.size || (!holds && Math.abs(d.h - a.h) > TOLERANCE.height))
+    const wide = d.kind === 'text' ? TOLERANCE.textWidth : TOLERANCE.size
+    if (Math.abs(d.w - a.w) > wide || (!holds && Math.abs(d.h - a.h) > TOLERANCE.height))
       mismatches.push({ type: 'size', message: `${d.label} is ${px(a.w)}×${px(a.h)} in the app, ${px(d.w)}×${px(d.h)} in the design` })
     if (Math.abs(d.x - a.x) > TOLERANCE.place && !crowded(looseDesign, d) && !crowded(looseApp, a))
       mismatches.push({ type: 'position', message: `${d.label} starts ${px(a.x)}px from the left in the app, ${px(d.x)}px in the design` })
