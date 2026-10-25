@@ -107,6 +107,14 @@ test('look compares alignment only where text runs over several lines', async ()
   assert.deepEqual(lookAt(design, app).differences.map((d) => d.what), ['alignment start in the design, center in the app'])
 })
 
+test('geometry leaves out text kept for screen readers: a box a pixel wide with its overflow cut away', async () => {
+  const table = (caption: string) => '<div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"><table><caption>' + caption + '</caption></table></div><p>Visible words here</p>'
+  const lead = 'A caption long enough to share its first forty characters'
+  const same = compareBoxes(await layout(table(lead)), await layout(table(lead + ' and then a very much longer ending')))
+  assert.equal(same.matched, 1, 'only the visible text is a box')
+  assert.deepEqual(same.mismatches, [])
+})
+
 test('geometry leaves figures alone: a pager with more pages does not move its label', async () => {
   const pager = (pages: number[]) => '<div style="display:flex;justify-content:flex-end;width:500px"><span>Previous</span>' + pages.map((n) => '<span>' + n + '</span>').join('') + '</div>'
   const found = compareBoxes(await layout(pager([1, 2])), await layout(pager([1, 2, 3, 4])))

@@ -28,6 +28,15 @@ export function texts(prefix: string): Text[] {
   const out: Text[] = []
   const marker = '[data-' + prefix + ']'
   const range = document.createRange()
+  // Text kept for screen readers sits in a box a pixel wide with its overflow cut away: it is not drawn.
+  const clipped = (el: Element) => {
+    for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) {
+      if (getComputedStyle(e).overflow === 'visible') continue
+      const r = e.getBoundingClientRect()
+      if (r.width < 2 || r.height < 2) return true
+    }
+    return false
+  }
   // Colours come back in the form they were written in (rgb, color(srgb …), oklch…): the canvas turns each into rgba.
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = 1
@@ -47,7 +56,7 @@ export function texts(prefix: string): Text[] {
     const text = own.replace(/\s+/g, ' ').trim()
     // A number or a symbol on its own (93.1%, $12, 3/4) is data: the same figure can stand in another place on the other page.
     if (text.length < 2 || !/\p{L}/u.test(text)) continue
-    if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue
+    if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) || clipped(el)) continue
     const r = el.getBoundingClientRect()
     if (r.width < 2 || r.height < 2) continue
     const cs = getComputedStyle(el)

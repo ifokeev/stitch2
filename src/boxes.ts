@@ -26,9 +26,18 @@ export function boxes(prefix: string): Box[] {
   const marker = `data-${prefix}`
   const out: Box[] = []
   const flat = (s: string) => s.replace(/\s+/g, ' ').trim()
+  // Text kept for screen readers sits in a box a pixel wide with its overflow cut away: it is not drawn.
+  const clipped = (el: Element) => {
+    for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) {
+      if (getComputedStyle(e).overflow === 'visible') continue
+      const r = e.getBoundingClientRect()
+      if (r.width < 2 || r.height < 2) return true
+    }
+    return false
+  }
   for (const el of document.body.querySelectorAll('*')) {
     if (el.closest('script, style, noscript, template, option, svg')) continue
-    if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue
+    if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) || clipped(el)) continue
     const kind = el.getAttribute(marker)
     if (kind) {
       const r = el.getBoundingClientRect()
