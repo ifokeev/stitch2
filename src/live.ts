@@ -85,8 +85,13 @@ export function screenArgs(args: string[]): string[] {
   return args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--width')
 }
 
-/** Walks a page from top to bottom and back, so what loads on scroll is there when it is measured. */
+/**
+ * Walks a page from top to bottom and back, so what loads on scroll is there when it is measured, and takes the pointer
+ * off the page: a prepare script that clicked something leaves it there, and after a resize a button can end up under it
+ * and be measured in its hover colours.
+ */
 export async function scrollThrough(page: Page) {
+  await page.mouse.move(-1, -1)
   await page.evaluate(async () => {
     for (let y = 0; y < document.body.scrollHeight; y += 700) {
       window.scrollTo(0, y)
