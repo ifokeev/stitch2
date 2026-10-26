@@ -69,8 +69,11 @@ test('geometry reports the space between neighbours, not their absolute height',
   const tight = await layout('<p style="margin-bottom:24px">First paragraph</p><p>Second paragraph</p>')
   const found = compareBoxes(design, tight)
   assert.deepEqual(found.mismatches.map((m) => m.type), ['gap'])
-  // The gap is between the text itself (the glyph boxes), so it is the margin plus the leading around each line.
-  assert.equal(found.mismatches[0]!.message, 'between “First paragraph” and “Second paragraph”: 30px in the app, 14px in the design')
+  // The gap is between the text itself (the glyph boxes), so it is the margin plus the leading around each line, which
+  // depends on the font of the machine; what the margins decide is the difference of 24px against 8px.
+  const [, inApp, inDesign] = /(\d+)px in the app, (\d+)px in the design/.exec(found.mismatches[0]!.message) ?? []
+  assert.equal(Number(inApp) - Number(inDesign), 16, found.mismatches[0]!.message)
+  assert.match(found.mismatches[0]!.message, /^between “First paragraph” and “Second paragraph”: /)
 })
 
 test('geometry does not blame a box for being pushed sideways by text only one page has', async () => {
