@@ -195,10 +195,11 @@ test('canvas keeps a full-height desktop screen bounded and visible through zoom
     assert.equal(shot.type, 'image/jpeg')
     assert.equal(shot.jpeg, true)
     assert.ok(shot.bytes > 10_000, JSON.stringify(shot))
-    assert.equal(shot.width, 1280)
-    assert.ok(Math.abs(shot.height - dimensions.height) <= 2, JSON.stringify({ shot, dimensions }))
-    assert.ok(shot.height >= 2900 && shot.height < 5000, JSON.stringify(shot))
-    assert.ok(shot.red > 100 && shot.minY < 900 && shot.maxY < 900, JSON.stringify(shot))
+    // Two pixels for each CSS pixel: at one, a laptop screen shows the picture stretched, and the text comes out soft and grainy.
+    assert.equal(shot.width, 2560)
+    assert.ok(Math.abs(shot.height - dimensions.height * 2) <= 4, JSON.stringify({ shot, dimensions }))
+    assert.ok(shot.height >= 5800 && shot.height < 10000, JSON.stringify(shot))
+    assert.ok(shot.red > 100 && shot.minY < 1800 && shot.maxY < 1800, JSON.stringify(shot))
 
     // Zoom back to a live view, then pan well beyond the viewport and back. This exercises
     // both thumbnail/live transitions that made frames disappear after zooming in.

@@ -99,3 +99,28 @@ test('a link to a folder that is not there does not stop the server when a pictu
   assert(alive.ok, 'the canvas still answers')
 })
 
+/** The width and height of a JPEG, from its start-of-frame marker. */
+function jpegSize(bytes: Buffer) {
+  for (let i = 2; i + 9 < bytes.length;) {
+    if (bytes[i] !== 0xff) { i++; continue }
+    const marker = bytes[i + 1]!
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) return { height: bytes.readUInt16BE(i + 5), width: bytes.readUInt16BE(i + 7) }
+    i += 2 + bytes.readUInt16BE(i + 2)
+  }
+  throw new Error('not a JPEG')
+}
+
+test('pictures have two pixels for each CSS pixel, and a page too tall for that has one', { concurrency: false, timeout: 90_000 }, async () => {
+  // A page too tall to be drawn at two pixels for each CSS pixel, written here so the canvas test above still counts its screens.
+  mkdirSync(join(dir, 'design/screens/tall'), { recursive: true })
+  writeFileSync(join(dir, 'design/screens/tall/mobile-v1.html'), page(0).replace('<main>Screen 0</main>', '<main style="height:9000px">Tall</main>'))
+  const picture = async (path: string) => Buffer.from(await (await fetch('http://127.0.0.1:' + port + '/api/shot?path=' + encodeURIComponent(path) + '&width=390')).arrayBuffer())
+  // At one pixel a laptop screen shows the picture stretched, and thin light text comes out soft and grainy.
+  const sharp = jpegSize(await picture('screens/screen-2/mobile-v1.html'))
+  assert.equal(sharp.width, 780)
+  assert.equal(sharp.height, 1688)
+  const tall = jpegSize(await picture('screens/tall/mobile-v1.html'))
+  assert.equal(tall.width, 390)
+  assert.ok(tall.height >= 9000 && tall.height <= 9100, 'the tall page is drawn whole: ' + tall.height)
+})
+

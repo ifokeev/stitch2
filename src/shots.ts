@@ -15,6 +15,15 @@ import { ROOT, meta, tag } from './screens.ts'
 
 /** The tallest picture, in CSS px: the same limit as the canvas frames and check's renders. */
 const MAX_HEIGHT = 20000
+/**
+ * Pictures are drawn at two pixels for each CSS pixel and kept at a high JPEG quality. At one pixel, a laptop screen
+ * (two device pixels for each CSS pixel) shows a picture stretched to twice its size: thin light text on a dark page
+ * comes out soft, grainy and low in contrast next to the live page. Chromium cannot draw a picture much taller than
+ * MAX_DEVICE_PX device pixels, so a page too tall for that is drawn at one pixel for each CSS pixel.
+ */
+const SCALE = 2
+const MAX_DEVICE_PX = 16000
+const QUALITY = 92
 const DIR = join(tmpdir(), 'stitch2-shots')
 /** Folders under the design directory that hold outputs, not inputs: they never change a picture. */
 const OUTPUTS = new Set(['renders', 'consistency', 'compare', 'states', 'node_modules', '.git'])
@@ -60,7 +69,7 @@ function keyOf(r: ShotRequest): string | null {
   if (!existsSync(file)) return null
   const messages = r.lang && r.lang !== sourceLocale() ? messagesFile(r.lang) : undefined
   const parts = [
-    'viewport-v2',
+    'viewport-v3',
     r.path,
     statSync(file).mtimeMs,
     sharedStamp(),
@@ -99,33 +108,41 @@ export function shot(base: string, r: ShotRequest): Promise<Buffer> | null {
   if (inFlight) return inFlight
   const job = slot(async () => {
     browser ??= launch()
-    const page = await (await browser).newPage({ viewport: { width: r.width, height: 844 }, deviceScaleFactor: 1 })
-    try {
-      const viewport = Math.min(4000, Math.max(200, Number(meta(readFileSync(join(ROOT, r.path), 'utf8'), tag('frame-height'))) || 844))
-      await page.setViewportSize({ width: r.width, height: viewport })
-      const query = new URLSearchParams({ canvas: String(viewport) })
-      if (r.lang && r.lang !== sourceLocale()) query.set('lang', r.lang)
-      await page.goto(`${base}/${r.path}?${query}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
-      if (r.theme) await page.evaluate((t) => { document.documentElement.dataset.theme = t }, r.theme)
-      const attributes = Object.entries(r.modes ?? {})
-      if (attributes.length) await page.evaluate((list) => { for (const [name, value] of list) document.documentElement.setAttribute(name, value) }, attributes)
-      await page.evaluate(() => document.fonts.ready)
-      // Tailwind's browser build and the components settle after load.
-      await page.waitForTimeout(400)
-      const height = await page.evaluate(() => Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0))
-      await page.setViewportSize({ width: r.width, height: Math.min(MAX_HEIGHT, Math.max(844, height)) })
-      const jpg = await page.screenshot({ type: 'jpeg', quality: 80 })
-      mkdirSync(DIR, { recursive: true })
-      writeFileSync(file, jpg)
-      return jpg
-    } finally {
-      await page.close()
-    }
+    // A page too tall for the sharp scale is drawn again at one pixel for each CSS pixel.
+    const jpg = (await draw(base, r, SCALE)) ?? (await draw(base, r, 1))
+    if (!jpg) throw new Error('no picture of ' + r.path)
+    mkdirSync(DIR, { recursive: true })
+    writeFileSync(file, jpg)
+    return jpg
   })
   pending.set(key, job)
   const done = () => pending.delete(key)
   job.then(done, done)
   return job
+}
+
+/** One picture of a screen at the given scale; null when the page is too tall to be drawn at that scale. */
+async function draw(base: string, r: ShotRequest, scale: number): Promise<Buffer | null> {
+  const page = await (await browser!).newPage({ viewport: { width: r.width, height: 844 }, deviceScaleFactor: scale })
+  try {
+    const viewport = Math.min(4000, Math.max(200, Number(meta(readFileSync(join(ROOT, r.path), 'utf8'), tag('frame-height'))) || 844))
+    await page.setViewportSize({ width: r.width, height: viewport })
+    const query = new URLSearchParams({ canvas: String(viewport) })
+    if (r.lang && r.lang !== sourceLocale()) query.set('lang', r.lang)
+    await page.goto(`${base}/${r.path}?${query}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
+    if (r.theme) await page.evaluate((t) => { document.documentElement.dataset.theme = t }, r.theme)
+    const attributes = Object.entries(r.modes ?? {})
+    if (attributes.length) await page.evaluate((list) => { for (const [name, value] of list) document.documentElement.setAttribute(name, value) }, attributes)
+    await page.evaluate(() => document.fonts.ready)
+    // Tailwind's browser build and the components settle after load.
+    await page.waitForTimeout(400)
+    const height = Math.min(MAX_HEIGHT, Math.max(844, await page.evaluate(() => Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0))))
+    if (scale > 1 && height * scale > MAX_DEVICE_PX) return null
+    await page.setViewportSize({ width: r.width, height })
+    return await page.screenshot({ type: 'jpeg', quality: QUALITY })
+  } finally {
+    await page.close()
+  }
 }
 
 export async function closeShots() {
