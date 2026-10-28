@@ -114,6 +114,52 @@ function lookOf(i: number) {
 }
 
 /**
+ * The controls (by their index in the page) whose hover still changes them where nothing can hover. The page is loaded
+ * again in a touch context, which turns the hover media feature off, and each control is looked at with and without
+ * :hover forced. A fresh context, not touch emulation on the same page: switching emulation off again does not give
+ * every platform its pointer back, and the rest of the check must see the page as it was.
+ */
+async function hoverStaysOnTouch(page: Page, controls: Control[]): Promise<Set<number>> {
+  const stays = new Set<number>()
+  const browser = page.context().browser()
+  if (!browser) return stays
+  const viewport = page.viewportSize()
+  const context = await browser.newContext({ hasTouch: true, ...(viewport ? { viewport } : {}) })
+  try {
+    const touch = await context.newPage()
+    const url = page.url()
+    if (/^https?:|^file:/.test(url)) {
+      await touch.goto(url, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
+      await touch.waitForTimeout(300)
+    } else await touch.setContent(await page.content())
+    if (await touch.evaluate(() => matchMedia('(hover: hover)').matches)) return stays
+    const there = await touch.evaluate(findControls, { attr: 'data-' + config.prefix, max: MAX_CONTROLS })
+    await touch.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; caret-color: transparent !important; }' })
+    const cdp = await context.newCDPSession(touch)
+    await cdp.send('DOM.enable')
+    await cdp.send('CSS.enable')
+    const { root } = await cdp.send('DOM.getDocument', { depth: 0 })
+    const frame = () => touch.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    for (const c of controls) {
+      const same = there.find((t) => t.selector === c.selector && t.label === c.label)
+      if (!same) continue
+      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '[data-s2-state="' + same.i + '"]' })
+      if (!nodeId) continue
+      const rest = await touch.evaluate(lookOf, same.i)
+      await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: ['hover'] })
+      await frame()
+      const hovered = await touch.evaluate(lookOf, same.i)
+      await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] })
+      if (hovered.look !== rest.look) stays.add(c.i)
+    }
+    await cdp.detach()
+  } finally {
+    await context.close()
+  }
+  return stays
+}
+
+/**
  * The states of every control in the catalog open in the page, in the current theme. With crop, saves a picture
  * of each state under <design>/states/ and returns the rows of the sheet.
  */
@@ -129,7 +175,7 @@ export async function catalogStates(page: Page, path: string, opts: { crop: bool
   const tag = opts.theme ? opts.theme + ' theme: ' : ''
   const dir = join(ROOT, 'states')
   // Controls whose hover changes them, to look at again on a device that cannot hover.
-  const hoverable: { c: Control; nodeId: number; who: string }[] = []
+  const hoverable: { c: Control; who: string }[] = []
   for (const c of controls) {
     const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '[data-s2-state="' + c.i + '"]' })
     if (!nodeId) continue
@@ -160,7 +206,7 @@ export async function catalogStates(page: Page, path: string, opts: { crop: bool
       row.notes.push(tag + message)
     }
     const noHover = looks.hover?.look === looks.rest?.look
-    if (c.clickable && !c.field && !c.chosen && !noHover) hoverable.push({ c, nodeId, who })
+    if (c.clickable && !c.field && !c.chosen && !noHover) hoverable.push({ c, who })
     // Pressed is forced on top of hover: a press that adds nothing to hover shows nothing on a touch screen.
     const noPress = looks.pressed?.look === looks.hover?.look
     if (c.clickable && !c.field && !c.chosen) {
@@ -182,22 +228,16 @@ export async function catalogStates(page: Page, path: string, opts: { crop: bool
     rows.push(row)
   }
   // On a phone or a tablet nothing hovers, and a tap leaves the pointer where it landed: a hover rule outside
-  // @media (hover: hover) keeps the control lit until the next tap. Touch emulation turns that media feature off.
-  if (hoverable.length) {
-    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 })
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
-    for (const { c, nodeId, who } of hoverable) {
-      const rest = await page.evaluate(lookOf, c.i)
-      await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: ['hover'] })
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
-      const hovered = await page.evaluate(lookOf, c.i)
-      await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] })
-      if (hovered.look === rest.look) continue
+  // @media (hover: hover) keeps the control lit until the next tap. Only the base theme is looked at (the rest of
+  // the themes are read for contrast).
+  if (hoverable.length && !opts.theme) {
+    const stays = await hoverStaysOnTouch(page, hoverable.map((h) => h.c))
+    for (const { c, who } of hoverable) {
+      if (!stays.has(c.i)) continue
       const message = tag + who + ': hovering still changes it on a device that cannot hover, so a tap leaves it lit (draw hover inside @media (hover: hover))'
-      issues.push({ severity: 'warning', type: 'state-hover-touch', selector: c.selector, text: c.label, message, ...(opts.theme ? { theme: opts.theme } : {}) })
+      issues.push({ severity: 'warning', type: 'state-hover-touch', selector: c.selector, text: c.label, message })
       rows.find((r) => r.selector === c.selector && r.label === c.label)?.notes.push(message)
     }
-    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false })
   }
   await cdp.detach()
   await still.evaluate((n) => (n as Element).remove())
