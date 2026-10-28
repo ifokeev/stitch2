@@ -770,6 +770,44 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     }
   }
 
+  // 6f. Corner radius: everything that is pressed or typed into shares one radius, so a button beside a field has the same corner
+  // (skills/stitch2/references/components.md, Shape). A control is a button, a field, a select, a summary or a role=button with a box
+  // (a fill or a line) and a corner that is not square and not a pill. The radius most of them use is the screen's; a control with
+  // another one is reported. A control inset in a rounded box (a segment in a switch) takes the box's radius minus the gap, so it is left alone.
+  {
+    const kinds = 'button, input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), select, textarea, summary, [role=button], [role=combobox]'
+    const clear = (value: string) => /^(rgba\(0, 0, 0, 0\)|transparent)$/.test(value)
+    const boxed: { el: Element; radius: number }[] = []
+    for (const el of all) {
+      // A button that holds a picture (a thumbnail) takes its shape from the picture, not from the controls around it.
+      if (!el.matches(kinds) || el.closest('[aria-hidden=true]') || el.querySelector('img, video, canvas, picture')) continue
+      const rect = el.getBoundingClientRect()
+      if (rect.width < 24 || rect.height < 24 || rect.height > 80) continue
+      const cs = getComputedStyle(el)
+      const filled = !clear(cs.backgroundColor) || cs.backgroundImage !== 'none'
+      const lined = parseFloat(cs.borderTopWidth) > 0 && !clear(cs.borderTopColor)
+      if (!filled && !lined) continue
+      const corner = cs.borderTopLeftRadius
+      const radius = parseFloat(corner)
+      if (corner.includes('%') || !(radius > 0) || radius >= Math.min(rect.width, rect.height) / 2 - 1) continue
+      let inset = false
+      for (let p = el.parentElement, depth = 0; p && p !== document.body && depth < 2 && !inset; p = p.parentElement, depth++) {
+        const c = getComputedStyle(p)
+        const drawn = !clear(c.backgroundColor) || parseFloat(c.borderTopWidth) > 0
+        inset = drawn && (parseFloat(c.borderTopLeftRadius) || 0) > radius && parseFloat(c.paddingTop) <= 12 && parseFloat(c.paddingLeft) <= 12
+      }
+      if (!inset) boxed.push({ el, radius: Math.round(radius) })
+    }
+    const count = new Map<number, number>()
+    for (const b of boxed) count.set(b.radius, (count.get(b.radius) ?? 0) + 1)
+    if (count.size > 1) {
+      const [common] = [...count.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]!
+      for (const b of boxed)
+        if (b.radius !== common)
+          push('warning', 'radius-mismatch', b.el, 'Corner radius ' + b.radius + 'px, where ' + count.get(common) + ' of the ' + boxed.length + ' controls here use ' + common + 'px: everything pressed or typed into shares one radius')
+    }
+  }
+
   // 6d. Touch targets: Material and Lighthouse want 48×48; a smaller one fails when the 48px square around its
   // centre covers a quarter of its area of another target (about 8px apart is enough). Touch-sized windows only.
   const named = (el: Element) => text(el) || el.getAttribute('aria-label') || el.tagName.toLowerCase()
