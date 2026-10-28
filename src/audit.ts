@@ -823,6 +823,38 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     }
   }
 
+  // 6h. A control in a capsule. A capsule that holds controls (the chat composer, the bar over a lightbox) is a container, and a control in it is a
+  // circle: the capsule's end is a half circle, and a rounded square inside it meets that curve with its corner (Apple's concentricity, Material's
+  // round icon button). So a control with a corner that is neither square nor a circle, in a capsule drawn with a fill or a line, is reported,
+  // whether it has a box at rest or only on hover. A control that is itself the capsule (a chip), a picture button and a field with no box of
+  // its own are left alone.
+  {
+    const kinds = 'button, summary, [role=button], a[href], input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), select, textarea, [role=combobox]'
+    const fieldKinds = 'input, select, textarea, [role=combobox]'
+    const clear = (value: string) => /^(rgba\(0, 0, 0, 0\)|transparent)$/.test(value)
+    for (const el of all) {
+      if (!el.matches(kinds) || el.closest('[aria-hidden=true]') || el.querySelector('img, video, canvas, picture')) continue
+      const rect = el.getBoundingClientRect()
+      if (rect.width < 24 || rect.height < 24 || rect.height > 80) continue
+      const cs = getComputedStyle(el)
+      const corner = cs.borderTopLeftRadius
+      const radius = parseFloat(corner)
+      if (corner.includes('%') || !(radius > 0) || radius >= Math.min(rect.width, rect.height) / 2 - 1) continue
+      if (el.matches(fieldKinds) && clear(cs.backgroundColor) && !(parseFloat(cs.borderTopWidth) > 0 && !clear(cs.borderTopColor))) continue
+      for (let p = el.parentElement, depth = 0; p && p !== document.body && depth < 4; p = p.parentElement, depth++) {
+        if (p.matches(kinds)) break
+        const c = getComputedStyle(p)
+        const box = p.getBoundingClientRect()
+        const pill = parseFloat(c.borderTopLeftRadius)
+        const drawn = !clear(c.backgroundColor) || (parseFloat(c.borderTopWidth) > 0 && !clear(c.borderTopColor))
+        if (drawn && !c.borderTopLeftRadius.includes('%') && box.height >= 32 && box.height <= 96 && pill >= box.height / 2 - 1) {
+          push('warning', 'capsule-control', el, 'A corner of ' + Math.round(radius) + 'px in a capsule: a control inside a capsule is a circle (the round icon button), so it follows the curve of the end')
+          break
+        }
+      }
+    }
+  }
+
   // 6d. Touch targets: Material and Lighthouse want 48×48; a smaller one fails when the 48px square around its
   // centre covers a quarter of its area of another target (about 8px apart is enough). Touch-sized windows only.
   const named = (el: Element) => text(el) || el.getAttribute('aria-label') || el.tagName.toLowerCase()
