@@ -25,3 +25,7 @@ are restated in principles.md.
 | Material 3 interaction states (m3.material.io/foundations/interaction/states) | yes | The state layer percentages for hover, focus, pressed and dragged, and the disabled opacities |
 | WCAG 2.2 Understanding: Use of Color, Non-text Contrast, Focus Appearance (w3.org/WAI/WCAG22/Understanding) | yes | Links told apart by more than colour (1.4.1), 3:1 for a focus ring and a control's edge (1.4.11), the focus ring's size (2.4.13) |
 | MDN, the `hover` media feature (developer.mozilla.org/docs/Web/CSS/@media/hover) | yes | Drawing hover only for devices that can hover |
+| GOV.UK Design System, Text input (design-system.service.gov.uk/components/text-input) | yes | Labels above fields, no placeholders, hints, widths that follow the answer, error wording, `inputmode` |
+| Nielsen Norman Group, Placeholders in Form Fields Are Harmful and 10 Design Guidelines for Reporting Errors in Forms (nngroup.com/articles) | yes | Why a placeholder is not a label, floating labels, inline validation and when to run it |
+| Atlassian Design, Radius (atlassian.design/foundations/radius) and Radix Themes, Radius (radix-ui.com/themes/docs/theme/radius) | yes | One radius for buttons, inputs and selects, the next steps for containers, and a ring that follows the corner |
+| WCAG 2.2 Understanding: Identify Input Purpose (1.3.5) and Non-text Contrast (1.4.11) (w3.org/WAI/WCAG22/Understanding) | yes | `autocomplete` purposes for fields about the person, and 3:1 for the edge that shows a field |

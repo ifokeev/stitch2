@@ -30,6 +30,15 @@ A component takes every colour from a token, never a literal. A literal does not
 stays dark under text that turned dark in the light theme, and `check` reports the contrast in that theme. When a
 sheet the component does not own carries the literal, the component sets the token over it.
 
+## Shape
+
+Everything that is pressed or typed into (a button, an icon button, a chip, a field, a select, a menu item) takes **one corner radius**, so a
+button beside a field has the same corner. Containers (cards, panels, dialogs) take the larger steps of DESIGN.md's `rounded` scale, and a corner
+nested in another is the outer radius minus the padding between them. Pills and circles are a choice for status values and avatars, not for
+ordinary controls. `check` reports a control whose radius differs from the one most controls on the screen use (**radius-mismatch**); a
+picture button (a thumbnail), a pill, a square corner and a control inset in a rounded track are left alone. Fix it in the component, once.
+[fields.md](fields.md) has the rest for fields.
+
 ## States
 
 Every interactive component has its states, defined once in the component and described in DESIGN.md:

@@ -25,6 +25,7 @@ References, read before the first screen:
 - [typography.md](references/typography.md): type levels and how to combine them; most polish is here.
 - [components.md](references/components.md): build from the shared components; the reuse ladder.
 - [buttons.md](references/buttons.md): buttons, their states, loading and not-available, links and the colour of both.
+- [fields.md](references/fields.md): fields: size, the text size on a phone, shape, labels, placeholders, errors and autofill.
 - [screens.md](references/screens.md): screen names, versions and their variants (mobile, desktop), the widths
   each variant covers, statuses, the user's approval and notes.
 - [google.md](references/google.md): Google's guidance (Material, Android, web.dev) as rules with numbers.
@@ -69,7 +70,7 @@ References, read before the first screen:
    Text running into other text (`text-overlap`) or out of its card (`overflow`) is an error; a short label cut
    short with an ellipsis (`truncated`) is a warning to fix with room, not a smaller size. Google's rules are
    warnings too (`text-small`, `edge-margin`, `measure`, `tap-spacing`, `placeholder-label`, `unnamed-control`,
-   `nav-destinations`, `focus-visible`, `text-tier`; see google.md): `text-tier` is a block of reading copy (sixty characters and eight words at 14px or more, in the page's content and not in a bar, table, control or link) drawn in DESIGN.md's `text-muted`; give it the body colour (typography.md, section 3): fix them, or say in the hand-over why the screen breaks one. When DESIGN.md has a
+   `nav-destinations`, `focus-visible`, `text-tier`, `radius-mismatch`; see google.md and components.md): `text-tier` is a block of reading copy (sixty characters and eight words at 14px or more, in the page's content and not in a bar, table, control or link) drawn in DESIGN.md's `text-muted`; give it the body colour (typography.md, section 3): fix them, or say in the hand-over why the screen breaks one. When DESIGN.md has a
    light and a dark theme, every screen is checked in both: an issue marked with a theme
    ("light theme: Low contrast…") is fixed in DESIGN.md's colours for that theme when it shows on many
    screens, or in the screen when it is one element. Look at both renders (`--light.png`). With `i18n`, check
