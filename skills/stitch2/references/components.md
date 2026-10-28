@@ -37,7 +37,13 @@ button beside a field has the same corner. Containers (cards, panels, dialogs) t
 nested in another is the outer radius minus the padding between them. Pills and circles are a choice for status values and avatars, not for
 ordinary controls. `check` reports a control whose radius differs from the one most controls on the screen use (**radius-mismatch**); a
 picture button (a thumbnail), a pill, a square corner and a control inset in a rounded track are left alone. Fix it in the component, once.
-[fields.md](fields.md) has the rest for fields.
+
+A capsule that holds controls (a chat composer, the bar over a lightbox) is a container, and what it holds is a circle: the round icon button,
+whose hover, press and focus are drawn as a circle. It is concentric with the capsule: the capsule's radius is the circle's plus the gap, and the
+gap is the same on every side, the end included (Apple's concentricity, Material's round icon button). A rounded square in a capsule meets the
+curve of its end with a corner, and `check` reports it (**capsule-control**): a control with a corner that is neither square nor a circle, in a
+capsule drawn with a fill or a line. A control in the corner of a rectangle (a dialog's close button) keeps the one radius and stands at least the
+container's radius from the corner, where the two curves no longer meet; a single control over a picture stays an overlay button of that radius. [fields.md](fields.md) has the rest for fields.
 
 ## States
 
