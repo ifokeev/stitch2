@@ -16,6 +16,8 @@
  * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none]
  *   --shots   also save page-tall renders to design/renders/ (one per theme, app state, language and width)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
+ *   --archived  also check archived versions, which are left out otherwise: they are outdated (superseded or rejected),
+ *             hidden on the canvas, and nothing is built from them, so checking them costs time and reports errors in history
  * Screens run four at a time; reruns only visit screens that changed since design/checks.json (or
  * everything DESIGN.md, the tokens, the components, the catalog or stitch2 itself changed since: a first run after
  * that visits every screen and takes minutes on a large project). Progress goes to stderr, one line per screen
@@ -51,7 +53,12 @@ const strict = args.includes('--strict')
 const localesFlag = args.indexOf('--locales')
 const locales = checkLocales(localesFlag >= 0 ? args[localesFlag + 1] : undefined)
 const filters = args.filter((a, i) => !a.startsWith('--') && (localesFlag < 0 || i !== localesFlag + 1))
-const screens = listScreens().filter((s) => !filters.length || filters.some((f) => s.path.includes(f)))
+const matching = listScreens().filter((s) => !filters.length || filters.some((f) => s.path.includes(f)))
+const screens = args.includes('--archived') ? matching : matching.filter((s) => s.status !== 'archived')
+const archivedLeftOut = matching.length - screens.length
+if (archivedLeftOut)
+  console.log(`${archivedLeftOut} archived screen${archivedLeftOut === 1 ? ' is' : 's are'} not checked (--archived includes ${archivedLeftOut === 1 ? 'it' : 'them'}).`)
+if (!screens.length && matching.length) process.exit(0)
 
 const levels = typeLevels()
 const themes = designThemes()

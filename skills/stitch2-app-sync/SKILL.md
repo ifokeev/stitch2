@@ -82,7 +82,7 @@ Read the findings as:
 ## Before you call it done
 
 1. Every screen you implemented is approved, and `stitch2 screens --strict` passes: one current version each.
-2. `stitch2 check --strict` passes on the screens you touched (archived screens excepted).
+2. `stitch2 check --strict` passes on the screens you touched (it leaves archived screens out).
 3. `stitch2 compare` has no errors for the screens you touched; warnings are explained (a kept feature) or fixed.
 4. `stitch2 look` and `stitch2 geometry` report nothing on the screens you touched, except differences you can
    name as data.

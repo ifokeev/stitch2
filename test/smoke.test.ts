@@ -115,6 +115,18 @@ test('the starter catalog and screen pass the checks', () => {
   assert.ok(rows.length > 0 && rows[0].crops.pressed, JSON.stringify(rows?.[0]))
 })
 
+test('check leaves archived versions out unless --archived asks for them', () => {
+  // plan v1 was archived when v3 was approved. Give it what a check reports: a line wider than a phone.
+  const old = join(dir, 'design/screens/plan/mobile-v1.html')
+  assert.match(readFileSync(old, 'utf8'), /content="archived"/)
+  writeFileSync(old, readFileSync(old, 'utf8').replace('</main>', '<p style="width: 900px">A fixed-width line that is wider than any phone</p></main>'))
+  const left = stitch2('check', 'plan/mobile-v1', '--locales', 'none')
+  assert.match(left, /1 archived screen is not checked \(--archived includes it\)/)
+  assert.doesNotMatch(left, /screens\/plan\/mobile-v1\.html/)
+  const asked = stitch2('check', 'plan/mobile-v1', '--archived', '--locales', 'none')
+  assert.match(asked, /screens\/plan\/mobile-v1\.html/)
+})
+
 test('a filtered check refreshes only its own shared-dependency cache keys', () => {
   const checksFile = join(dir, 'design/checks.json')
   const keys = () => JSON.parse(readFileSync(checksFile, 'utf8')).cacheKeys as Record<string, string>

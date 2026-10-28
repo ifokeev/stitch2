@@ -53,7 +53,7 @@ References, read before the first screen:
    **stitch2-i18n**). Write the text as **stitch2-copy** says (the reader's outcome, plain words, the product's terms),
    and translate it with **stitch2-translate**. Never add classes to a component to change how it looks, and never write a colour value (hex,
    `rgb()`, `hsl()`): only DESIGN.md's colours, as token classes or `var(--<prefix>-<name>)`.
-5. **Check** `stitch2 check <path> --shots --strict`. Fix every error (overflow, wrapped labels, content under
+5. **Check** `stitch2 check <path> --shots --strict` (archived versions are outdated and are not visited; `--archived` includes them). Fix every error (overflow, wrapped labels, content under
    fixed bars, fixed bars overlapping each other, tap targets, contrast, cramped text), a hand-built copy of a
    catalog component (`reuse`: use the component or extend it, never rebuild it), and every warning about type
    (`type-*`), components that differ from the catalog (`consistency`) and colour values (`color`).
@@ -132,7 +132,7 @@ References, read before the first screen:
 |---|---|
 | `setup [--name N --primary #hex] [options]` | Sets a project up in one step; keeps every file that exists |
 | `canvas` | The canvas at http://localhost:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
-| `check [filter] [--shots] [--strict] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme, app state and check language, and at both ends of each variant's widths; `--shots` saves renders |
+| `check [filter] [--shots] [--strict] [--archived] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme, app state and check language, and at both ends of each variant's widths; `--shots` saves renders; archived versions are left out unless `--archived` asks for them |
 | `i18n [filter] [--locale l] [--suggest]` | Message keys screens use that the source or a locale lacks, and text with no key (stitch2-i18n) |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |
