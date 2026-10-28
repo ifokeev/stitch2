@@ -9,7 +9,7 @@ component carries it once. A rule that a check measures names the check; the res
 - **Height.** A field is as tall as the button beside it and at least 44px (WCAG's floor is 24px; Apple asks 44pt, Material 48dp
   for a touch target, and its own text field is 56dp). A dense filter row may be shorter on a pointer device, with about 8px of
   space around it **(check: tap-target, tap-spacing)**.
-- **Text size on a phone is 16px or more.** iOS Safari zooms the page into a field whose text is under 16px, which moves the layout
+- **Text size on a phone is 16px or more** **(check: field-zoom)**. iOS Safari zooms the page into a field whose text is under 16px, which moves the layout
   and hides the button. The fix is the size, not `maximum-scale=1` or `user-scalable=no`, which also stop people who need to zoom.
   Many systems ship 14px fields; on touch they need `font-size: max(16px, 1em)`. On a pointer device the field takes the page's body size.
 - **Width follows the answer.** A postcode, a code or a quantity is short; a name or an address is the width of the column. A field
@@ -62,5 +62,5 @@ the value is something to read and copy.
 
 ## What check does not measure yet
 
-The 16px text on touch, the label and hint wiring, and `autocomplete` are for the agent to look at; `check` reports a placeholder that is the only
-label, a small target, low contrast (a placeholder's too), a state that gives no feedback and a field whose corner differs from the controls beside it.
+The label and hint wiring and `autocomplete` are for the agent to look at; `check` reports a field under 16px in a phone-sized window (field-zoom), a placeholder that is the
+only label, a small target, low contrast (a placeholder's too), a state that gives no feedback and a field whose corner differs from the controls beside it.
