@@ -808,6 +808,21 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     }
   }
 
+  // 6g. Field text: iOS Safari zooms the page into a focused field whose text is under 16px, which moves the layout and can hide the button that
+  // submits it. The cure is the size (a locked viewport also stops people who need to zoom), so a field in a touch-sized window needs 16px.
+  // A field that cannot take focus (disabled, hidden) never zooms.
+  if (W < 768) {
+    const fields = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]), textarea, select'
+    for (const el of all) {
+      if (!el.matches(fields) || (el as HTMLInputElement).disabled) continue
+      const rect = el.getBoundingClientRect()
+      if (rect.width < 24 || rect.height < 24) continue
+      const size = parseFloat(getComputedStyle(el).fontSize)
+      if (size < 16)
+        push('warning', 'field-zoom', el, 'Text of ' + Math.round(size * 10) / 10 + 'px in a field: iOS Safari zooms the page into a focused field under 16px; a field on a phone takes 16px')
+    }
+  }
+
   // 6d. Touch targets: Material and Lighthouse want 48×48; a smaller one fails when the 48px square around its
   // centre covers a quarter of its area of another target (about 8px apart is enough). Touch-sized windows only.
   const named = (el: Element) => text(el) || el.getAttribute('aria-label') || el.tagName.toLowerCase()
