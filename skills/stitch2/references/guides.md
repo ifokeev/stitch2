@@ -22,3 +22,6 @@ are restated in principles.md.
 | Android app quality guidelines (developer.android.com/docs/quality-guidelines) | yes | What Google Play calls a quality app: 48dp targets, contrast, line length 45–75, light and dark, adaptive layouts |
 | web.dev Learn Design and Learn Forms (web.dev/learn/design, web.dev/learn/forms) | yes | Responsive layout, typography, navigation patterns, interaction (pointer, hover), accessibility, forms |
 | Lighthouse audits (developer.chrome.com/docs/lighthouse) | yes | The exact rules behind tap target spacing and legible font sizes |
+| Material 3 interaction states (m3.material.io/foundations/interaction/states) | yes | The state layer percentages for hover, focus, pressed and dragged, and the disabled opacities |
+| WCAG 2.2 Understanding: Use of Color, Non-text Contrast, Focus Appearance (w3.org/WAI/WCAG22/Understanding) | yes | Links told apart by more than colour (1.4.1), 3:1 for a focus ring and a control's edge (1.4.11), the focus ring's size (2.4.13) |
+| MDN, the `hover` media feature (developer.mozilla.org/docs/Web/CSS/@media/hover) | yes | Drawing hover only for devices that can hover |

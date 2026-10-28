@@ -17,8 +17,9 @@ colours (its accent, its primary and secondary text, its surface steps).
   secondary-colour line reads as a pair; two sizes of the same colour do not.
 - Labels are the last resort. A value needs no "Weight:" in front when its card is titled "Body weight"; when a
   label is needed it is the quiet part and the value is the loud part.
-- Buttons follow the action's importance, not its existence: one filled primary, secondary on a surface step,
-  rare or destructive actions as text or icon buttons.
+- Buttons follow the action's importance, not its existence: one filled primary a region, secondary on a surface step,
+  rare or destructive actions as text or icon buttons. An action repeated down a table or a list is the tonal one.
+  States, links and the loading and not-available cases are in [buttons.md](buttons.md).
 
 ## Layout and spacing
 

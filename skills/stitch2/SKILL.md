@@ -24,6 +24,7 @@ References, read before the first screen:
 - [principles.md](references/principles.md): what makes a screen read well, and the review rubric.
 - [typography.md](references/typography.md): type levels and how to combine them; most polish is here.
 - [components.md](references/components.md): build from the shared components; the reuse ladder.
+- [buttons.md](references/buttons.md): buttons, their states, loading and not-available, links and the colour of both.
 - [screens.md](references/screens.md): screen names, versions and their variants (mobile, desktop), the widths
   each variant covers, statuses, the user's approval and notes.
 - [google.md](references/google.md): Google's guidance (Material, Android, web.dev) as rules with numbers.
