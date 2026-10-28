@@ -56,7 +56,8 @@ the rest are judged from the render. Where Google and DESIGN.md disagree, DESIGN
   WCAG's 24 px floor is checked separately **(check: tap-target)**.
 - **Fine pointers** may take smaller targets, but Fitts's law still applies: shrink with care.
 - **Do not hide information behind hover.** Hover is optional (touch has none, keyboards focus instead); what
-  shows on hover must be reachable without it.
+  shows on hover must be reachable without it. A hover style is drawn inside `@media (hover: hover)`: on a phone a
+  tap leaves the pointer where it landed, and a bare `:hover` keeps the control lit **(check: state-hover-touch)**.
 - **Visible focus** on every control, styled with `:focus-visible`, in the order the screen reads
   **(check: focus-visible)**. Material's focus state is a ring plus a light state layer.
 
@@ -75,7 +76,9 @@ the rest are judged from the render. Where Google and DESIGN.md disagree, DESIGN
 - **Light and dark:** Android's quality guidelines ask for both themes, and for web content shown in the app
   to follow them (stitch2 checks every theme DESIGN.md defines).
 - **States as layers:** hover 8%, focus 10%, pressed 10%, dragged 16% of the content colour over the
-  container; disabled content at 38% and its container at 12%. Every interactive component defines them.
+  container; disabled content at 38% and its container at 12%. Every interactive component defines them. Draw the layer
+  as an overlay (a gradient of the label colour) so it sits on any fill; the focus ring is a different cue from the
+  pressed layer and the two are not drawn together. [buttons.md](buttons.md) has the rest.
 - **Shape scale:** corners from a short scale (Material: 4, 8, 12, 16, 20, 28, 32, 48, full). Pick each
   component's corner from DESIGN.md's `rounded` and keep it the same everywhere.
 

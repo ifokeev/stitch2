@@ -26,17 +26,22 @@ Go down only when the step above cannot work:
 
 Never restyle a component on one screen, copy its markup by hand, or build a near-twin ("a chip, but 30 px").
 
+A component takes every colour from a token, never a literal. A literal does not follow the theme: a dark fill
+stays dark under text that turned dark in the light theme, and `check` reports the contrast in that theme. When a
+sheet the component does not own carries the literal, the component sets the token over it.
+
 ## States
 
 Every interactive component has its states, defined once in the component and described in DESIGN.md:
 
 | State | What changes (DESIGN.md says how) |
 |---|---|
-| Hover (pointer only) | the surface lightens or the text brightens one step |
-| Pressed | darkens one step and moves 1 px (or scales to 0.95); on a touch screen this is the only feedback |
-| Focus (keyboard) | a ring, never removed without a replacement |
+| Hover (pointer only) | the surface lightens or the text brightens one step, drawn inside `@media (hover: hover)` so a tap on a touch screen leaves nothing lit |
+| Pressed | a 10% layer of the label colour over the fill and a small sink (scale 0.98) for a boxed control, no ring; a link or a plain line goes to the strong colour and is underlined. On a touch screen this is the only feedback |
+| Focus (keyboard) | one ring (2px, offset 2px), never removed without a replacement and never drawn twice |
 | Selected / current | shown by the accent or a raised surface; hover and press may stay as they are |
-| Disabled | faint, no hover or press change, the reason nearby |
+| Disabled | faint, no hover or press change, the reason nearby; not used for something that is only not there yet (that is a line of text) |
+| Loading | busy, not off: the label stays, a spinner leads it, nothing is dimmed and a press does nothing |
 | Cursor (pointer only) | the hand over everything that acts when clicked (buttons, links, chips, rows that open something, switches, selects); not-allowed over a disabled control; the text cursor only in fields |
 
 The cursor comes from one rule, not from each component: `stitch2 tokens` writes it into tokens.css and every
@@ -50,9 +55,11 @@ or pressed feedback, but must show a visible focus indicator (`state-focus`). Ac
 Hover, focus and pressed are not drawn by hand: `stitch2 check` on the catalog forces them on
 every control and writes the **States** sheet (canvas sidebar), each control at rest, hovered, focused and
 pressed side by side. It reports a control that gives no feedback (**state-feedback**, **state-hover**,
-**state-pressed**: pressing adds nothing to hover, so a tap shows nothing) and text that loses contrast in a state
-(**state-contrast**), and a clickable control the pointer doesn't show as clickable (**state-cursor**). Fix them
-in the component, once. Selected and current controls and text fields are exempt from the feedback checks.
+**state-pressed**: pressing adds nothing to hover, so a tap shows nothing; a state layer drawn as a gradient counts) and text that
+loses contrast in a state (**state-contrast**), a clickable control the pointer doesn't show as clickable (**state-cursor**),
+and a hover that still changes a control on a device that cannot hover (**state-hover-touch**: the hover rule is outside
+`@media (hover: hover)`). Fix them in the component, once. Selected and current controls and text fields are exempt from the
+feedback checks. [buttons.md](buttons.md) has the rules for the controls themselves.
 
 ## Components from the app
 
