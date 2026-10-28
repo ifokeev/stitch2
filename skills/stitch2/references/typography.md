@@ -67,8 +67,8 @@ To make something stand out inside a row, change its weight or colour, not its s
   ratio. The glyph edges are not the problem either (they render as sharp as a clean page); the colour and the tier
   are. Measure the share of characters in each tier: when most of a page's characters are in the secondary colour,
   or a paragraph of two sentences is, the copy is in the wrong tier. `check` warns about the second case **(check: text-tier)**: a block of
-  reading copy (sixty characters and eight words of its own text, in the page's content and not in a bar, table, menu,
-  label, control or link) drawn in DESIGN.md's `text-muted`. It needs that colour in DESIGN.md and is silent without it.
+  reading copy (sixty characters and eight words of its own text at 14 px or more, in the page's content and not in a bar,
+  table, menu, label, control or link) drawn in DESIGN.md's `text-muted`. It needs that colour in DESIGN.md and is silent without it.
 
   ```js
   // characters per computed colour and size, from the rendered page (run it with Playwright's page.evaluate)

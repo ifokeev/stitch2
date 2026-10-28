@@ -24,9 +24,9 @@ test('text-tier: a sentence of reading copy in the secondary colour is a warning
   assert.equal(found[0]!.severity, 'warning')
 })
 
-test('text-tier: hints, counts and short lines may be secondary, and so may text in a bar, a table, a control or a link', async () => {
+test('text-tier: hints, counts and short lines may be secondary, and so may a caption size and text in a bar, a table, a control or a link', async () => {
   const found = await read(
-    '<p class="quiet">Sign up to send.</p><p class="quiet">12 clips · 4 min</p>' +
+    '<p class="quiet">Sign up to send.</p><p class="quiet">12 clips · 4 min</p><p class="quiet" style="font-size:13px">' + SENTENCE + '</p>' +
       '<nav class="quiet">' + SENTENCE + '</nav><footer class="quiet">' + SENTENCE + '</footer>' +
       '<table><tr><td class="quiet">' + SENTENCE + '</td></tr></table>' +
       '<button class="quiet">' + SENTENCE + '</button><label class="quiet">' + SENTENCE + '</label>' +

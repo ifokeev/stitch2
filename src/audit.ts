@@ -736,8 +736,9 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
 
   // 6e. Text tiers: a sentence to read belongs in the body colour (skills/stitch2/references/typography.md, section 3). A block of reading
   // copy, drawn in the secondary colour, is the usual reason a page reads dull although every contrast ratio passes: the strokes of small
-  // text reach only their own colour. A block is reading copy when it holds sixty characters and eight words of its own text and sits in
-  // the page's content: not in a bar, a table, a menu, a label, a control, a link or a code sample. It needs the secondary colour, which
+  // text reach only their own colour. A block is reading copy when it holds sixty characters and eight words of its own text at 14px or
+  // more (a caption or a field's help text is smaller, and the secondary colour is for it) and sits in the page's content: not in a bar, a
+  // table, a menu, a label, a control, a link or a code sample. It needs the secondary colour, which
   // check takes from DESIGN.md's text-muted and passes as a CSS colour the page can resolve (var(--<prefix>-text-muted)).
   if (opts.secondary) {
     const canvas = document.createElement('canvas')
@@ -764,7 +765,7 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     for (const el of all) {
       if (!ownText(el) || opacity(el) < 0.1 || el.closest(apart)) continue
       const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').replace(/\s+/g, ' ').trim()
-      if (own.length < 60 || own.split(' ').length < 8 || !quiet(el)) continue
+      if (own.length < 60 || own.split(' ').length < 8 || parseFloat(getComputedStyle(el).fontSize) < 14 || !quiet(el)) continue
       push('warning', 'text-tier', el, 'Reading copy in the secondary colour: a sentence to read takes the body colour, and the secondary one is for hints, captions and counts')
     }
   }
