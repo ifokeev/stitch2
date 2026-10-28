@@ -38,7 +38,7 @@ import {
   consistencyIssues,
   reuseIssues,
 } from './consistency.ts'
-import { designThemes, motionDurations, typeLevels } from './design-md.ts'
+import { designThemes, motionDurations, readDesign, typeLevels } from './design-md.ts'
 import { checkLocales } from './i18n.ts'
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
@@ -64,8 +64,12 @@ const levels = typeLevels()
 const themes = designThemes()
 const appModes = modes()
 const collect = collectOptions()
-/** What the layout audit needs: the comfortable tap size and DESIGN.md's motion durations. */
-const auditOpts = { comfortable: config.comfortableTarget, durations: (() => { try { return motionDurations() } catch { return [] } })() }
+/** What the layout audit needs: the comfortable tap size, DESIGN.md's motion durations and its secondary text colour (text-muted, for text-tier). */
+const auditOpts = {
+  comfortable: config.comfortableTarget,
+  durations: (() => { try { return motionDurations() } catch { return [] } })(),
+  secondary: (() => { try { return 'text-muted' in readDesign().colors ? 'var(--' + config.prefix + '-text-muted)' : undefined } catch { return undefined } })(),
+}
 const server = await startServer(0)
 /** The tallest render, in CSS px: a long landing page is shot whole (the canvas draws frames up to the same height). */
 const MAX_RENDER_HEIGHT = 20000

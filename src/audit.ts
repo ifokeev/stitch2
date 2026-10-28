@@ -8,7 +8,7 @@ import type { Issue } from './typecheck.ts'
 export const LAYOUT_ERRORS = ['overflow', 'nav-overflow', 'fixed-overlap', 'control-overlap', 'text-overlap']
 
 /** Runs inside the page. Plain JS on purpose: Playwright sends its source to the browser. */
-export async function audit(opts: { comfortable: number; durations?: number[] }): Promise<Issue[]> {
+export async function audit(opts: { comfortable: number; durations?: number[]; secondary?: string }): Promise<Issue[]> {
   const W = document.documentElement.clientWidth
   const out: Issue[] = []
   const sel = (el: Element) => {
@@ -732,6 +732,41 @@ export async function audit(opts: { comfortable: number; durations?: number[] })
     const longest = Math.max(...lineChars.sort((a, b) => a.top - b.top).slice(0, -1).map((l) => l.n))
     if (longest > 80)
       push('warning', 'measure', el, 'Lines of up to ' + longest + ' characters: keep prose to 45–75 (a max width of about 32em)')
+  }
+
+  // 6e. Text tiers: a sentence to read belongs in the body colour (skills/stitch2/references/typography.md, section 3). A block of reading
+  // copy, drawn in the secondary colour, is the usual reason a page reads dull although every contrast ratio passes: the strokes of small
+  // text reach only their own colour. A block is reading copy when it holds sixty characters and eight words of its own text and sits in
+  // the page's content: not in a bar, a table, a menu, a label, a control, a link or a code sample. It needs the secondary colour, which
+  // check takes from DESIGN.md's text-muted and passes as a CSS colour the page can resolve (var(--<prefix>-text-muted)).
+  if (opts.secondary) {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 1
+    const g = canvas.getContext('2d', { willReadFrequently: true })!
+    const rgba = (value: string) => {
+      g.clearRect(0, 0, 1, 1)
+      g.fillStyle = '#000'
+      g.fillStyle = value
+      g.fillRect(0, 0, 1, 1)
+      const d = g.getImageData(0, 0, 1, 1).data
+      return [d[0]!, d[1]!, d[2]!, d[3]! / 255]
+    }
+    const probe = document.createElement('span')
+    probe.style.color = opts.secondary
+    document.body.append(probe)
+    const want = rgba(getComputedStyle(probe).color)
+    probe.remove()
+    const quiet = (el: Element) => {
+      const have = rgba(getComputedStyle(el).color)
+      return Math.abs(have[0]! - want[0]!) <= 2 && Math.abs(have[1]! - want[1]!) <= 2 && Math.abs(have[2]! - want[2]!) <= 2 && Math.abs(have[3]! - want[3]!) <= 0.02
+    }
+    const apart = 'nav, footer, table, button, summary, label, a, code, pre, figcaption, caption, [role=navigation], [role=tablist], [role=tab], [role=menu], [role=listbox], [role=tooltip], [role=button], [aria-hidden=true]'
+    for (const el of all) {
+      if (!ownText(el) || opacity(el) < 0.1 || el.closest(apart)) continue
+      const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').replace(/\s+/g, ' ').trim()
+      if (own.length < 60 || own.split(' ').length < 8 || !quiet(el)) continue
+      push('warning', 'text-tier', el, 'Reading copy in the secondary colour: a sentence to read takes the body colour, and the secondary one is for hints, captions and counts')
+    }
   }
 
   // 6d. Touch targets: Material and Lighthouse want 48×48; a smaller one fails when the 48px square around its

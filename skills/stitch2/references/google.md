@@ -70,7 +70,8 @@ the rest are judged from the render. Where Google and DESIGN.md disagree, DESIGN
   alternative (Material 3). In its baseline dark scheme they are #E6E1E5 and #CAC4D0 on #1C1B1F: about 89% and 77%
   of white. Material 2's dark theme used 87% (high emphasis), 60% (medium emphasis and hints) and 38% (disabled); the
   60% tier reads dim for anything a person reads. Neither uses pure white for text, which vibrates and bleeds on a
-  dark surface. A secondary text colour below about 75% of white is a defect for text that carries meaning.
+  dark surface. A secondary text colour below about 75% of white is a defect for text that carries meaning, and a
+  sentence of reading copy in the secondary colour is flagged by `check` **(check: text-tier)**.
 - **Light and dark:** Android's quality guidelines ask for both themes, and for web content shown in the app
   to follow them (stitch2 checks every theme DESIGN.md defines).
 - **States as layers:** hover 8%, focus 10%, pressed 10%, dragged 16% of the content colour over the
