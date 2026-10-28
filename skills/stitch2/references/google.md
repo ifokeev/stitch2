@@ -34,6 +34,11 @@ the rest are judged from the render. Where Google and DESIGN.md disagree, DESIGN
   Map DESIGN.md's levels onto these roles when choosing sizes; the names can stay the project's.
 - **Smallest sizes:** nothing under 11 px (Material's label small), and body text from 12 px up; Lighthouse
   wants at least 12 px for most of a page's text **(check: text-small)**. Prefer 14–16 for reading text.
+- **Reading copy is a body, not a caption.** A sentence a person reads (an introduction, a card's description, an
+  answer) is Material's body: 14/20 at the smallest (body medium), 16/24 for long passages (body large). Material 3
+  gives the 12 and 11 sizes to labels and captions: buttons, chips, the unit under a number, "very small text in the
+  content body, such as captions". The Lighthouse font-size audit (12 px for 60% of a page's text; retired in
+  Lighthouse 13) is a floor, not a recommendation. Body line height is about 1.5 times the size.
 - **Line length 45–75 characters, in every language the app ships** (Android's app quality guidelines; about
   66 is ideal, per web.dev). Cap prose with a max width in a relative unit, never in pixels: about `32em` lands on
   45–75 characters in most fonts. `ch` is the width of the font's zero, which is wider than an average letter,
@@ -61,6 +66,11 @@ the rest are judged from the render. Where Google and DESIGN.md disagree, DESIGN
   surface). Depth comes from tonal surface containers (lowest to highest) rather than shadows.
 - **Contrast:** 4.5:1 for text under 18 px (14 px bold), 3:1 above **(check: contrast)**. Never colour alone:
   a link also has an underline or weight; a status also has an icon or word.
+- **Text tiers on a dark theme:** the default text colour is "on surface", and "on surface variant" is the lower-emphasis
+  alternative (Material 3). In its baseline dark scheme they are #E6E1E5 and #CAC4D0 on #1C1B1F: about 89% and 77%
+  of white. Material 2's dark theme used 87% (high emphasis), 60% (medium emphasis and hints) and 38% (disabled); the
+  60% tier reads dim for anything a person reads. Neither uses pure white for text, which vibrates and bleeds on a
+  dark surface. A secondary text colour below about 75% of white is a defect for text that carries meaning.
 - **Light and dark:** Android's quality guidelines ask for both themes, and for web content shown in the app
   to follow them (stitch2 checks every theme DESIGN.md defines).
 - **States as layers:** hover 8%, focus 10%, pressed 10%, dragged 16% of the content colour over the
@@ -121,3 +131,6 @@ the rest are judged from the render. Where Google and DESIGN.md disagree, DESIGN
 - web.dev accessible tap targets: web.dev/articles/accessible-tap-targets
 - Lighthouse tap targets and font size audits: developer.chrome.com/docs/lighthouse/seo/tap-targets,
   developer.chrome.com/docs/lighthouse/seo/font-size
+- Material 3 typography, applying type (body, label, line height): m3.material.io/styles/typography/applying-type
+- Material 2 dark theme (text emphasis, no pure white): m2.material.io/design/color/dark-theme.html and
+  codelabs.developers.google.com/codelabs/design-material-darktheme/

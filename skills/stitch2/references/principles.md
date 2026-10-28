@@ -42,7 +42,8 @@ short labels never wrap **(check)**.
 ## Colour and depth
 
 - One accent with one meaning ("act here"). Two accent-filled elements in one region: one of them is wrong.
-- Greys carry the structure: a few surface steps and two text colours do almost all the work.
+- Greys carry the structure: a few surface steps and two text colours do almost all the work, and the reading copy
+  is in the stronger of the two (typography.md, section 3).
 - Status colours appear as small text, icons or thin bars, never as large fills.
 - Text contrast at least 4.5:1, 3:1 for large text **(check)**. Secondary text on raised surfaces is where this
   fails.

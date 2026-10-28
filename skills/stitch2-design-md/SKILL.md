@@ -32,7 +32,9 @@ The generated prose is correct but generic. Make it the product's:
 1. **Overview**: the product, its users, the mood, in two or three sentences.
 2. **Colors**: keep the role names (other skills and the components use them); give each a short brand name in
    the prose if the team has one. Extracted colours are guesses where the page was ambiguous: confirm text,
-   surfaces and the primary with the user.
+   surfaces and the primary with the user. Define three text colours (strong, body, secondary) and write which text
+   takes which: reading copy is the body colour, the secondary one is for hints, captions, counts and dates (on a
+   dark theme about 95%, 85–90% and 75–80% of white; typography.md, section 3 of the stitch2 skill).
 3. **Typography**: keep the levels; adjust sizes only together with the user and only on the scale.
 4. **Components**: name the product's real components (its tab bar items, its core list row) and their states.
    Each interactive one gets hover, pressed, focus, selected and disabled in the prose, in values ("darkens to

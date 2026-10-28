@@ -36,6 +36,9 @@ together. A typical app set (sizes for a 390 px phone):
 - Nothing under 11 px, body text from 12 px, reading text 14–16 px **(check: text-small)**; prose at 45–75
   characters a line, a max width of about `32em` **(check: measure)**. Material's fifteen-level scale and its sizes are in
   [google.md](google.md).
+- A meta or caption level (12–13 px) is for counts, dates, units and hints. A sentence a person reads (an
+  introduction, a card's description, an answer) takes a body level, 14 px at the smallest: a caption size that
+  carries a sentence is the usual cause of a page that reads small.
 
 ## 2. Hierarchy recipes
 
@@ -53,8 +56,32 @@ To make something stand out inside a row, change its weight or colour, not its s
 
 ## 3. Text colour
 
-- Primary text for what the user reads first or acts on; secondary for everything else; a third, faint grey
-  only for disabled text and separators (it usually fails 4.5:1, so it never carries information).
+- Three tiers, by what the text does and not by how it looks: **strong** for headings and values, **body** for reading
+  copy, **secondary** for what the eye may skip (hints, captions, counts, dates, labels); a faint grey only for
+  disabled text and separators (it usually fails 4.5:1, so it never carries information).
+- Reading copy takes the body colour, whatever its size. On a dark theme a good set is about 95%, 85–90% and 75–80%
+  of white for the three tiers (Material 3's two text roles are about 89% and 77%; see [google.md](google.md)); on a
+  light theme the same steps in the ink colour.
+- **A contrast ratio does not show a dull page.** Every tier can pass 4.5:1 and a page still read grey, because the
+  strokes of small text reach only their own colour: a thin 13 px stroke in a 70% grey is what the eye sees, not the
+  ratio. The glyph edges are not the problem either (they render as sharp as a clean page); the colour and the tier
+  are. Measure the share of characters in each tier: when most of a page's characters are in the secondary colour,
+  or a paragraph of two sentences is, the copy is in the wrong tier.
+
+  ```js
+  // characters per computed colour and size, from the rendered page (run it with Playwright's page.evaluate)
+  const share = () => {
+    const tally = {}; let total = 0;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent.trim(), element = node.parentElement;
+      if (!text || !element.checkVisibility()) continue;
+      const style = getComputedStyle(element), key = style.color + ' ' + style.fontSize;
+      tally[key] = (tally[key] ?? 0) + text.length; total += text.length;
+    }
+    return Object.entries(tally).map(([key, count]) => [key, Math.round(100 * count / total) + '%']).sort((a, b) => parseInt(b[1]) - parseInt(a[1]));
+  };
+  ```
 - Accent-coloured text means "active" or "act here". Check its contrast on every surface it sits on: accent text
   on a tinted accent background over a raised surface is a common failure.
 - Status colours colour short values and words, never sentences.
@@ -110,3 +137,5 @@ Devanagari; `tokens.css` falls back to Noto and system fonts.
 3. Secondary text differs by colour and weight, not just size.
 4. Numbers are tabular; large ones proportional; units smaller and secondary.
 5. At most three levels per region; capitals only in section labels; nothing wraps that should not.
+6. Reading copy is in the body colour and at 14 px or more; most of the page's characters are not in the secondary
+   colour (section 3).
