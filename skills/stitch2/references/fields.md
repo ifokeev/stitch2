@@ -55,6 +55,17 @@ component carries it once. A rule that a check measures names the check; the res
 - **Passwords** can be shown on request and can be pasted into. `autofocus` belongs to a dialog or a page with one job: elsewhere it opens the
   keyboard over the page on a phone.
 
+## Submit and what is missing
+
+- **The submit button is not switched off for an incomplete form.** A disabled button says nothing, cannot take focus, is read as broken, and a person may
+  not notice when it wakes up (Adam Silver, "The problem with disabled buttons"; Baymard on premature validation). It stays pressable. Pressing it with something
+  missing puts the reason next to the field (words and a mark, `role="alert"`, `aria-invalid`, tied with `aria-describedby`), turns the field's edge to the failure
+  colour, and moves focus to the first field that needs input. The message goes away the moment the input is there. Disabled is for a form that is busy or already sent, and then it is `aria-busy`.
+- **No list of what is missing above the form.** A row of "complete to generate" chips before anyone has typed is noise, and it competes with the button. Say it where the person is looking: at the field, after the press.
+- **Every setting has its name above it**, not an icon and "Auto" alone: a picker whose value is "Auto" does not say whether it is the ratio, the length or the model. Icons may stay with a name; they do not replace it.
+- **Order follows the task**: what to make, the words, what to base it on, how it is made (settings, rarely changed ones behind "More settings"), then the button. The one line under the button says what the action costs.
+- **Keep the person's work.** Ctrl or Cmd with Enter in a long text field presses the button; a draft survives a reload and a sign-up; Clear asks first.
+
 ## Disabled and read-only
 
 A disabled field is faint (40%), skipped by the keyboard, and says why nearby. A read-only field stays focusable and keeps its contrast, because
