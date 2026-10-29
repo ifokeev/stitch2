@@ -26,7 +26,8 @@ colours (its accent, its primary and secondary text, its surface steps).
 - Start with too much space and remove it. Crowded is the common failure.
 - Use the spacing scale from DESIGN.md; never a value between two steps.
 - Spacing shows grouping: the gap inside a group is smaller than the gap between groups. Ambiguous spacing is
-  a bug.
+  a bug. The room a ring and a hover fill need, and the numbers, are in [spacing.md](spacing.md) **(check: ring-clipped,
+  ring-double, edge-flush)**.
 - Align to a few vertical lines: the page edge, the card's inner edge, one column for numbers. Numbers in lists
   are right-aligned so their digits line up.
 - Name the columns. A page that is not full width sits in one of a few columns that DESIGN.md names (spacing tokens
