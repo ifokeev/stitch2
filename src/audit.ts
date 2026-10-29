@@ -1025,6 +1025,13 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     return [c.outlineStyle === 'none' ? '' : c.outlineStyle + c.outlineWidth + c.outlineColor, c.boxShadow, c.backgroundColor, c.borderColor, c.color, c.textDecorationLine].join('|')
   }
   const frameOf = (e: HTMLElement) => [e, e.parentElement, e.parentElement?.parentElement ?? null].map(look).join('#')
+  // The ring a focused control (or the row around it, :focus-within) draws, as it is now: its width and offset say how far past the box it reaches.
+  const ringOf = (e: Element | null) => {
+    if (!e) return ''
+    const c = getComputedStyle(e)
+    return c.outlineStyle === 'none' || !(parseFloat(c.outlineWidth) > 0) ? '' : c.outlineStyle + c.outlineWidth + c.outlineOffset + c.outlineColor
+  }
+  const ringChain = (e: HTMLElement) => [e, e.parentElement, e.parentElement?.parentElement ?? null].filter((n): n is HTMLElement => !!n)
   const before = document.activeElement as HTMLElement | null
   for (const el of interactive) {
     const h = el as HTMLElement
@@ -1033,14 +1040,118 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     // when the focus arrived before the check ran was a matter of timing.
     if (document.activeElement === h) h.blur()
     const was = frameOf(h)
+    const ringsWas = ringChain(h).map(ringOf)
     h.focus({ preventScroll: true, focusVisible: true } as FocusOptions)
     if (document.activeElement !== h) continue
     const now = frameOf(h)
+    // 6h-1. One ring: a control and the row around it both drawing one is a glitch (Material: one focus indicator).
+    // 6h-2. Room for the ring: its 4px (2px width, 2px offset) lies outside the box, and a parent that clips (overflow, a dialog's surface)
+    // cuts it when the control sits at its edge. Fix with padding on the container, or draw the ring inside (Red Hat: .focus-inside).
+    const rings = ringChain(h).filter((n, i) => ringOf(n) && ringOf(n) !== ringsWas[i])
+    const own = h.getBoundingClientRect()
+    if (rings.length > 1 && own.width > 2)
+      push('warning', 'ring-double', el, 'Two focus rings at once (the control and the row around it): draw one, around the row')
+    else if (own.width > 2)
+      for (const ring of rings) {
+        const rc = getComputedStyle(ring)
+        const reach = parseFloat(rc.outlineWidth) + parseFloat(rc.outlineOffset)
+        if (!(reach > 0)) continue
+        const box = ring.getBoundingClientRect()
+        let cut: { sides: string[]; by: Element } | null = null
+        for (let a = ring.parentElement; a && a !== document.body && a !== document.documentElement && !cut; a = a.parentElement) {
+          const c = getComputedStyle(a)
+          if ((c.overflowX === 'visible' && c.overflowY === 'visible') || !overflowClips(ring, a)) continue
+          const q = a.getBoundingClientRect()
+          const left = q.left + parseFloat(c.borderLeftWidth), right = q.right - parseFloat(c.borderRightWidth)
+          const top = q.top + parseFloat(c.borderTopWidth), bottom = q.bottom - parseFloat(c.borderBottomWidth)
+          // A control that is itself scrolled partly out of its container is cut by the scrolling, not by a missing margin.
+          const x = c.overflowX !== 'visible', y = c.overflowY !== 'visible'
+          if ((x && (box.left < left - 1 || box.right > right + 1)) || (y && (box.top < top - 1 || box.bottom > bottom + 1))) continue
+          // A scroller cuts only where its content ends: a side that has more content beyond it (past the padding) scrolls the control into view.
+          const more = (offset: number, size: number, total: number, start: number, end: number) => ({ before: offset - start > 0.5, after: total - (offset + size) - end > 0.5 })
+          const hx = more(a.scrollLeft, a.clientWidth, a.scrollWidth, parseFloat(c.paddingLeft), parseFloat(c.paddingRight))
+          const hy = more(a.scrollTop, a.clientHeight, a.scrollHeight, parseFloat(c.paddingTop), parseFloat(c.paddingBottom))
+          const scrollsX = c.overflowX === 'auto' || c.overflowX === 'scroll', scrollsY = c.overflowY === 'auto' || c.overflowY === 'scroll'
+          const sides = [
+            x && !(scrollsX && hx.before) && box.left - reach < left - 0.5 ? 'left' : '', x && !(scrollsX && hx.after) && box.right + reach > right + 0.5 ? 'right' : '',
+            y && !(scrollsY && hy.before) && box.top - reach < top - 0.5 ? 'top' : '', y && !(scrollsY && hy.after) && box.bottom + reach > bottom + 0.5 ? 'bottom' : '',
+          ].filter(Boolean)
+          if (sides.length) cut = { sides, by: a }
+        }
+        if (cut) {
+          push('warning', 'ring-clipped', el, 'The focus ring is cut off at the ' + cut.sides.join(' and ') + ' by ' + sel(cut.by).split(' > ').pop() + ': leave ' + Math.ceil(reach) + 'px of room inside it (padding on the container), or draw the ring inside')
+          break
+        }
+      }
     h.blur()
     if (was === now) push('warning', 'focus-visible', el, 'No visible focus: someone using a keyboard cannot see where they are (add a :focus-visible ring)')
   }
   before?.focus?.({ preventScroll: true })
   still.remove()
+
+  // 6m. Room for a control's box (Fluent: space shows what belongs together; Material: 8dp between targets). A control draws its box when the pointer is on it
+  // (the hover fill), when it is chosen, and for a press, so its box keeps 4px from the edge of what it sits on: the edge of its card, bar or panel, and the edge
+  // of a neighbouring surface (a navigation bar above it). One that touches only one or two edges looks pushed against it. One that fills a surface on three sides
+  // is the surface's content (a picture that opens, a row that spans a card), and a shape that paints inside its own box (a round or glass icon) is measured elsewhere.
+  {
+    const ROOM = 4
+    const clear = (value: string) => /^(rgba\(0, 0, 0, 0\)|transparent)$/.test(value)
+    // A surface is painted by a fill (all four edges are its edge) or by a line along some sides (only those sides are).
+    const sides = ['Top', 'Right', 'Bottom', 'Left'] as const
+    const lined = (e: Element, side: (typeof sides)[number]) => {
+      const c = getComputedStyle(e) as unknown as Record<string, string>
+      return parseFloat(c['border' + side + 'Width']!) > 0 && !clear(c['border' + side + 'Color']!)
+    }
+    const filled = (e: Element) => {
+      const c = getComputedStyle(e)
+      return !clear(c.backgroundColor) || c.backgroundImage !== 'none'
+    }
+    const painted = (e: Element) => filled(e) || sides.some((side) => lined(e, side))
+    const edgeDrawn = (e: Element, side: string) => filled(e) || lined(e, (side[0]!.toUpperCase() + side.slice(1)) as (typeof sides)[number])
+    const surfaceOf = (el: Element) => {
+      for (let e = el.parentElement; e && e !== document.body && e !== document.documentElement; e = e.parentElement) if (painted(e)) return e
+      return null
+    }
+    const controls = 'button, a[href], select, summary, [role=button], input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file])'
+    const blocks = all
+      .filter((e) => !e.matches(controls) && !e.querySelector(controls) && painted(e))
+      .map((e) => ({ e, r: e.getBoundingClientRect() }))
+      .filter((b) => b.r.width >= 200 && b.r.height >= 8)
+    for (const el of all) {
+      if (!el.matches(controls) || opacity(el) < 0.05) continue
+      const c = getComputedStyle(el)
+      const r = el.getBoundingClientRect()
+      if (r.width < 32 || r.height < 32 || !(parseFloat(c.borderTopLeftRadius) >= 4) || c.display === 'contents') continue
+      if (c.backgroundClip === 'content-box' || (getComputedStyle(el, '::after').position === 'absolute' && getComputedStyle(el, '::after').content !== 'none')) continue
+      const touching: { side: string; by: Element }[] = []
+      // A link that is only its words (no padding across, no fill, no line) has no box to fill: its sides are the words' edge, so only above and below count.
+      const wordsOnly = parseFloat(c.paddingLeft) < ROOM && parseFloat(c.paddingRight) < ROOM && clear(c.backgroundColor) && !sides.some((side) => lined(el, side))
+      const surface = surfaceOf(el)
+      if (surface) {
+        const q = surface.getBoundingClientRect()
+        const sc = getComputedStyle(surface)
+        const gaps: [string, number][] = [
+          ['left', r.left - (q.left + parseFloat(sc.borderLeftWidth))], ['right', q.right - parseFloat(sc.borderRightWidth) - r.right],
+          ['top', r.top - (q.top + parseFloat(sc.borderTopWidth))], ['bottom', q.bottom - parseFloat(sc.borderBottomWidth) - r.bottom],
+        ]
+        const near = gaps.filter(([side, gap]) => gap > -1 && gap < ROOM - 1 && edgeDrawn(surface, side) && !(wordsOnly && (side === 'left' || side === 'right')))
+        if (near.length && near.length < 3 && gaps.every(([, gap]) => gap > -1)) for (const [side] of near) touching.push({ side, by: surface })
+      }
+      for (const b of blocks) {
+        if (b.e.contains(el) || el.contains(b.e) || surface?.contains(b.e)) continue
+        const across = Math.min(r.right, b.r.right) - Math.max(r.left, b.r.left)
+        const along = Math.min(r.bottom, b.r.bottom) - Math.max(r.top, b.r.top)
+        const above = r.top - b.r.bottom, below = b.r.top - r.bottom
+        // The edge of the neighbour that faces the control is the one that has to be drawn.
+        if (across >= 24 && above > -1 && above < ROOM - 1 && edgeDrawn(b.e, 'bottom')) touching.push({ side: 'top', by: b.e })
+        else if (across >= 24 && below > -1 && below < ROOM - 1 && edgeDrawn(b.e, 'top')) touching.push({ side: 'bottom', by: b.e })
+        else if (!wordsOnly && along >= 24 && r.left - b.r.right > -1 && r.left - b.r.right < ROOM - 1 && edgeDrawn(b.e, 'right')) touching.push({ side: 'left', by: b.e })
+        else if (!wordsOnly && along >= 24 && b.r.left - r.right > -1 && b.r.left - r.right < ROOM - 1 && edgeDrawn(b.e, 'left')) touching.push({ side: 'right', by: b.e })
+      }
+      if (touching.length)
+        push('warning', 'edge-flush', el, Math.round(r.width) + '×' + Math.round(r.height) + 'px control with its ' + touching[0]!.side + ' edge less than ' + ROOM + 'px from ' + sel(touching[0]!.by).split(' > ').pop() + ': leave ' + ROOM + 'px so its hover and focus fills have room')
+    }
+  }
 
   // 7. Motion uses DESIGN.md's durations (its motion: duration-* tokens): a transition of any other length is a
   // value someone typed, and screens drift apart in how they move.
