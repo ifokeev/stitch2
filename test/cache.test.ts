@@ -42,3 +42,26 @@ test('a missing dependency becoming available invalidates its fingerprint', () =
     rmSync(root, { recursive: true })
   }
 })
+
+test('a test, a spec and a note in a folder are no input of a render; the file itself still is, when it is named', () => {
+  const root = mkdtempSync(join(tmpdir(), 'stitch2-cache-'))
+  try {
+    const assets = join(root, 'components')
+    mkdirSync(assets)
+    writeFileSync(join(assets, 'controls.css'), 'button { color: red }')
+    const before = fingerprintPaths([assets])
+    writeFileSync(join(assets, 'controls.test.mjs'), 'assert(1)')
+    writeFileSync(join(assets, 'controls.spec.ts'), 'assert(1)')
+    writeFileSync(join(assets, 'README.md'), 'notes')
+    assert.equal(fingerprintPaths([assets]), before, 'tests and notes beside a component change nothing')
+    writeFileSync(join(assets, 'controls.js'), 'export const active = true')
+    assert.notEqual(fingerprintPaths([assets]), before, 'a script is an input')
+    const design = join(root, 'DESIGN.md')
+    writeFileSync(design, 'a')
+    const named = fingerprintPaths([design])
+    writeFileSync(design, 'b')
+    assert.notEqual(fingerprintPaths([design]), named, 'DESIGN.md is named, so it counts')
+  } finally {
+    rmSync(root, { recursive: true })
+  }
+})
