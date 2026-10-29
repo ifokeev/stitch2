@@ -29,6 +29,13 @@ colours (its accent, its primary and secondary text, its surface steps).
   a bug.
 - Align to a few vertical lines: the page edge, the card's inner edge, one column for numbers. Numbers in lists
   are right-aligned so their digits line up.
+- Name the columns. A page that is not full width sits in one of a few columns that DESIGN.md names (spacing tokens
+  `column-narrow`, `column-wide`, centered), and the pages of one section take the same one, so the left edge never moves between
+  them. A container held by a max-width, wider than 840px and not one of the named columns is a near miss (1184px beside 1152px), not a
+  new column **(check: column-width)**. Reading columns are narrower and are set by the line, not by a step.
+- Give both ends of a bar the same gap. A bar, chip or capsule whose first and last items are the same kind (two controls, or two pieces of
+  text) is as close to one end as to the other, measured to what is painted; when the ends differ (text, then a circle) the gaps may
+  differ, and that optical correction lives in the component, not in the page **(check: inset-asymmetry)**.
 - Fewer borders. Separate with spacing or a surface step first, a hairline second, never a card inside a card.
 - Do not fill the width because it is there; prose reads best at 45–75 characters a line, in every language
   the product ships (**check: measure**).

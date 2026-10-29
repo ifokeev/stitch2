@@ -9,6 +9,9 @@ are restated in principles.md.
 |---|---|---|
 | Material 3 (m3.material.io) | yes | Component anatomy and states, colour roles (stitch2 generates them as `md-*` tokens), type scale, motion durations |
 | Apple Human Interface Guidelines (developer.apple.com/design/human-interface-guidelines) | yes | iOS conventions, sheets, tab bars, watchOS |
+| Apple HIG, Layout (developer.apple.com/design/human-interface-guidelines/layout) and WWDC25 "Get to know the new design system" | yes | Aligning components to read hierarchy, layout guides, concentric shapes and optical balance |
+| Material layout, keylines and spacing (m2.material.io/design/layout/spacing-methods.html) and Android content structure (developer.android.com/design/ui/mobile/guides/layout-and-content/content-structure) | yes | Margins and columns that content aligns to, keylines on an 8dp step |
+| NN/g, 5 principles of visual design (nngroup.com/articles/principles-visual-design) | yes | Balance as equal weight, not mirror symmetry; Gestalt grouping |
 | WCAG 2.2 (w3.org/TR/WCAG22) | yes | Contrast (1.4.3), target size (2.5.8), focus, motion |
 | Laws of UX (lawsofux.com) | yes | Fitts, Hick, Jakob, proximity and similarity, with short explanations |
 | Refactoring UI, Adam Wathan & Steve Schoger (refactoringui.com) | no | The most practical book on hierarchy, spacing, colour and depth; principles.md restates its main ideas |
