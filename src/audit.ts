@@ -1020,6 +1020,9 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
   for (const el of interactive) {
     const h = el as HTMLElement
     if ((h as HTMLButtonElement).disabled || opacity(h) < 0.05) continue
+    // A control that already has focus (an autofocused field) is compared from its unfocused look, not from the ring it already shows;
+    // when the focus arrived before the check ran was a matter of timing.
+    if (document.activeElement === h) h.blur()
     const was = frameOf(h)
     h.focus({ preventScroll: true, focusVisible: true } as FocusOptions)
     if (document.activeElement !== h) continue
