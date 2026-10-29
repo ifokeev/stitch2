@@ -134,7 +134,7 @@ References, read before the first screen:
 |---|---|
 | `setup [--name N --primary #hex] [options]` | Sets a project up in one step; keeps every file that exists |
 | `canvas` | The canvas at http://localhost:4400: screens and versions, DESIGN.md, the consistency report, approval and notes |
-| `check [filter] [--shots] [--strict] [--archived] [--locales l,…]` | Layout, type, reuse and consistency checks, in every theme, app state and check language, and at both ends of each variant's widths; `--shots` saves renders; archived versions are left out unless `--archived` asks for them |
+| `check [filter] [--shots] [--strict] [--archived] [--locales l,…] [--jobs N]` | Layout, type, reuse and consistency checks, in every theme, app state and check language, and at both ends of each variant's widths; `--shots` saves renders; archived versions are left out unless `--archived` asks for them; `--jobs N` (or `STITCH2_JOBS`) sets how many screens are visited at once (half the cores, 2 to 8, by default). A screen is open when the page has loaded, what it fetches is in, its fonts are drawn and its videos have a size, not when the network is idle: a preview video that streams for ever does not hold it. Editing a test or a note beside a component does not make the screens look new |
 | `i18n [filter] [--locale l] [--suggest]` | Message keys screens use that the source or a locale lacks, and text with no key (stitch2-i18n) |
 | `consistency [kind…]` | Every shared component cropped from every screen, next to the catalog's version |
 | `type [filter] [--json]` | Every text style a screen uses and the type level it matches |
