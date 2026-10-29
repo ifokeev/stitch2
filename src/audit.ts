@@ -180,15 +180,19 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     // A nested clip (for example a title's ellipsis) must not hide the fact
     // that its whole card belongs to a deliberate horizontal scroller.
     if (visibleRects(el).every((q) => q.right <= 0 || q.left >= W)) continue
+    // The nearest clip says how the text is cut; a scroller anywhere above it (a row of pictures, each with its own rounded clip) means the
+    // cut is the edge of something that scrolls, and a tile that shows only in part there is how a person sees that it does.
     let clip: string | null = null
+    let scrolls = false
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
       const ox = getComputedStyle(p).overflowX
-      if (ox !== 'visible') {
-        clip = ox
+      if (ox === 'auto' || ox === 'scroll') {
+        scrolls = true
         break
       }
+      if (ox !== 'visible') clip ??= ox
     }
-    if (clip === 'auto' || clip === 'scroll') continue
+    if (scrolls) continue
     if (overflowing.has(el.parentElement!)) {
       overflowing.add(el)
       continue

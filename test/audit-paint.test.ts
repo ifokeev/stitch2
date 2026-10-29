@@ -128,6 +128,12 @@ test('audit ignores offscreen rail descendants behind nested clips but retains a
   assert.deepEqual(issues.map((i) => i.selector), ['#cut-label'])
 })
 
+test('audit does not call a tile cut by the edge of a scroller clipped text, even when the tile has a clip of its own', async () => {
+  const issues = await read('<div style="display:flex;gap:8px;width:350px;margin:20px;overflow-x:auto">' +
+    '<span style="flex:none;width:200px;overflow:hidden">First tile</span><span style="flex:none;width:200px;overflow:hidden;position:relative"><span id="half-tile" style="white-space:nowrap">Second tile text that crosses the edge</span></span></div>', 'clipped')
+  assert.deepEqual(issues.map((i) => i.selector), [])
+})
+
 test('audit accepts an input action only within its reserved padding, not over editable text', async () => {
   const field = (id: string, padding: number, side: 'left' | 'right' = 'right') => `<div style="position:relative;width:260px;margin:20px"><input id="${id}" type="password" value="Some text" style="box-sizing:border-box;width:100%;height:44px;padding-${side}:${padding}px"><button id="${id}-action" aria-label="Reveal" style="position:absolute;${side}:0;top:0;width:44px;height:44px">●</button></div>`
   const issues = await read(field('valid', 44) + field('invalid', 12) + field('left', 44, 'left'), 'control-overlap')
