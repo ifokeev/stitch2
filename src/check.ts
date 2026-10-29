@@ -38,7 +38,7 @@ import {
   consistencyIssues,
   reuseIssues,
 } from './consistency.ts'
-import { designThemes, motionDurations, readDesign, typeLevels } from './design-md.ts'
+import { columnWidths, designThemes, motionDurations, readDesign, typeLevels } from './design-md.ts'
 import { checkLocales } from './i18n.ts'
 import { listScreens, ROOT } from './screens.ts'
 import { startServer } from './serve.ts'
@@ -68,6 +68,7 @@ const collect = collectOptions()
 const auditOpts = {
   comfortable: config.comfortableTarget,
   durations: (() => { try { return motionDurations() } catch { return [] } })(),
+  columns: (() => { try { return columnWidths() } catch { return [] } })(),
   secondary: (() => { try { return 'text-muted' in readDesign().colors ? 'var(--' + config.prefix + '-text-muted)' : undefined } catch { return undefined } })(),
 }
 const server = await startServer(0)

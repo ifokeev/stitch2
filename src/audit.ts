@@ -8,7 +8,7 @@ import type { Issue } from './typecheck.ts'
 export const LAYOUT_ERRORS = ['overflow', 'nav-overflow', 'fixed-overlap', 'control-overlap', 'text-overlap']
 
 /** Runs inside the page. Plain JS on purpose: Playwright sends its source to the browser. */
-export async function audit(opts: { comfortable: number; durations?: number[]; secondary?: string }): Promise<Issue[]> {
+export async function audit(opts: { comfortable: number; durations?: number[]; secondary?: string; columns?: number[] }): Promise<Issue[]> {
   const W = document.documentElement.clientWidth
   const out: Issue[] = []
   const sel = (el: Element) => {
@@ -852,6 +852,81 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
           break
         }
       }
+    }
+  }
+
+  // 6k. Columns. A page that is not full width sits in one of a few columns that DESIGN.md names (spacing tokens column-narrow, column-wide, …), so a
+  // person who goes from one page of a section to the next finds the content on the same vertical lines. A column is a container that a max-width
+  // holds (its width is the max-width) and that is wider than 840px; narrower ones are a reading measure and are set by the line, not by a step.
+  // A container inside another that was reported is left alone.
+  if (opts.columns?.length) {
+    const scope = document.querySelector('main') ?? document.body
+    const reported: Element[] = []
+    for (const el of scope.querySelectorAll('*')) {
+      const cs = getComputedStyle(el)
+      if (!cs.maxWidth.endsWith('px')) continue
+      const rect = el.getBoundingClientRect()
+      const limit = parseFloat(cs.maxWidth)
+      if (rect.width < 840 || rect.height < 100 || Math.abs(rect.width - limit) > 1 || el.closest('[aria-hidden=true], dialog')) continue
+      if (reported.some((r) => r.contains(el))) continue
+      reported.push(el)
+      if (!opts.columns.some((width) => Math.abs(width - rect.width) <= 1))
+        push('warning', 'column-width', el, 'A column of ' + Math.round(rect.width) + 'px, where DESIGN.md names ' + opts.columns.join('px, ') + 'px: pages take one of the named columns, so content stays on the same lines from page to page')
+    }
+  }
+
+  // 6l. Equal ends. A bar, chip or capsule whose first and last items are the same kind (two controls, or two pieces of text) is as close to one
+  // end as to the other: a circle with 17px before it and 5px after it reads as a mistake. When the ends differ (text at the start, a circle at
+  // the end) the two gaps may differ too: that is optical (Apple's concentric shapes, a trailing icon in Material). A control that paints a circle
+  // inside its own padding (a round icon button) is measured by the circle.
+  {
+    const clear = (value: string) => /^(rgba\(0, 0, 0, 0\)|transparent)$/.test(value)
+    const interactive = 'button, a[href], input, select, textarea, summary, svg, img, [role=button]'
+    const painted = (el: Element) => {
+      const r = el.getBoundingClientRect()
+      const c = getComputedStyle(el)
+      if (c.backgroundClip !== 'content-box') return r
+      const t = parseFloat(c.paddingTop) || 0, b = parseFloat(c.paddingBottom) || 0, l = parseFloat(c.paddingLeft) || 0, rt = parseFloat(c.paddingRight) || 0
+      return { left: r.left + l, right: r.right - rt, top: r.top + t, bottom: r.bottom - b, width: r.width - l - rt, height: r.height - t - b }
+    }
+    for (const el of all) {
+      const cs = getComputedStyle(el)
+      if (!/flex|grid/.test(cs.display) || el.closest('[aria-hidden=true]') || el.matches(interactive)) continue
+      const rect = el.getBoundingClientRect()
+      if (rect.width < 40 || rect.height < 28 || rect.height > 80) continue
+      const lined = parseFloat(cs.borderLeftWidth) > 0 && !clear(cs.borderLeftColor)
+      if (clear(cs.backgroundColor) && !lined) continue
+      if (cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 1) continue
+      const items: { left: number; right: number; top: number; bottom: number; kind: string }[] = []
+      for (const node of el.childNodes) {
+        if (node.nodeType === 3 && (node.textContent ?? '').trim()) {
+          const range = document.createRange()
+          range.selectNodeContents(node)
+          const box = range.getBoundingClientRect()
+          if (box.width > 0) items.push({ left: box.left, right: box.right, top: box.top, bottom: box.bottom, kind: 'text' })
+        } else if (node.nodeType === 1) {
+          const child = node as Element
+          const c = getComputedStyle(child)
+          const box = child.getBoundingClientRect()
+          if (box.width <= 0 || box.height <= 0 || c.visibility === 'hidden' || c.position === 'absolute' || c.position === 'fixed') continue
+          const drawn = !clear(c.backgroundColor) || (parseFloat(c.borderLeftWidth) > 0 && !clear(c.borderLeftColor))
+          const shape = painted(child)
+          items.push({ left: shape.left, right: shape.right, top: shape.top, bottom: shape.bottom, kind: child.matches(interactive) || child.querySelector(interactive) || drawn ? 'control' : 'text' })
+        }
+      }
+      if (items.length < 2) continue
+      const first = items.reduce((a, b) => (b.left < a.left ? b : a))
+      const last = items.reduce((a, b) => (b.right > a.right ? b : a))
+      if (first === last || first.kind !== last.kind) continue
+      const start = first.left - (rect.left + parseFloat(cs.borderLeftWidth))
+      const end = rect.right - parseFloat(cs.borderRightWidth) - last.right
+      // A gap of more than 32px is room that nothing fills (a row packed to one side), not the padding of a bar.
+      if (start < 0 || end < 0 || Math.abs(start - end) < 4 || Math.max(start, end) > 32) continue
+      // Two controls of different sizes (a 24px logo and a 40px circle) are each as far from the end as from the top and bottom of the bar:
+      // each end is concentric with its own item, and that is the rule, not one number for both.
+      const above = (item: { top: number; bottom: number }) => Math.min(item.top - (rect.top + parseFloat(cs.borderTopWidth)), rect.bottom - parseFloat(cs.borderBottomWidth) - item.bottom)
+      if (first.kind === 'control' && Math.abs(start - above(first)) <= 3 && Math.abs(end - above(last)) <= 3) continue
+      push('warning', 'inset-asymmetry', el, 'Space of ' + Math.round(start) + 'px at the start and ' + Math.round(end) + 'px at the end, where both ends hold ' + (first.kind === 'text' ? 'text' : 'a control') + ': give both ends the same gap')
     }
   }
 

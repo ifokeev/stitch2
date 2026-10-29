@@ -53,6 +53,14 @@ export function readDesign(file = join(ROOT, 'DESIGN.md')): Design {
   }
 }
 
+/** The page columns DESIGN.md names (spacing tokens column-narrow, column-wide, …), in px: a page that is not full width takes one of them (check: column-width). */
+export function columnWidths(design = readDesign()): number[] {
+  return Object.entries(design.spacing)
+    .filter(([k]) => k.startsWith('column-'))
+    .map(([, v]) => (String(v).trim().endsWith('rem') ? parseFloat(String(v)) * 16 : parseFloat(String(v))))
+    .filter((n) => Number.isFinite(n) && n > 0)
+}
+
 /** The durations DESIGN.md's motion names, in ms (for check: a transition of any other length is a warning). */
 export function motionDurations(design = readDesign()): number[] {
   return Object.entries(design.motion)
