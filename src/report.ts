@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 import { fingerprintPaths } from './cache.ts'
+import { openScreen } from './settle.ts'
 import { CONFIG_FILE, config } from './config.ts'
 import {
   type Components,
@@ -106,10 +107,7 @@ const runOne = async (
     worker.visits++
     const page = worker.page
     await page.setViewportSize({ width: s.width, height: 844 })
-    await page
-      .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
-      .catch(() => {})
-    await page.waitForTimeout(600)
+    await openScreen(page, `http://127.0.0.1:${server.port}/${s.path}`)
     const found = await page.evaluate(collectComponents, collectOptions())
     known[s.path] = found.components
   visitedKinds[s.path] = new Set<string>()

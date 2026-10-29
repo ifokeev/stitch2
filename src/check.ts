@@ -13,7 +13,7 @@
  * and keys a locale has no translation for, tagged with the locale. Last, each variant at both ends of the widths
  * it covers (config widths: mobile 360–599, desktop 1024–1920 by default) and at every breakpoint inside them
  * (config breakpoints, Tailwind's by default), tagged with the width.
- * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none]
+ * Usage: stitch2 check [path filter…] [--shots] [--strict] [--locales ru,ar | all | none] [--jobs N]
  *   --shots   also save page-tall renders to design/renders/ (one per theme, app state, language and width)
  *   --strict  exit 1 when any screen has errors (for CI and agent loops)
  *   --archived  also check archived versions, which are left out otherwise: they are outdated (superseded or rejected),
@@ -25,10 +25,12 @@
  * (Ctrl-C, kill), so the next run continues with the screens that are left instead of starting over.
  */
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { cpus } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 import { fingerprintPaths } from './cache.ts'
+import { openScreen } from './settle.ts'
 import { colourIssues } from './colours.ts'
 import { CONFIG_FILE, checkWidths, config, modes } from './config.ts'
 import {
@@ -51,8 +53,9 @@ const args = process.argv.slice(2)
 const shots = args.includes('--shots')
 const strict = args.includes('--strict')
 const localesFlag = args.indexOf('--locales')
+const jobsFlag = args.indexOf('--jobs')
 const locales = checkLocales(localesFlag >= 0 ? args[localesFlag + 1] : undefined)
-const filters = args.filter((a, i) => !a.startsWith('--') && (localesFlag < 0 || i !== localesFlag + 1))
+const filters = args.filter((a, i) => !a.startsWith('--') && (localesFlag < 0 || i !== localesFlag + 1) && (jobsFlag < 0 || i !== jobsFlag + 1))
 const matching = listScreens().filter((s) => !filters.length || filters.some((f) => s.path.includes(f)))
 const screens = args.includes('--archived') ? matching : matching.filter((s) => s.status !== 'archived')
 const archivedLeftOut = matching.length - screens.length
@@ -82,7 +85,11 @@ const fresh = async () => {
   return { browser, page, visits: 0 }
 }
 type Worker = Awaited<ReturnType<typeof fresh>>
-const CONCURRENCY = 4
+/** Screens visited at once: --jobs N, STITCH2_JOBS, or half the cores (at least 2, at most 8). Each one is a browser of its own. */
+const CONCURRENCY = (() => {
+  const given = Number(jobsFlag >= 0 ? args[jobsFlag + 1] : process.env.STITCH2_JOBS)
+  return Number.isInteger(given) && given > 0 ? given : Math.min(8, Math.max(2, Math.floor(cpus().length / 2)))
+})()
 const pool = await Promise.all(Array.from({ length: CONCURRENCY }, fresh))
 const results: Record<string, Issue[]> = {}
 const components: Record<string, Components> = {}
@@ -192,11 +199,7 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
   const page = worker.page
   try {
     await page.setViewportSize({ width: s.width, height: 844 })
-    await page
-      .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
-      .catch(() => {})
-    // Tailwind's CDN build, web fonts and the lab components settle after load.
-    await page.waitForTimeout(600)
+    await openScreen(page, `http://127.0.0.1:${server.port}/${s.path}`)
     const found = await page.evaluate(collectComponents, collect)
     components[s.path] = found.components
   const own = await page.evaluate(() => document.documentElement.dataset.theme || '')
@@ -251,10 +254,7 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
   // The other languages, in the screen's own theme. Reported once per element and kind, in the first locale.
   const unknownSeen = new Set<string>()
   for (const locale of locales) {
-    await page
-      .goto(`http://127.0.0.1:${server.port}/${s.path}?lang=${encodeURIComponent(locale)}`, { waitUntil: 'networkidle', timeout: 30_000 })
-      .catch(() => {})
-    await page.waitForTimeout(600)
+    await openScreen(page, `http://127.0.0.1:${server.port}/${s.path}?lang=${encodeURIComponent(locale)}`)
     for (const i of await page.evaluate(audit, auditOpts)) {
       const key = `${i.type} ${i.selector}`
       if (i.type === 'contrast' || seen.has(key)) continue
@@ -299,8 +299,7 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
   // and language: what breaks only when the window is narrower or wider than the frame it was drawn in.
   for (const width of s.kind === 'screen' ? checkWidths(s.device).filter((w) => w !== s.width) : []) {
     await page.setViewportSize({ width, height: 844 })
-    await page.goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 }).catch(() => {})
-    await page.waitForTimeout(600)
+    await openScreen(page, `http://127.0.0.1:${server.port}/${s.path}`)
     for (const i of await page.evaluate(audit, auditOpts)) {
       const key = `${i.type} ${i.selector}`
       if (i.type === 'contrast' || seen.has(key)) continue

@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { chromium } from '@playwright/test'
 import { typeLevels } from './design-md.ts'
 import { listScreens, ROOT } from './screens.ts'
+import { openScreen } from './settle.ts'
 import { startServer } from './serve.ts'
 import { collectText, matchLevel, type TextItem } from './typecheck.ts'
 
@@ -34,10 +35,7 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
 const report: Record<string, Style[]> = {}
 for (const s of screens) {
   await page.setViewportSize({ width: s.width, height: 844 })
-  await page
-    .goto(`http://127.0.0.1:${server.port}/${s.path}`, { waitUntil: 'networkidle', timeout: 30_000 })
-    .catch(() => {})
-  await page.waitForTimeout(600)
+  await openScreen(page, `http://127.0.0.1:${server.port}/${s.path}`)
   const styles = new Map<string, Style>()
   for (const t of await page.evaluate(collectText)) {
     const k = key(t)
