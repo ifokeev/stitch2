@@ -64,6 +64,12 @@ component carries it once. A rule that a check measures names the check; the res
 - **No list of what is missing above the form.** A row of "complete to generate" chips before anyone has typed is noise, and it competes with the button. Say it where the person is looking: at the field, after the press.
 - **Every setting has its name above it**, not an icon and "Auto" alone: a picker whose value is "Auto" does not say whether it is the ratio, the length or the model. Icons may stay with a name; they do not replace it.
 - **Order follows the task**: what to make, the words, what to base it on, how it is made (settings, rarely changed ones behind "More settings"), then the button. The one line under the button says what the action costs.
+- **A long form loses people in three ways**: they cannot see what will happen, they cannot reach the button, and they are told too late what is missing.
+  Answer each. The settings are one closed row that says what they are now ("Seedance 2.0 Pro · Aspect ratio: Auto · 720p") and how many differ from the start,
+  with a Reset inside; opened, each has its name above it. Never more than two levels of disclosure (NN/g, progressive disclosure): chunk what is left into groups
+  that make sense instead of a third level. The button stays in view with its price: a rail that sticks beside a wide form, a bar that sticks to the bottom of a
+  narrow one (a sticky element stays inside its parent, so the bar must be a direct child of the whole form). Two or more gaps also make a list at the top, one link
+  to each field, and focus goes to the list; one gap needs no list.
 - **Keep the person's work.** Ctrl or Cmd with Enter in a long text field presses the button; a draft survives a reload and a sign-up; Clear asks first.
 
 ## Disabled and read-only
