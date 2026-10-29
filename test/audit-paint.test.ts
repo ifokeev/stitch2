@@ -48,6 +48,12 @@ test('audit gives sentence links the inline-target exception without exempting s
   assert.ok(issues.some((i) => i.selector === '#small' && i.severity === 'error'))
 })
 
+test('tap-target: a 44px control that measures 43.99999px while it animates in is not small, a 40px one is', async () => {
+  await page.setContent('<style>body{margin:0;font:16px/24px sans-serif}button{padding:0;width:80px;height:44px}</style><button id="noise" style="transform:scale(0.999999)">Go</button><button id="small" style="height:40px">Go</button>')
+  const issues = (await page.evaluate(audit, { comfortable: 44 })).filter((i) => i.type === 'tap-target')
+  assert.deepEqual(issues.map((i) => i.selector), ['#small'])
+})
+
 test('explicit pretty content titles can wrap only when their full text fits outside compact navigation', async () => {
   const button = (id: string, style = '') => `<button id="${id}" style="width:120px;font:14px/21px sans-serif;text-align:left;text-wrap:pretty;${style}">A longer content title</button>`
   const issues = await read(button('content') + button('clipped', 'height:30px;min-height:0;overflow:hidden') +

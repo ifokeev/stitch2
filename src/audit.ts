@@ -443,7 +443,8 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     // not clip it, and the control is checked after scrolling it into view.
     if (!visibleRects(el).length) continue
     const r = tapRect(el)
-    const min = Math.min(r.width, r.height)
+    // A control that fades or slides in measures 43.99999px for a frame: sub-pixel noise of the transform, not a smaller target.
+    const min = Math.round(Math.min(r.width, r.height) * 100) / 100
     // WCAG 2.2 spacing exception: a smaller target passes when a 24px circle on it touches no other target.
     const cx = r.left + r.width / 2
     const cy = r.top + r.height / 2
