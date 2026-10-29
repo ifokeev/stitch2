@@ -48,6 +48,12 @@ test('audit gives sentence links the inline-target exception without exempting s
   assert.ok(issues.some((i) => i.selector === '#small' && i.severity === 'error'))
 })
 
+test('tap-spacing: a row that a scrolling list clips is not close to the button below the list, a row that shows is', async () => {
+  const list = (overflow: string) => '<div style="height:100px;overflow:' + overflow + '"><a href="#" style="display:block;height:140px">Row</a></div><button id="below" style="display:block;margin-top:10px;padding:0 16px">Below</button>'
+  assert.deepEqual((await read(list('auto'), 'tap-spacing')).map((i) => i.selector), [])
+  assert.deepEqual((await read(list('visible'), 'tap-spacing')).map((i) => i.selector), ['#below'])
+})
+
 test('tap-target: a 44px control that measures 43.99999px while it animates in is not small, a 40px one is', async () => {
   await page.setContent('<style>body{margin:0;font:16px/24px sans-serif}button{padding:0;width:80px;height:44px}</style><button id="noise" style="transform:scale(0.999999)">Go</button><button id="small" style="height:40px">Go</button>')
   const issues = (await page.evaluate(audit, { comfortable: 44 })).filter((i) => i.type === 'tap-target')

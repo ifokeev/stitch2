@@ -949,10 +949,14 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
         // not a neighbouring target. The same geometry as overlap checks keeps
         // insufficient padding and unrelated adjacent controls checked.
         if (reservedInputAction(el, o) || reservedInputAction(o, el) || emptyOverlay(el, o) || emptyOverlay(o, el)) return false
+        // Only what can be seen and pressed is a neighbour: a row that a scrolling list clips is not close to what lies beyond the list.
         const q = tapRect(o)
-        const ox = Math.max(0, Math.min(cx + 24, q.right) - Math.max(cx - 24, q.left))
-        const oy = Math.max(0, Math.min(cy + 24, q.bottom) - Math.max(cy - 24, q.top))
-        return ox * oy > 48
+        const parts = o instanceof HTMLInputElement && /^(checkbox|radio)$/.test(o.type) ? [q] : visibleRects(o)
+        return parts.some((p) => {
+          const ox = Math.max(0, Math.min(cx + 24, p.right) - Math.max(cx - 24, p.left))
+          const oy = Math.max(0, Math.min(cy + 24, p.bottom) - Math.max(cy - 24, p.top))
+          return ox * oy > 48
+        })
       })
       if (hit)
         push('warning', 'tap-spacing', el, Math.round(r.width) + '×' + Math.round(r.height) + 'px and close to “' + named(hit).slice(0, 24) + '”: make it 48px or leave about 8px around it (Material, Lighthouse)')
