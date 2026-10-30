@@ -48,6 +48,11 @@ test('edge-flush: a bar under a navigation, with controls touching the navigatio
   assert.equal((await issues(nav + '<div style="display:flex;min-height:44px;padding:4px 24px"><button>Get code</button></div>', 'edge-flush')).length, 0)
 })
 
+test('edge-flush: a bar pinned to the bottom of the window is no neighbour of what happens to be under the window\'s edge', async () => {
+  const bar = '<div style="position:sticky;bottom:0;height:60px;background:#000;border-top:1px solid #333"></div>'
+  assert.equal((await issues('<div style="height:640px"></div>' + bar + '<div style="display:flex;min-height:44px;padding:0 24px"><button>Under the edge</button></div>', 'edge-flush')).length, 0)
+})
+
 test('edge-flush: a control that fills its surface on three sides is its content, and a shape that paints inside its own box is measured elsewhere', async () => {
   assert.equal((await issues('<div class="panel" style="height:100px"><button style="width:100%;height:100px;border-radius:12px">Open</button></div>', 'edge-flush')).length, 0, 'a picture that opens')
   assert.equal((await issues('<div class="panel" style="padding:0"><button style="width:44px;height:44px;padding:4px;border-radius:9999px;background-clip:content-box;background-color:#444"></button></div>', 'edge-flush')).length, 0, 'a round icon that paints inside its box')
