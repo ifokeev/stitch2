@@ -308,9 +308,14 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
     for (const el of shown) {
       if (el.closest('svg')) continue
       const cs = getComputedStyle(el) as unknown as Record<string, string>
+      // The padding of a field or a button above and below its line is what is left of its target height (44px less the line less the borders): it is a result, not a step.
+      const target = el.matches('input, textarea, select, button, summary, [role=button], [role=combobox]') && el.getBoundingClientRect().height >= 40
       for (const p of props) {
         const v = parseFloat(cs[p]!)
         if (!(v >= 3) || v > 200 || done.has(Math.round(v * 100)) || Math.abs(v / 4 - Math.round(v / 4)) < 0.01) continue
+        if (target && /^padding(Top|Bottom)$/.test(p)) continue
+        // A margin that is not a whole number of pixels is a share of the space (auto, a percentage, a viewport unit), not a step.
+        if (p.startsWith('margin') && Math.abs(v - Math.round(v)) > 0.05) continue
         if (/^margin(Left|Right)$/.test(p) && cs.marginLeft === cs.marginRight && el.parentElement && Math.abs(el.getBoundingClientRect().left - (el.parentElement.getBoundingClientRect().right - el.getBoundingClientRect().right)) < 2) continue
         done.add(Math.round(v * 100))
         push('warning', 'spacing-grid', el, Math.round(v * 100) / 100 + 'px of ' + p.replace(/([A-Z])/g, ' $1').toLowerCase() + ' is off the four-pixel grid: structural spacing takes a step of 4px (4, 8, 12, 16, 24, 32…); a half step is for an optical correction in a component')

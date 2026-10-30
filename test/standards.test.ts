@@ -149,6 +149,13 @@ test('spacing-grid: a value that is not on the four-pixel grid is reported once,
   assert.deepEqual(list.map((i) => i.message.split(' ')[0]).sort(), ['10px', '6px'], 'ten once, six once, and the auto margins not at all')
 })
 
+test('spacing-grid: the padding of a field is what is left of its target height, and a margin that is a share of the space is not a step', async () => {
+  const css = 'input{display:block;box-sizing:border-box;height:44px;padding:11px 12px;border:1px solid #666}.m{width:100px;margin-left:10.5px}'
+  assert.equal((await found('<input aria-label="A"><input aria-label="B" style="padding:11px 16px">', 'spacing-grid', { css })).length, 0, 'a field padded to 44px')
+  assert.equal((await found('<div class="m">M</div>', 'spacing-grid', { css })).length, 0, 'a fractional margin')
+  assert.equal((await found('<div style="padding:11px">P</div>', 'spacing-grid', { css })).length, 1, 'a box that is not a field')
+})
+
 test('link-as-button leaves pagination alone: it changes a list in place', async () => {
   assert.equal((await found('<nav aria-label="Pages"><button>← Previous</button><button>1</button><button>2</button><button>Next →</button></nav><footer><button>Terms</button></footer>', 'link-as-button')).length, 1)
 })
