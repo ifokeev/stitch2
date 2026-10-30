@@ -29,11 +29,12 @@ function literals(source: string, js: boolean): { line: number; value: string; t
     s = s.replace(/(<svg\b[^>]*>)([\s\S]*?)(<\/svg\s*>)/gi,
       (_, open: string, body: string, close: string) => open + body.replace(/[^\n]/g, ' ') + close)
     // Documentation can describe a literal colour without painting it. Only
-    // markup attributes are authored styling, not prose or example values.
+    // markup attributes are authored styling, not prose or example values; the value of a
+    // field (a color field that holds #FFD400) is what a person chose, not a colour drawn.
     const tags = [...s.matchAll(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g)]
     let styled = s.replace(/[^\n]/g, ' ')
     for (const match of tags) {
-      const tag = match[0].replace(/\s(?:data-[\w-]+|on[\w]+)\s*=\s*("[^"]*"|'[^']*')/gi,
+      const tag = match[0].replace(/\s(?:data-[\w-]+|on[\w]+|value)\s*=\s*("[^"]*"|'[^']*')/gi,
         (attribute) => attribute.replace(/[^\n]/g, ' '))
       styled = styled.slice(0, match.index) + tag + styled.slice(match.index! + match[0].length)
     }
