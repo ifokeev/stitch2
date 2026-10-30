@@ -311,10 +311,13 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
       // The padding of a field or a button above and below its line is what is left of its target height (44px less the line less the borders): it is a result, not a step.
       const target = (el.matches('input, textarea, select, button, summary, [role=button], [role=combobox]') || parseFloat(cs.minHeight) >= 40) && el.getBoundingClientRect().height >= 40
       const computed = (el as HTMLElement & { computedStyleMap?: () => { get: (name: string) => { value?: unknown; unit?: string } | undefined } }).computedStyleMap?.()
+      // The element is itself a component of the system (a p2-* class, or the data-p2 mark): inside a component a half step is an optical correction, which the rule allows.
+      const component = el.matches('[data-p2], [class*="p2-"]')
       for (const p of props) {
         const v = parseFloat(cs[p]!)
         if (!(v >= 3) || v > 200 || done.has(Math.round(v * 100)) || Math.abs(v / 4 - Math.round(v / 4)) < 0.01) continue
         if (target && /^padding(Top|Bottom)$/.test(p)) continue
+        if (component && Math.abs(v / 2 - Math.round(v / 2)) < 0.01) continue
         // A margin that is auto, a percentage or not a whole number of pixels is a share of the space, not a step.
         if (p.startsWith('margin')) {
           const cv = computed?.get(p.replace(/([A-Z])/g, '-$1').toLowerCase())

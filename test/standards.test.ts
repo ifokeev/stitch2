@@ -156,6 +156,9 @@ test('spacing-grid: the padding of a field is what is left of its target height,
   assert.equal((await found('<div style="display:flex;flex-direction:column;height:98px"><div style="height:20px;margin-top:auto">M</div></div>', 'spacing-grid', { css })).length, 0, 'an auto margin that resolves to a whole number of pixels')
   assert.equal((await found('<div style="display:flex;flex-direction:column;height:98px"><div style="height:20px;margin-top:78px">M</div></div>', 'spacing-grid', { css })).length, 1, 'the same margin written as a number is a step')
   assert.equal((await found('<a href="#" style="display:inline-flex;min-height:44px;align-items:center;padding:10px 16px">Link</a>', 'spacing-grid', { css })).length, 0, 'a link as tall as a target')
+  assert.equal((await found('<span class="p2-badge" style="padding:0 6px">6</span>', 'spacing-grid', { css })).length, 0, 'a half step inside a component of the system is an optical correction')
+  assert.equal((await found('<span class="card" style="padding:0 6px">6</span>', 'spacing-grid', { css })).length, 1, 'the same half step in a page is not')
+  assert.equal((await found('<span class="p2-badge" style="padding:0 5px">5</span>', 'spacing-grid', { css })).length, 1, 'an odd value is not a half step')
   assert.equal((await found('<div style="padding:11px">P</div>', 'spacing-grid', { css })).length, 1, 'a box that is not a field')
 })
 
