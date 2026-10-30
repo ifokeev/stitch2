@@ -386,10 +386,12 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
       if (edgeRatio >= 3 || fillRatio >= 3) continue
       // A field with no edge and no fill of its own sits in a frame that draws it (the composer of a chat): the frame's edge or fill is the one that shows where it is.
       if (!sides && !(fill && fill.a > 0)) {
+        // A search row in a list names itself with an icon and a placeholder: WCAG 1.4.11 asks for the edge only where nothing else shows what the control is.
+        if ((el as HTMLInputElement).placeholder && el.closest('label')?.querySelector('svg')) continue
         let framed = false
         for (let up = el.parentElement, n = 0; up && up !== document.body && n < 3 && !framed; up = up.parentElement, n++) {
           const ucs = getComputedStyle(up), ub = behind(up)
-          if (!ub) break
+          if (!ub) { framed = true; break } // a picture or a gradient behind the frame: what it is measured against is not known, as for a field
           const ubase = flat(ub), uedge = parse(ucs.borderTopColor), ufill = parse(ucs.backgroundColor)
           const uSides = [ucs.borderTopWidth, ucs.borderBottomWidth, ucs.borderLeftWidth, ucs.borderRightWidth].every((w) => parseFloat(w) >= 1)
           if ((uSides && uedge && ratio(over(uedge, ubase), ubase) >= 3) || (ufill && ufill.a > 0 && ratio(over(ufill, ubase), ubase) >= 3)) framed = true

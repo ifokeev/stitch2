@@ -18,7 +18,7 @@ a person decides, and a screen that has a reason says so in its notes.
 | focus-order | WCAG 2.4.3, 1.3.2 | A reversed flex row, an item moved with `order`, or a `tabindex` above 0, around controls. | Write the document in the order it is drawn. |
 | focus-forced-colors | MDN forced-colors, WCAG 2.4.7 | The focus is a shadow or a colour only: forced-colors mode (Windows High Contrast) removes both. | An outline (the ring of DESIGN.md is one). |
 | focus-contrast | WCAG 1.4.11, 2.4.13 | The ring is under 3:1 against what it touches. | Link Lavender on the page is 7:1; a ring on a lavender fill is not. |
-| field-edge | WCAG 1.4.11 | Neither the edge nor the fill of a field is 3:1 against what is behind it. One report for each way a field is drawn. | The field's border token reaches 3:1, or its fill does. A hairline of 8% is a decoration, not an edge. |
+| field-edge | WCAG 1.4.11 | Neither the edge nor the fill of a field is 3:1 against what is behind it. One report for each way a field is drawn. | The field's border token reaches 3:1, or its fill does. A hairline of 8% is a decoration, not an edge. A field with no line of its own is seen by the frame that draws it (the composer of a chat), and a search row named by an icon and a placeholder needs none. |
 | ring-clipped, ring-double, edge-flush | Material, Fluent, Red Hat, WCAG 2.4.7 | See [spacing.md](spacing.md). | Padding on the container; one ring; 4px around a control's box. |
 | link-as-button | WCAG 4.1.2, HTML | A button in a bar or a footer that is not a menu, a toggle, a form control or pagination: a destination should be an anchor. | `<a href>`. |
 | placeholder-fit | WCAG 1.4.4, 3.3.2 | A placeholder wider than its field (or taller than a textarea): it cannot scroll, so it is cut. | Shorten it, or give the field room. |
@@ -26,7 +26,7 @@ a person decides, and a screen that has a reason says so in its notes.
 | select-two-arrows, icon-off-centre, row-heights | Material, project experience | A select with two arrows; an icon placed with `top: 50%` and no translate; cards of one row that end at different heights. | One arrow; `translate: 0 -50%`; stretch the row. |
 | concentric-corner | Apple HIG (concentric shapes) | A rounded surface inside a rounded surface whose radius is not the outer less the space between them. | Outer radius less the padding. |
 | word-space | DESIGN.md (Word-Space Rule) | A face whose word space is under 0.22em (the rule is 0.24em; hinting makes a good face measure 0.23). | Replace the face; tracking cannot repair it. |
-| spacing-grid | DESIGN.md (Four-Pixel Rhythm Rule) | A padding, margin or gap off the 4px grid, once for each value. | The nearest step; a half step only inside a component, as an optical correction. |
+| spacing-grid | DESIGN.md (Four-Pixel Rhythm Rule) | A padding, margin or gap off the 4px grid, once for each value. The padding above and below the line of a field or a button (what is left of its target height), an auto or fractional margin and a half step on a component of the system (a p2-* element) are not reported. | The nearest step; a half step only inside a component, as an optical correction. |
 | type-family, type-fraction | DESIGN.md (Whole-Pixel Rule, type levels) | Text in a family DESIGN.md does not name (a control that fell back to the browser's), or a size or line height with a fraction. | Inherit the font on controls; whole pixels. |
 
 ## What check cannot see
