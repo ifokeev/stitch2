@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { chromium } from '@playwright/test'
-import { standards } from '../src/standards.ts'
+import { forcedFocus, standards } from '../src/standards.ts'
 import { typeIssues, type TextItem } from '../src/typecheck.ts'
 
 // Checks that come from published standards (WCAG 2.2, ARIA authoring practices, MDN) and from the rules of DESIGN.md that a page breaks by drawing.
@@ -87,12 +87,27 @@ test('concentric-corner: a surface inside a rounded surface takes the outer radi
   assert.equal((await found('<div class="o" style="padding:0"><div class="i" style="border-radius:16px"></div></div>', 'concentric-corner', { css })).length, 0, 'flush: nothing between them')
 })
 
-test('focus-forced-colors and focus-contrast: the focus is an outline that is 3:1 against what it touches', async () => {
+test('focus-contrast: the ring is 3:1 against what it touches', async () => {
   const css = 'button{display:block;height:44px;margin:12px;padding:0 16px;border:0;border-radius:8px;background:#333}'
-  assert.equal((await found('<button class="a">Shadow</button>', 'focus-forced-colors', { full: true, css: css + '.a:focus-visible{box-shadow:0 0 0 2px #a78bfa;outline:none}' })).length, 1, 'a shadow vanishes in forced colours')
-  assert.equal((await found('<button class="a">Outline</button>', 'focus-forced-colors', { full: true, css: css + '.a:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}' })).length, 0)
   assert.equal((await found('<button class="a">Faint</button>', 'focus-contrast', { full: true, css: css + '.a:focus-visible{outline:2px solid #2a2a2a;outline-offset:2px}' })).length, 1, 'a ring that is almost the page')
   assert.equal((await found('<button class="a">Clear</button>', 'focus-contrast', { full: true, css: css + '.a:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}' })).length, 0)
+})
+
+test('focus-forced-colors: with forced colours emulated, focus is an outline, a border or an underline, not a shadow or a colour', async () => {
+  const css = 'button{display:block;height:44px;margin:12px;padding:0 16px;border:0;border-radius:8px;background:#333}'
+  const forced = async (extra: string) => {
+    const browser = await chromium.launch()
+    try {
+      const page = await browser.newPage({ viewport: { width: 900, height: 700 } })
+      await page.emulateMedia({ forcedColors: 'active' })
+      await page.setContent('<style>' + base + css + extra + '</style><button class="a">Control</button>')
+      return (await page.evaluate(forcedFocus)).length
+    } finally { await browser.close() }
+  }
+  assert.equal(await forced('.a:focus-visible{box-shadow:0 0 0 2px #a78bfa;outline:none}'), 1, 'a shadow vanishes in forced colours')
+  assert.equal(await forced('.a:focus-visible{background:#555;outline:none}'), 1, 'a colour is replaced by the system colour')
+  assert.equal(await forced('.a:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}'), 0)
+  assert.equal(await forced('.a:focus-visible{box-shadow:0 0 0 2px #a78bfa;outline:none}@media (forced-colors: active){.a:focus-visible{outline:2px solid Highlight}}'), 0, 'a shadow with an outline for forced colours')
 })
 
 test('field-edge: the edge or the fill of a field is 3:1 against what is behind it', async () => {

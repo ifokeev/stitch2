@@ -318,7 +318,7 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
     }
   }
 
-  // ---- 12. Focus: the indicator is an outline that survives forced colours (MDN, Windows High Contrast), and it is 3:1 against what it touches (WCAG 1.4.11, 2.4.13). ----
+  // ---- 12. Focus: the ring is 3:1 against what it touches (WCAG 1.4.11, 2.4.13). That it survives forced colours is forcedFocus, below. ----
   if (opts.full) {
     const reported = new Set<string>()
     const chain = (e: HTMLElement) => [e, e.parentElement, e.parentElement?.parentElement ?? null].filter((n): n is HTMLElement => !!n)
@@ -351,8 +351,6 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
             push('warning', 'focus-contrast', ring, 'The focus ring is ' + r.toFixed(1) + ':1 against what it touches; WCAG 1.4.11 and 2.4.13 ask for 3:1')
           }
         }
-      } else if (now.some((s, i) => s.paint !== was[i]!.paint) && !now.some((s, i) => s.structure !== was[i]!.structure)) {
-        push('warning', 'focus-forced-colors', el, 'The focus is shown by a shadow or a colour only: forced-colors mode (Windows High Contrast) removes both, and the keyboard loses its place. Draw it as an outline')
       }
       h.blur()
     }
@@ -403,5 +401,57 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
     style.remove()
   }
 
+  return out
+}
+
+/**
+ * Runs in the page with forced colours emulated (check does that, as it does reduced motion): in Windows High Contrast box-shadow and background images are removed
+ * and colours are replaced by the system's, so of everything that can show focus only an outline, a change in a border's width or style, or an underline is left (MDN,
+ * forced-colors). A control that shows focus by a shadow or a colour only has no focus there. A page that draws an outline for forced colours (a rule inside
+ * @media (forced-colors: active)) passes.
+ */
+export async function forcedFocus(): Promise<Issue[]> {
+  const out: Issue[] = []
+  const sel = (el: Element) => {
+    const parts: string[] = []
+    for (let e: Element | null = el; e && e !== document.body && parts.length < 6; e = e.parentElement) {
+      if (e.id) {
+        parts.unshift('#' + CSS.escape(e.id))
+        break
+      }
+      let p = e.tagName.toLowerCase()
+      const same = e.parentElement ? [...e.parentElement.children].filter((c) => c.tagName === e!.tagName) : []
+      if (same.length > 1) p += ':nth-of-type(' + (same.indexOf(e) + 1) + ')'
+      parts.unshift(p)
+    }
+    return parts.join(' > ')
+  }
+  const still = document.createElement('style')
+  still.textContent = '*, *::before, *::after { transition: none !important; animation: none !important }'
+  document.head.append(still)
+  const chain = (e: HTMLElement) => [e, e.parentElement, e.parentElement?.parentElement ?? null].filter((n): n is HTMLElement => !!n)
+  const signs = (e: HTMLElement) => chain(e).map((n) => {
+    const c = getComputedStyle(n)
+    return [c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) > 0 ? c.outlineStyle + c.outlineWidth : '', c.borderTopStyle + c.borderTopWidth + c.borderBottomWidth + c.borderLeftWidth + c.borderRightWidth, c.textDecorationLine].join('|')
+  })
+  const before = document.activeElement as HTMLElement | null
+  for (const el of document.body.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, summary, [tabindex]:not([tabindex="-1"])')) {
+    const h = el as HTMLElement
+    const cs = getComputedStyle(h)
+    const r = h.getBoundingClientRect()
+    if ((h as HTMLButtonElement).disabled || cs.display === 'none' || cs.visibility === 'hidden' || r.width <= 1 || r.height <= 1 || !h.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue
+    if (h.closest('svg') && h.tagName.toLowerCase() !== 'svg') continue
+    if (document.activeElement === h) h.blur()
+    const was = signs(h).join('#')
+    h.focus({ preventScroll: true, focusVisible: true } as FocusOptions)
+    if (document.activeElement !== h) continue
+    const now = signs(h).join('#')
+    h.blur()
+    if (was !== now) continue
+    if (out.length >= 10) break
+    out.push({ severity: 'warning', type: 'focus-forced-colors', message: 'No focus in forced-colors mode (Windows High Contrast removes shadows and colours): draw focus as an outline, in a @media (forced-colors: active) rule if the design uses a shadow', selector: sel(h), text: (h.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 60) })
+  }
+  before?.focus?.({ preventScroll: true })
+  still.remove()
   return out
 }

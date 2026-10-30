@@ -47,7 +47,7 @@ import { startServer } from './serve.ts'
 import { catalogStates, type StateRow, writeStatesSheet } from './states.ts'
 import { collectText, type Issue, typeIssues } from './typecheck.ts'
 import { audit, movingAnimations } from './audit.ts'
-import { COLOUR_TYPES, standards } from './standards.ts'
+import { COLOUR_TYPES, forcedFocus, standards } from './standards.ts'
 
 
 const args = process.argv.slice(2)
@@ -218,6 +218,11 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
   await page.waitForTimeout(100)
   layout.push(...(await page.evaluate(movingAnimations)))
   await page.emulateMedia({ reducedMotion: null })
+  // In forced colours (Windows High Contrast) only an outline, a border's width or style and an underline are left of what shows focus (MDN, forced-colors).
+  await page.emulateMedia({ forcedColors: 'active' })
+  await page.waitForTimeout(100)
+  layout.push(...(await page.evaluate(forcedFocus)))
+  await page.emulateMedia({ forcedColors: null })
   for (const i of layout) if (COLOUR_TYPES.includes(i.type)) i.theme = base
   // The other themes: what the colours change (contrast), plus anything that only shows there.
   const seen = new Set(layout.map((i) => `${i.type} ${i.selector}`))
