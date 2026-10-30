@@ -385,7 +385,7 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
       const fillRatio = fill && fill.a > 0 ? ratio(over(fill, base), base) : 0
       if (edgeRatio >= 3 || fillRatio >= 3) continue
       // A field with no edge and no fill of its own sits in a frame that draws it (the composer of a chat): the frame's edge or fill is the one that shows where it is.
-      if (!sides && !(fill && fill.a > 0)) {
+      if (!(sides && edge && edge.a > 0.01) && !(fill && fill.a > 0.01)) {
         // A search row in a list names itself with an icon and a placeholder: WCAG 1.4.11 asks for the edge only where nothing else shows what the control is.
         if ((el as HTMLInputElement).placeholder && el.closest('label')?.querySelector('svg')) continue
         let framed = false

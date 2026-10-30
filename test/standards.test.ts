@@ -119,6 +119,7 @@ test('field-edge: the edge or the fill of a field is 3:1 against what is behind 
   assert.equal((await found('<div style="margin:12px;padding:4px;border:1px solid #1d1d1d;border-radius:12px"><input aria-label="A" style="border:0"></div>', 'field-edge', { css })).length, 1, 'a frame that is almost the page')
   assert.equal((await found('<label><svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg><input placeholder="Search" aria-label="Search" style="border:0"></label>', 'field-edge', { css })).length, 0, 'a search row named by an icon and a placeholder')
   assert.equal((await found('<label><input aria-label="Search" style="border:0"></label>', 'field-edge', { css })).length, 1, 'a bare field with no edge, no fill, no icon and no placeholder')
+  assert.equal((await found('<label><svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6"/></svg><input placeholder="Search" aria-label="Search" style="border:1px solid transparent"></label>', 'field-edge', { css })).length, 0, 'a transparent line is no line')
 })
 
 test('text-spacing: text that is cut when line height, letters and words are spaced as WCAG 1.4.12 asks is reported', async () => {
