@@ -353,6 +353,13 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
       const ring = chain(h).find((n, i) => now[i]!.outline && now[i]!.outline !== was[i]!.outline)
       if (ring) {
         const rc = getComputedStyle(ring)
+        // A checkbox or a radio is the control that has focus: its ring is round its box. A label as wide as its panel, lit round two words, is the row of a list only
+        // when the row is one of several options (the model filter); a lone choice rings its box (WCAG 2.4.7, 2.4.13; Material, Carbon, GOV.UK, Primer).
+        if (ring !== h && h.matches('input[type=checkbox], input[type=radio]')) {
+          const rr = ring.getBoundingClientRect(), hr = h.getBoundingClientRect()
+          const options = [...(ring.parentElement?.children ?? [])].filter((c) => c.querySelector('input[type=checkbox], input[type=radio]')).length
+          if (options < 3 && rr.width > hr.width * 4 + 8) push('warning', 'choice-ring', ring, 'The focus ring of a ' + (h as HTMLInputElement).type + ' is drawn round a ' + Math.round(rr.width) + 'px row for a ' + Math.round(hr.width) + 'px box: ring the box, and light the row only when it is one of a list of options')
+        }
         const colour = parse(rc.outlineColor), back = behind(ring)
         if (colour && back) {
           const ink = over(colour, flat(back))

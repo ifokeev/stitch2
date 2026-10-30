@@ -87,6 +87,15 @@ test('concentric-corner: a surface inside a rounded surface takes the outer radi
   assert.equal((await found('<div class="o" style="padding:0"><div class="i" style="border-radius:16px"></div></div>', 'concentric-corner', { css })).length, 0, 'flush: nothing between them')
 })
 
+test('choice-ring: a lone checkbox rings its box, a row of a list of options may ring the row', async () => {
+  const row = 'label{display:flex;align-items:center;gap:8px;width:100%;min-height:44px}label:focus-within{outline:2px solid #a78bfa;outline-offset:2px}input:focus-visible{outline:none}'
+  const lone = '<div><label><input type="checkbox"> Audio</label></div>'
+  const list = '<div><label><input type="checkbox"> A</label><label><input type="checkbox"> B</label><label><input type="checkbox"> C</label></div>'
+  assert.equal((await found(lone, 'choice-ring', { full: true, css: row })).length, 1, 'a row as wide as the page round one box')
+  assert.equal((await found(list, 'choice-ring', { full: true, css: row })).length, 0, 'one of a list of options')
+  assert.equal((await found(lone, 'choice-ring', { full: true, css: 'label{display:flex;gap:8px;min-height:44px}input:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}' })).length, 0, 'the box is ringed')
+})
+
 test('focus-contrast: the ring is 3:1 against what it touches', async () => {
   const css = 'button{display:block;height:44px;margin:12px;padding:0 16px;border:0;border-radius:8px;background:#333}'
   assert.equal((await found('<button class="a">Faint</button>', 'focus-contrast', { full: true, css: css + '.a:focus-visible{outline:2px solid #2a2a2a;outline-offset:2px}' })).length, 1, 'a ring that is almost the page')
