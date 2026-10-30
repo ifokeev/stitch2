@@ -153,6 +153,9 @@ test('spacing-grid: the padding of a field is what is left of its target height,
   const css = 'input{display:block;box-sizing:border-box;height:44px;padding:11px 12px;border:1px solid #666}.m{width:100px;margin-left:10.5px}'
   assert.equal((await found('<input aria-label="A"><input aria-label="B" style="padding:11px 16px">', 'spacing-grid', { css })).length, 0, 'a field padded to 44px')
   assert.equal((await found('<div class="m">M</div>', 'spacing-grid', { css })).length, 0, 'a fractional margin')
+  assert.equal((await found('<div style="display:flex;flex-direction:column;height:98px"><div style="height:20px;margin-top:auto">M</div></div>', 'spacing-grid', { css })).length, 0, 'an auto margin that resolves to a whole number of pixels')
+  assert.equal((await found('<div style="display:flex;flex-direction:column;height:98px"><div style="height:20px;margin-top:78px">M</div></div>', 'spacing-grid', { css })).length, 1, 'the same margin written as a number is a step')
+  assert.equal((await found('<a href="#" style="display:inline-flex;min-height:44px;align-items:center;padding:10px 16px">Link</a>', 'spacing-grid', { css })).length, 0, 'a link as tall as a target')
   assert.equal((await found('<div style="padding:11px">P</div>', 'spacing-grid', { css })).length, 1, 'a box that is not a field')
 })
 
