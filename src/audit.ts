@@ -981,6 +981,32 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
       push('warning', 'placeholder-label', el, 'Its placeholder is its only label, and it disappears while typing: add a visible label (web.dev)')
   }
 
+  // 6e2. A hint is one short sentence (GOV.UK, Carbon, DWP): what is tied to a field with aria-describedby is read out in full each time the field takes focus,
+  // and people read it less than the label, so a long one is skipped by the eye and tiresome to the ear. Anything longer goes above the field as ordinary text.
+  // A link in a hint is read as plain text. An error is described by the field too, but it is a message, not a hint.
+  const hinted = new Set<Element>()
+  for (const el of all) {
+    if (!el.matches('input, textarea, select, [role=combobox], [role=textbox], [role=switch]')) continue
+    if (el.matches('[type=hidden], [type=submit], [type=button], [type=search], [role=searchbox]') || el.closest('[role=search], search')) continue
+    for (const id of (el.getAttribute('aria-describedby') ?? '').split(/\s+/)) {
+      const hint = id ? document.getElementById(id) : null
+      if (!hint || hinted.has(hint) || !shown(hint)) continue
+      hinted.add(hint)
+      if (hint.matches('[role=alert], [role=status], [aria-live], [data-error], [id$=-error]') || hint.closest('[role=alert], [role=status], [aria-live]')) continue
+      const words = (hint.textContent ?? '').replace(/\s+/g, ' ').trim()
+      if (!words) continue
+      // A sentence ends at . ! or ? and a space before a capital, a digit or a quote; e.g. and its kind do not end one.
+      const sentences = words.replace(/\b(e\.g|i\.e|etc|vs|approx)\./gi, '$1').split(/[.!?]["”')\]]*\s+(?=[A-Z0-9“"(#])/).filter(Boolean).length
+      const style = getComputedStyle(hint)
+      const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4
+      const lines = Math.round(hint.getBoundingClientRect().height / line)
+      if (sentences > 1 || words.length > 90 || lines > 2)
+        push('warning', 'hint-length', hint, 'A hint is one short sentence of up to 90 characters and two lines (this one: ' + words.length + ' characters, ' + sentences + ' sentence' + (sentences === 1 ? '' : 's') + ', ' + lines + ' line' + (lines === 1 ? '' : 's') + '): a screen reader reads all of it each time the field takes focus, so put anything longer above the field as text (GOV.UK, Carbon)')
+      if (hint.querySelector('a[href]'))
+        push('warning', 'hint-link', hint, 'A link in a hint is read out as plain text: take it out of the hint, or put it in the text above the field (GOV.UK)')
+    }
+  }
+
   // 6f. Every control has a name (Android's content descriptions, WCAG 4.1.2): an icon-only button needs a label.
   for (const el of interactive) {
     if (el.matches('input, select, textarea')) continue

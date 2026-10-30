@@ -33,8 +33,15 @@ component carries it once. A rule that a check measures names the check; the res
   "Password" says nothing. NN/g lists why: it vanishes when typing starts and strains memory, a filled field looks done, it can be taken
   for a value that is already there, not every screen reader reads it, and the browser's grey often fails 4.5:1 **(check: contrast)**.
   If it is kept, it shows an example of the format ("name@example.com") as an addition, in a colour that passes 4.5:1.
-- **A hint is text under the label**, one short sentence, tied to the field with `aria-describedby`, with no link in it (a screen reader
-  does not say it is a link). Anything longer goes above the field as ordinary text.
+- **A hint is text under the label**, one short sentence of up to 90 characters and two lines, tied to the field with `aria-describedby` **(check: hint-length)**,
+  with no link in it (a screen reader does not say it is a link) **(check: hint-link)**. Say it without a final full stop (GOV.UK). Three things are why it is short:
+  a screen reader reads all of it every time the field takes focus, people read a hint less than the label (DWP), and a long one is a paragraph that wants a place of its
+  own. Anything longer goes above the field as ordinary text, or behind a disclosure that opens on a press (never a tooltip: it needs a pointer and hides what most people need).
+- **What a hint is for:** the format ("As #RRGGBB"), an example, where to find the value, what the answer is used for, or what an option does. Add one only when there is a
+  clear need, and after trying to improve the label (GOV.UK, DWP). It is not general help, not a second label ("Name" over "Your name"), not the field's description in an API
+  schema (ids, URLs, "see the docs" belong to the API), and not what the control already shows: a drop area that lists its sizes and lengths does not repeat them in a
+  sentence above it. A limit is written once, where the control is.
+- **An error takes the hint's place** next to the field and is a message, not a hint (Material, Apple); the hint comes back when it is fixed.
 - **Floating labels** are better than a placeholder used as a label, and worse than a label above the field if there is room.
 - **Mark the exception.** When almost every field is required, write "(optional)" on the few that are not, rather than a star on all.
 
@@ -79,5 +86,6 @@ the value is something to read and copy.
 
 ## What check does not measure yet
 
-The label and hint wiring and `autocomplete` are for the agent to look at; `check` reports a field under 16px in a phone-sized window (field-zoom), a placeholder that is the
-only label, a small target, low contrast (a placeholder's too), a state that gives no feedback and a field whose corner differs from the controls beside it.
+The label wiring and `autocomplete` are for the agent to look at; `check` reports a field under 16px in a phone-sized window (field-zoom), a placeholder that is the
+only label, a hint that is long or has a link, a small target, low contrast (a placeholder's too), a state that gives no feedback and a field whose corner differs from the controls beside it.
+What a hint says (that it is not the API's words, that it does not repeat the control) is for the agent to read.
