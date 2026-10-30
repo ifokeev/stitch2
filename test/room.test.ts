@@ -35,6 +35,15 @@ test('ring-double: a control and the row around it that both draw a ring are rep
   assert.equal((await issues('<label class="row" style="display:flex;gap:8px;padding:8px;margin:20px"><input type="checkbox" style="width:18px;height:18px;outline:none">Audio</label>', 'ring-double')).length, 0, 'the row draws it, the box does not')
 })
 
+test('field-ring-gap: a focus ring standing off a field that draws its own edge is reported; the focus on the edge is not', async () => {
+  const field = (style: string) => '<style>input.f{display:block;width:240px;height:44px;margin:20px;padding:0 12px;border:1px solid #888;border-radius:8px;background:#222;color:#eee}input.f:focus-visible{' + style + '}</style><input class="f" aria-label="Code">'
+  const gap = await issues(field('outline:2px solid #a78bfa;outline-offset:2px'), 'field-ring-gap')
+  assert.equal(gap.length, 1, JSON.stringify(gap))
+  assert.equal((await issues(field('border-color:#a78bfa;outline:1px solid #a78bfa;outline-offset:0'), 'field-ring-gap')).length, 0, 'the focus is the edge')
+  assert.equal((await issues(field('outline:2px solid #a78bfa;outline-offset:-2px'), 'field-ring-gap')).length, 0, 'a ring inside the edge is on it')
+  assert.equal((await issues('<style>input.c:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}</style><label style="display:flex;gap:8px;margin:20px"><input class="c" type="checkbox" style="width:18px;height:18px">Audio</label>', 'field-ring-gap')).length, 0, 'a checkbox has no edge to take: the ring stands off it')
+})
+
 test('edge-flush: a control whose box is less than 4px from a surface it sits on is reported', async () => {
   const flush = await issues('<div class="panel" style="padding:1px 12px"><button>Save</button></div>', 'edge-flush')
   assert.equal(flush.length, 1, JSON.stringify(flush))

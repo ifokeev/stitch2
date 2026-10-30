@@ -1142,6 +1142,17 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
           break
         }
       }
+    // 6h-3. A field's focus is its own edge: a ring that stands off a field which draws an edge of its own reads as a double border. Material thickens the
+    // edge of its outlined field, Carbon draws the outline inside it, Primer an inset ring and GOV.UK an outline at offset 0.
+    const fieldLike = h instanceof HTMLTextAreaElement || h instanceof HTMLSelectElement || h.matches('[role=combobox], [aria-haspopup=listbox]') ||
+      (h instanceof HTMLInputElement && !['checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'image', 'file', 'hidden', 'color'].includes(h.type))
+    if (fieldLike && own.width > 2) {
+      const fc = getComputedStyle(h)
+      const edge = parseFloat(fc.borderTopWidth) > 0 && fc.borderTopStyle !== 'none' && !/^(transparent|rgba\(0, 0, 0, 0\))$/.test(fc.borderTopColor)
+      const off = parseFloat(fc.outlineOffset)
+      if (edge && fc.outlineStyle !== 'none' && parseFloat(fc.outlineWidth) > 0 && off > 0.5)
+        push('warning', 'field-ring-gap', el, 'The focus ring stands ' + Math.round(off) + 'px off the field, beside the edge the field draws itself, so it shows two borders: let the focus take the edge (the edge turns the ring color and a 1px outline at offset 0 joins it)')
+    }
     h.blur()
     if (was === now) push('warning', 'focus-visible', el, 'No visible focus: someone using a keyboard cannot see where they are (add a :focus-visible ring)')
   }

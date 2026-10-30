@@ -22,8 +22,12 @@ component carries it once. A rule that a check measures names the check; the res
   the next steps up, and a nested corner is the outer radius minus the padding **(check: radius-mismatch)**.
 - **The edge shows where to type.** When the edge is the only thing that says "this is a field", it needs 3:1 against what is next
   to it (WCAG 1.4.11). A filled field on a different surface passes by its fill. The focus ring is separate: one ring, 3:1 against what it touches.
-- **Hover and focus do not fight.** A field under the pointer may light its edge; a focused field shows the ring alone, so a click never
-  draws two.
+- **A field's focus is its own edge (the Edge Rule).** The edge turns the focus color and a 1px outline joins it at offset 0, so the focus is 2px of
+  one line and there is no gap **(check: field-ring-gap)**. A ring 2px off a field stands beside the edge the field draws itself, and the two read as a double
+  border. Material thickens the edge of its outlined field to 3px, Carbon draws a 2px outline on the inside of the edge, Primer an inset ring and GOV.UK a 3px
+  outline at offset 0 with the border doubled: none of them stands the ring off a field. A button or a link has no edge to take and keeps the ring 2px off, and so
+  does a checkbox, a radio or a slider. An invalid field keeps its failure color on focus, as the same 2px. The ring is 3:1 against what it touches (WCAG 1.4.11, 2.4.13).
+- **Hover and focus do not fight.** A field under the pointer lights its edge (1px); a focused field is 2px of it, so a click never draws two.
 
 ## Label, hint, placeholder
 
@@ -60,6 +64,8 @@ component carries it once. A rule that a check measures names the check; the res
 
 - **Say it next to the field, in words and with a mark**, not by red alone: `aria-invalid="true"`, the message tied with `aria-describedby`,
   and on submit the first wrong field gets focus. A summary at the top helps on a long form.
+- **An error stands 8px under its control**, the gap that is inside a field (label, hint, control), never flush against it: a message that touches the box it is
+  about reads as part of the box.
 - **Say what to do**: "Enter your email address", "Email must look like name@example.com", "Full name must be 2 characters or more".
 - **Check when the person has finished the field** (on blur), not on every key. A new password or a free username is the exception: show the
   rule or the result while typing (NN/g). Keep what was typed when it is wrong, and let people paste.

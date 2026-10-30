@@ -19,7 +19,7 @@ measures names the check; the rest is for the agent to look at.
 
 ## Room for the ring and for the fill
 
-A focus ring reaches 4px past the box (2px wide, 2px offset), and a control that fills on hover, press or selection fills its
+A focus ring reaches 4px past the box (2px wide, 2px offset; a field takes its own edge for the focus and reaches 1px), and a control that fills on hover, press or selection fills its
 whole box, usually 44px high. Both are drawn outside what the eye takes for the control, and both are cut or crowded when the
 space around the control is not there.
 

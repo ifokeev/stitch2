@@ -53,7 +53,7 @@ Every interactive component has its states, defined once in the component and de
 |---|---|
 | Hover (pointer only) | the surface lightens or the text brightens one step, drawn inside `@media (hover: hover)` so a tap on a touch screen leaves nothing lit |
 | Pressed | a 10% layer of the label colour over the fill and a small sink (scale 0.98) for a boxed control, no ring; a link or a plain line goes to the strong colour and is underlined. On a touch screen this is the only feedback |
-| Focus (keyboard) | one ring (2px, offset 2px), never removed without a replacement and never drawn twice |
+| Focus (keyboard) | one ring (2px, offset 2px), never removed without a replacement and never drawn twice; a field takes its own edge instead (fields.md) |
 | Selected / current | shown by the accent or a raised surface; hover and press may stay as they are |
 | Disabled | faint, no hover or press change, the reason nearby; not used for something that is only not there yet (that is a line of text) |
 | Loading | busy, not off: the label stays, a spinner leads it, nothing is dimmed and a press does nothing |
