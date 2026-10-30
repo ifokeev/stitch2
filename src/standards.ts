@@ -310,7 +310,7 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
       const cs = getComputedStyle(el) as unknown as Record<string, string>
       // The padding of a field or a button above and below its line is what is left of its target height (44px less the line less the borders): it is a result, not a step.
       const target = (el.matches('input, textarea, select, button, summary, [role=button], [role=combobox]') || parseFloat(cs.minHeight) >= 40) && el.getBoundingClientRect().height >= 40
-      const computed = (el as HTMLElement & { computedStyleMap?: () => { get: (name: string) => { value?: unknown; unit?: string } | undefined } }).computedStyleMap?.()
+      const computed = (el as unknown as { computedStyleMap?: () => { get: (name: string) => { value?: unknown; unit?: string } | undefined } }).computedStyleMap?.()
       // The element is itself a component of the system (a p2-* class, or the data-p2 mark): inside a component a half step is an optical correction, which the rule allows.
       const component = el.matches('[data-p2], [class*="p2-"]')
       for (const p of props) {
