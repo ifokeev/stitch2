@@ -1115,7 +1115,8 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     const controls = 'button, a[href], select, summary, [role=button], input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file])'
     const blocks = all
       // A bar pinned to the bottom of the window (a sticky submit bar) is next to whatever is under the window's edge at this scroll, not next to the page's content.
-      .filter((e) => !e.matches(controls) && !e.querySelector(controls) && painted(e) && !(/sticky|fixed/.test(getComputedStyle(e).position) && getComputedStyle(e).top === 'auto' && getComputedStyle(e).bottom !== 'auto'))
+      // A backdrop that is only decoration (hidden from a reader, takes no pointer) is no neighbour either.
+      .filter((e) => !e.matches(controls) && !e.querySelector(controls) && painted(e) && !e.closest('[aria-hidden="true"]') && !(/sticky|fixed/.test(getComputedStyle(e).position) && getComputedStyle(e).top === 'auto' && getComputedStyle(e).bottom !== 'auto'))
       .map((e) => ({ e, r: e.getBoundingClientRect() }))
       .filter((b) => b.r.width >= 200 && b.r.height >= 8)
     for (const el of all) {

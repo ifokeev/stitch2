@@ -51,6 +51,8 @@ test('edge-flush: a bar under a navigation, with controls touching the navigatio
 test('edge-flush: a bar pinned to the bottom of the window is no neighbour of what happens to be under the window\'s edge', async () => {
   const bar = '<div style="position:sticky;bottom:0;height:60px;background:#000;border-top:1px solid #333"></div>'
   assert.equal((await issues('<div style="height:640px"></div>' + bar + '<div style="display:flex;min-height:44px;padding:0 24px"><button>Under the edge</button></div>', 'edge-flush')).length, 0)
+  const backdrop = '<div aria-hidden="true" style="height:640px;background:#222"></div>'
+  assert.equal((await issues(backdrop + '<div style="display:flex;min-height:44px;padding:0 24px"><button>Under the picture</button></div>', 'edge-flush')).length, 0, 'a decoration that is hidden from a reader')
 })
 
 test('edge-flush: a control that fills its surface on three sides is its content, and a shape that paints inside its own box is measured elsewhere', async () => {
