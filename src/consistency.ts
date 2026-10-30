@@ -313,6 +313,9 @@ const NAMES: Record<string, [string, string]> = {
 }
 export const nameOf = (kind: string) => NAMES[kind]?.[0] ?? kind.replace(/:/g, ' ')
 const key = (s: Sig) => JSON.stringify(s.fields)
+// A screen is drawn for a window class (screens/<screen>/<device>-v<N>.html). A phone sizes a title or a control differently from a desktop window
+// on purpose (Material's window size classes), so a screen is compared with the screens of its own device.
+const deviceOf = (path: string) => /(?:^|\/)(mobile|tablet|desktop)-v\d+\.html$/.exec(path)?.[1] ?? ''
 // An icon/thumb-only control has no painted typography to compare with a
 // labelled example. Its geometry still matches, and two actual fonts must match.
 const differences = (a: Sig, b: Sig) => Object.keys({ ...a.fields, ...b.fields })
@@ -331,7 +334,7 @@ export function consistencyIssues(
   for (const path of paths) {
     const issues: Issue[] = []
     out[path] = issues
-    const peers = (families.get(familyOf(path)) ?? []).filter((p) => p !== path)
+    const peers = (families.get(familyOf(path)) ?? []).filter((p) => p !== path && deviceOf(p) === deviceOf(path))
     for (const [kind, sigs] of Object.entries(known[path] ?? {})) {
       // The catalog shows every variant of a component side by side; a screen shows one.
       if (sigs.some((a, i) => sigs.slice(i + 1).some((b) => !matches(a, b))) && MEASURED.has(kind.split(':')[0]!) && !catalogs.includes(path))

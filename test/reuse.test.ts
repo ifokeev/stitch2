@@ -71,3 +71,18 @@ test('consistency compares painted fonts when present, without inventing typogra
   assert.ok(results['screens/mixed/mobile-v1.html']!.some((i) => i.message.includes('different versions')))
   assert.ok(results['screens/size/mobile-v1.html']!.some((i) => i.message.includes('height')))
 })
+
+test('consistency votes among the screens of one device: a phone may size a title differently from a desktop window, but not differently from other phones', () => {
+  const sig = (fields: Record<string, string>) => ({ selector: '#title', text: 'Name', fields })
+  const wide = sig({ height: '46', font: '20/600/Inter' }), narrow = sig({ height: '44', font: '16/600/Inter' })
+  const kind = 'button:ghost:heading'
+  const known = {
+    'screens/a/desktop-v1.html': { [kind]: [wide] }, 'screens/b/desktop-v1.html': { [kind]: [wide] }, 'screens/c/desktop-v1.html': { [kind]: [wide] },
+    'screens/a/mobile-v1.html': { [kind]: [narrow] }, 'screens/b/mobile-v1.html': { [kind]: [narrow] }, 'screens/c/mobile-v1.html': { [kind]: [narrow] },
+    'screens/d/mobile-v1.html': { [kind]: [wide] },
+  }
+  const results = consistencyIssues(known, Object.keys(known))
+  assert.deepEqual(['a', 'b', 'c'].flatMap((s) => [...results['screens/' + s + '/desktop-v1.html']!, ...results['screens/' + s + '/mobile-v1.html']!]), [])
+  assert.ok(results['screens/d/mobile-v1.html']!.some((i) => i.message.includes('differs from 3 other screens')))
+})
+

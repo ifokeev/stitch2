@@ -110,7 +110,7 @@ series) is added to DESIGN.md first, with a line in the prose saying where it is
   `<meta name="<prefix>-source" content="app">` is a visual baseline, not a component implementation, so its
   markup is not reuse-checked; make a new lab-authored version before editing the snapshot.
 - **consistency**: a component whose size, radius, font, icon set or icons differ from the catalog's version
-  (or, without a catalog, from the majority of screens in its family), or that appears in two versions on one
+  (or, without a catalog, from the majority of screens in its family on the same device), or that appears in two versions on one
   screen. `stitch2 consistency` shows the same as cropped images; see the stitch2-consistency skill.
 - **color**: a hex, `rgb()` or `hsl()` value in a lab screen's markup, or (reported on the catalog) in the
   component scripts it loads, with the file and line.

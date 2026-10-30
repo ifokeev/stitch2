@@ -10,7 +10,7 @@ Declared card layout and size variants are compared separately: a horizontal row
 have different geometry by design. Each variant still has to match its own catalog reference or peers.
 stitch2 measures this; your job is to read the evidence, decide what is wrong, and fix it at the source. The
 reference is the **component catalog** (the screen in the config's `catalogDir`); without a catalog, the
-majority of screens in the same family.
+majority of screens in the same family and on the same device (a phone and a desktop window may size a title or a control differently on purpose; two phones may not).
 
 ## 1. Measure
 
