@@ -54,6 +54,11 @@ export interface LabConfig {
    */
   widths?: Record<string, [number, number]>
   /**
+   * WCAG 1.4.10 (reflow): check also narrows every phone-sized screen to 320 CSS px (the width of a desktop window at 400% zoom) and reports what sticks
+   * out or scrolls sideways there, as warnings. On by default; false turns it off.
+   */
+  reflow?: boolean
+  /**
    * The window widths where the screens' layouts change (their responsive rules, Tailwind's sm: md: lg: …), in px.
    * check renders each variant at every breakpoint inside its range besides the two ends, and the canvas can show
    * every screen at one of them. Defaults to Tailwind's: sm 640, md 768, lg 1024, xl 1280, 2xl 1536.

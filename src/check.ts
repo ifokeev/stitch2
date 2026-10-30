@@ -47,6 +47,7 @@ import { startServer } from './serve.ts'
 import { catalogStates, type StateRow, writeStatesSheet } from './states.ts'
 import { collectText, type Issue, typeIssues } from './typecheck.ts'
 import { audit, movingAnimations } from './audit.ts'
+import { COLOUR_TYPES, standards } from './standards.ts'
 
 
 const args = process.argv.slice(2)
@@ -74,6 +75,13 @@ const auditOpts = {
   columns: (() => { try { return columnWidths() } catch { return [] } })(),
   secondary: (() => { try { return 'text-muted' in readDesign().colors ? 'var(--' + config.prefix + '-text-muted)' : undefined } catch { return undefined } })(),
 }
+/** The layout audit and the checks that come from published standards (standards.ts). full also runs what changes the page or moves its focus. */
+const everything = async (page: import('@playwright/test').Page, full = false): Promise<Issue[]> => [
+  ...(await page.evaluate(audit, auditOpts)),
+  ...(await page.evaluate(standards, { full })),
+]
+/** WCAG 1.4.10: the narrowest window a screen has to read in without scrolling sideways, in CSS px. */
+const REFLOW = 320
 const server = await startServer(0)
 /** The tallest render, in CSS px: a long landing page is shot whole (the canvas draws frames up to the same height). */
 const MAX_RENDER_HEIGHT = 20000
@@ -204,20 +212,20 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
     components[s.path] = found.components
   const own = await page.evaluate(() => document.documentElement.dataset.theme || '')
   const base = own || themes[0]!
-  const layout = await page.evaluate(audit, auditOpts)
+  const layout = await everything(page, true)
   // With reduced motion asked for, nothing keeps moving (DESIGN.md motion, WCAG 2.3.3).
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.waitForTimeout(100)
   layout.push(...(await page.evaluate(movingAnimations)))
   await page.emulateMedia({ reducedMotion: null })
-  for (const i of layout) if (i.type === 'contrast') i.theme = base
+  for (const i of layout) if (COLOUR_TYPES.includes(i.type)) i.theme = base
   // The other themes: what the colours change (contrast), plus anything that only shows there.
   const seen = new Set(layout.map((i) => `${i.type} ${i.selector}`))
   const themed: Issue[] = []
   for (const theme of themes.filter((t) => t !== base)) {
     await setTheme(page, theme)
-    for (const i of await page.evaluate(audit, auditOpts))
-      if (i.type === 'contrast' || !seen.has(`${i.type} ${i.selector}`))
+    for (const i of await everything(page, true))
+      if (COLOUR_TYPES.includes(i.type) || !seen.has(`${i.type} ${i.selector}`))
         themed.push({ ...i, theme, message: `${theme} theme: ${i.message}` })
     if (shots) await shoot(page, s, theme)
   }
@@ -227,11 +235,11 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
     const drawn = await page.evaluate((attribute) => document.documentElement.getAttribute(attribute), mode.attribute)
     for (const value of mode.values.filter((v) => v.value !== drawn)) {
       await setAttribute(page, mode.attribute, value.value)
-      for (const i of await page.evaluate(audit, auditOpts)) {
+      for (const i of await everything(page)) {
         const key = `${i.type} ${i.selector}`
         if (seen.has(key)) continue
         seen.add(key)
-        themed.push({ ...i, ...(i.type === 'contrast' ? { theme: base } : {}), mode: `${mode.name}:${value.value}`, message: `${value.label}: ${i.message}` })
+        themed.push({ ...i, ...(COLOUR_TYPES.includes(i.type) ? { theme: base } : {}), mode: `${mode.name}:${value.value}`, message: `${value.label}: ${i.message}` })
       }
       if (shots) await shoot(page, s, undefined, undefined, `${mode.name}-${value.value}`)
     }
@@ -255,9 +263,9 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
   const unknownSeen = new Set<string>()
   for (const locale of locales) {
     await openScreen(page, `http://127.0.0.1:${server.port}/${s.path}?lang=${encodeURIComponent(locale)}`)
-    for (const i of await page.evaluate(audit, auditOpts)) {
+    for (const i of await everything(page)) {
       const key = `${i.type} ${i.selector}`
-      if (i.type === 'contrast' || seen.has(key)) continue
+      if (COLOUR_TYPES.includes(i.type) || seen.has(key)) continue
       seen.add(key)
       themed.push({ ...i, locale, message: `${locale}: ${i.message}` })
     }
@@ -300,13 +308,26 @@ const checkOne = async (s: (typeof screens)[number], worker: Worker): Promise<vo
   for (const width of s.kind === 'screen' ? checkWidths(s.device).filter((w) => w !== s.width) : []) {
     await page.setViewportSize({ width, height: 844 })
     await openScreen(page, `http://127.0.0.1:${server.port}/${s.path}`)
-    for (const i of await page.evaluate(audit, auditOpts)) {
+    for (const i of await everything(page)) {
       const key = `${i.type} ${i.selector}`
-      if (i.type === 'contrast' || seen.has(key)) continue
+      if (COLOUR_TYPES.includes(i.type) || seen.has(key)) continue
       seen.add(key)
       themed.push({ ...i, width, message: `at ${width}px: ${i.message}` })
     }
     if (shots) await shoot(page, { ...s, width }, undefined, undefined, `${width}px`)
+  }
+  // WCAG 1.4.10 (reflow): a phone-sized screen reads at 320 CSS px, the width of a desktop window zoomed to 400%, without scrolling sideways. Only the layout
+  // is looked at, and only when the variant's own widths do not reach 320 (they start at 360 by default). The window is narrowed in place: no reload.
+  if (s.kind === 'screen' && s.width < 600 && config.reflow !== false && !checkWidths(s.device).some((w) => w <= REFLOW)) {
+    await page.setViewportSize({ width: REFLOW, height: 844 })
+    await page.waitForTimeout(150)
+    for (const i of await page.evaluate(audit, auditOpts)) {
+      if (!['page-overflow', 'overflow', 'text-overlap', 'fixed-overlap', 'control-overlap'].includes(i.type)) continue
+      const key = 'reflow ' + i.selector
+      if (seen.has(key)) continue
+      seen.add(key)
+      themed.push({ ...i, severity: 'warning', type: 'reflow', width: REFLOW, message: 'at ' + REFLOW + 'px (WCAG 1.4.10 reflow): ' + i.message })
+    }
   }
   await page.setViewportSize({ width: s.width, height: 844 })
     results[s.path] = [

@@ -67,6 +67,11 @@
       "description": "The window widths each variant covers, [narrowest, widest] in px, by device (mobile, tablet, desktop). check renders every variant at both ends; the canvas shows them. Defaults: mobile 360–599, tablet 600–1023, desktop 1024–1920.",
       "additionalProperties": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
     },
+    "reflow": {
+      "type": "boolean",
+      "description": "WCAG 1.4.10: check also narrows every phone-sized screen to 320 CSS px (a desktop window at 400% zoom) and warns about what sticks out or scrolls sideways there. Default true.",
+      "default": true
+    },
     "breakpoints": {
       "type": "object",
       "description": "The window widths where the screens' layouts change (their responsive rules), in px by name. check also renders each variant at every breakpoint inside its range; the canvas can show every screen at one. Defaults to Tailwind's: sm 640, md 768, lg 1024, xl 1280, 2xl 1536.",

@@ -135,6 +135,10 @@ const describeLevel = (l: Level) =>
 export function typeIssues(levels: Level[], items: TextItem[]): Issue[] {
   const out: Issue[] = []
   const seen = new Set<string>()
+  // The families DESIGN.md means: the first of each stack. A control that does not inherit the page's font falls back to the browser's own (system-ui),
+  // which a stack lists only as its fallback, so it is not one of these.
+  const families = new Set(levels.map((l) => l.family).filter((f): f is string => !!f))
+  const odd = new Set<string>()
   const push = (severity: Issue['severity'], type: string, t: TextItem, message: string) => {
     if (out.filter((i) => i.type === type).length >= 10) return
     out.push({ severity, type, message, selector: t.selector, text: t.text })
@@ -150,6 +154,18 @@ export function typeIssues(levels: Level[], items: TextItem[]): Issue[] {
           t,
           `Off the type scale: ${key}; nearest level ${describeLevel(nearestLevel(levels, t))}`,
         )
+      }
+    }
+    if (!t.code && families.size && t.family && !families.has(t.family) && !odd.has(t.family) && !/icon|symbol|emoji|material/i.test(t.family)) {
+      odd.add(t.family)
+      push('warning', 'type-family', t, `Set in ${t.family}, which DESIGN.md does not name (${[...families].join(', ')}): a control that does not inherit the page's font falls back to the browser's`)
+    }
+    // The Whole-Pixel Rule: a size or a line height with a fraction draws lines on half pixels, and the text looks soft and uneven.
+    if (!t.code && (!Number.isInteger(t.size) || Math.abs(t.lineHeight - Math.round(t.lineHeight)) > 0.01)) {
+      const key = `whole ${t.size}/${t.lineHeight}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        push('warning', 'type-fraction', t, `${t.size}px on ${Number(t.lineHeight.toFixed(2))}px: a size and a line height are whole pixels, or lines are drawn on half pixels`)
       }
     }
     if (t.lines > 1 && t.lineHeight < t.size * 1.15)

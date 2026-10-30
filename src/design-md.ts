@@ -119,6 +119,8 @@ export interface Level {
   weight: number
   lineHeight: number
   tracking: number
+  /** The first family of the level's font stack, the one the level means. */
+  family?: string
 }
 
 export function typeLevels(design = readDesign()): Level[] {
@@ -132,6 +134,7 @@ export function typeLevels(design = readDesign()): Level[] {
     return {
       name,
       mono: /mono/i.test(t.fontFamily ?? ''),
+      family: (t.fontFamily ?? '').split(',')[0]?.replaceAll(/["']/g, '').trim() || undefined,
       size,
       weight: Number(t.fontWeight ?? 400),
       lineHeight,
