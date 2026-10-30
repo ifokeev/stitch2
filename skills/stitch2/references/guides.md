@@ -26,6 +26,9 @@ are restated in principles.md.
 | web.dev Learn Design and Learn Forms (web.dev/learn/design, web.dev/learn/forms) | yes | Responsive layout, typography, navigation patterns, interaction (pointer, hover), accessibility, forms |
 | Lighthouse audits (developer.chrome.com/docs/lighthouse) | yes | The exact rules behind tap target spacing and legible font sizes |
 | Material 3 interaction states (m3.material.io/foundations/interaction/states) | yes | The state layer percentages for hover, focus, pressed and dragged, and the disabled opacities |
+| WAI-ARIA Authoring Practices: Menu and Menubar, Menu Button, Disclosure Navigation (w3.org/WAI/ARIA/apg/patterns/menubar, /menu-button, /disclosure) | yes | When a list is a menu and when a disclosure, the keys of a menu, separators and disabled items ([menus.md](menus.md)) |
+| NN/g, Menu-Design Checklist: 17 UX Guidelines (nngroup.com/articles/menu-design) | yes | Current place marked, click-activated submenus, no cascading, big enough to tap, left-justified labels |
+| Apple HIG, Menus and Sidebars (developer.apple.com/design/human-interface-guidelines/menus, /sidebars) | yes | Icons all or none, separators, submenus one level, ellipsis for more input, at most two levels in a sidebar |
 | WCAG 2.2 Understanding: Use of Color, Non-text Contrast, Focus Appearance (w3.org/WAI/WCAG22/Understanding) | yes | Links told apart by more than colour (1.4.1), 3:1 for a focus ring and a control's edge (1.4.11), the focus ring's size (2.4.13) |
 | MDN, the `hover` media feature (developer.mozilla.org/docs/Web/CSS/@media/hover) | yes | Drawing hover only for devices that can hover |
 | GOV.UK Design System, Text input (design-system.service.gov.uk/components/text-input) | yes | Labels above fields, no placeholders, hints, widths that follow the answer, error wording, `inputmode` |

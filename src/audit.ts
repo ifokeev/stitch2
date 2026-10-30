@@ -207,14 +207,17 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
   // they go into a menu instead). Only chip rows scroll sideways.
   for (const el of all) {
     if (!el.matches('nav, [role=navigation]') && !(el.closest('header') && el.querySelector(':scope > a'))) continue
-    const ox = getComputedStyle(el).overflowX
+    const ox = getComputedStyle(el).overflowX, oy = getComputedStyle(el).overflowY
     if (ox === 'visible') continue
+    // A column that scrolls up and down (a sidebar's list of rows) keeps every row reachable; only a sideways cut hides a link there. Setting overflow-y alone makes overflow-x compute to auto.
+    const column = oy === 'auto' || oy === 'scroll'
     const box = el.getBoundingClientRect()
     const cut = [...el.querySelectorAll('a')].filter((a) => {
       if (!shown(a)) return false
       const r = a.getBoundingClientRect()
       // Wholly outside (wrapped away into a menu's overflow) is a choice; partly outside is a cut link.
-      const inside = r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1
+      const inside = r.left >= box.left - 1 && r.right <= box.right + 1 && (column || (r.top >= box.top - 1 && r.bottom <= box.bottom + 1))
+      if (column && !inside) return true
       const outside = r.right <= box.left || r.left >= box.right || r.bottom <= box.top || r.top >= box.bottom
       return !inside && (!outside || ox === 'auto' || ox === 'scroll')
     })
@@ -1222,6 +1225,41 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
       }
       if (touching.length)
         push('warning', 'edge-flush', el, Math.round(r.width) + '×' + Math.round(r.height) + 'px control with its ' + touching[0]!.side + ' edge less than ' + ROOM + 'px from ' + sel(touching[0]!.by).split(' > ').pop() + ': leave ' + ROOM + 'px so its hover and focus fills have room')
+    }
+  }
+
+  // 6n. Menus (APG menu and disclosure patterns, Material 3 menus, Carbon, Apple HIG; skills/stitch2/references/menus.md). A menu is the element with role menu, or one a project marks
+  // with data-menu; its items are the elements with a menuitem role and, in a marked menu, its links and buttons.
+  {
+    const clearColor = (value: string) => /^(rgba\(0, 0, 0, 0\)|transparent)$/.test(value)
+    const menus = [...document.querySelectorAll('[role=menu], [data-menu]')].filter(shown)
+    const itemsOf = (menu: Element) => [...menu.querySelectorAll('[role=menuitem], [role=menuitemcheckbox], [role=menuitemradio], :is(a[href], button):not([role])')]
+      .filter((item) => shown(item) && !item.closest('[hidden]') && item.closest('[role=menu], [data-menu]') === menu)
+    for (const menu of menus) {
+      const items = itemsOf(menu)
+      if (!items.length) continue
+      for (const item of items) {
+        const box = item.getBoundingClientRect(), style = getComputedStyle(item)
+        // The floor is 44px (a touch target: Apple, WCAG 2.5.8 asks 24 and Material 48); a row of text under 14px is a dense desktop menu that people also touch.
+        if (box.height < 43.5 || parseFloat(style.fontSize) < 14) {
+          push('warning', 'menu-item-size', item, 'A menu item ' + Math.round(box.width) + '×' + Math.round(box.height) + 'px with ' + style.fontSize + ' text: a menu is touched as well as pointed at, so a row is 44px at least (Material and Carbon use 48) and its text is 14px at least')
+          break
+        }
+      }
+      // A row with a border is a button in a box, and a column of them reads as a stack of buttons, not as a list.
+      const boxed = items.find((item) => { const style = getComputedStyle(item); return parseFloat(style.borderTopWidth) > 0 && style.borderTopStyle !== 'none' && !clearColor(style.borderTopColor) })
+      if (boxed && items.length > 1) push('warning', 'menu-item-boxed', boxed, 'A menu item with a border drawn: a row has no border, and the pointer, the press and the current item are told by a fill')
+      // Links in a role=menu are navigation: a disclosure (a button that opens a list of links) is the pattern, and the menu role promises keys that links do not have.
+      if (menu.getAttribute('role') === 'menu' && items.every((item) => item.tagName === 'A')) push('warning', 'menu-role-links', menu, 'A menu role over links only: a list of links that opens from a button is a disclosure, so leave the menu role out (APG, disclosure navigation)')
+      // Icons: every item of a group has one or none does. An icon is the first thing in the row (a mark at its end is not one).
+      const groups = new Map<Element, Element[]>()
+      for (const item of items) { const group = item.closest('[role=group], ul, ol') ?? menu; groups.set(group, [...(groups.get(group) ?? []), item]) }
+      const leading = (item: Element) => { const first = item.firstElementChild; return !!first && first.matches('svg, img, [data-icon]') }
+      for (const own of groups.values()) {
+        if (own.length < 2) continue
+        const withIcon = own.filter(leading)
+        if (withIcon.length && withIcon.length < own.length) { push('warning', 'menu-icons-uneven', own.find((item) => !leading(item))!, 'Some items of this group have an icon and some do not: give every item of a group an icon, or none (Apple HIG)'); break }
+      }
     }
   }
 
