@@ -1007,6 +1007,39 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     }
   }
 
+  // 6e3. A form is one column (Baymard, NN/g): fields share a line only when they are one thing (a ratio and a length, a city and a postcode), and then the row has one top:
+  // every field in it has the same parts above its control (a label, a hint), or none. A text area and a drop area have the row to themselves.
+  const fieldControls = (group: Element) =>
+    [...group.querySelectorAll('input, textarea, select, [role=combobox], [role=textbox]')].filter((c) => !c.matches('[type=hidden], [type=submit], [type=button], [type=checkbox], [type=radio], [type=range], [type=search]'))
+  // What is drawn for a control: itself, or, for a file input behind its drop area, the tallest label that points to it (the other label is its name).
+  const faceOf = (c: Element) => {
+    const own = c.getBoundingClientRect()
+    if (own.width > 8 && own.height > 8) return own
+    return [...((c as HTMLInputElement).labels ?? [])].map((l) => l.getBoundingClientRect()).filter((b) => b.width > 8 && b.height > 8).sort((a, b) => b.height - a.height)[0] ?? null
+  }
+  const aligned = new Set<Element>()
+  const crowded = new Set<Element>()
+  for (const parent of all) {
+    const groups = [...parent.children].filter((k) => shown(k)).map((k) => ({ k, controls: fieldControls(k) })).filter((g) => g.controls.length === 1)
+    for (let i = 0; i < groups.length; i++)
+      for (let j = i + 1; j < groups.length; j++) {
+        const a = groups[i]!, b = groups[j]!, ra = a.k.getBoundingClientRect(), rb = b.k.getBoundingClientRect()
+        const sideBySide = ra.right <= rb.left + 2 && Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top) > Math.min(ra.height, rb.height) * 0.3
+        if (!sideBySide) continue
+        const fa = faceOf(a.controls[0]!), fb = faceOf(b.controls[0]!)
+        if (!fa || !fb) continue
+        const wide = [a, b].find((g) => g.controls[0]!.matches('textarea, [type=file]'))
+        if (wide && !crowded.has(wide.k)) {
+          crowded.add(wide.k)
+          push('warning', 'field-row-wide', wide.k, 'A text area or a drop area is beside another field: it has the row to itself, since a form is one column and only short fields that are one thing share a line (Baymard, NN/g)')
+        }
+        if (Math.abs(fa.top - fb.top) > 2 && !aligned.has(b.k)) {
+          aligned.add(b.k)
+          push('warning', 'field-row-align', b.k, 'Fields in one row start their controls on different lines (' + Math.round(Math.abs(fa.top - fb.top)) + 'px apart): give each the same parts above its control (a label and a hint on all, or on none), or stack them')
+        }
+      }
+  }
+
   // 6f. Every control has a name (Android's content descriptions, WCAG 4.1.2): an icon-only button needs a label.
   for (const el of interactive) {
     if (el.matches('input, select, textarea')) continue

@@ -45,3 +45,22 @@ test('hint-length: a description of a button or a dialog is not a field hint', a
   assert.deepEqual(issues, [])
 })
 
+test('field-row-align: fields in one row start their controls on one line, with the same parts above them', async () => {
+  const row = (a: string, b: string) => '<div style="display:flex;gap:16px"><div style="width:200px">' + a + '</div><div id="second" style="width:200px">' + b + '</div></div>'
+  const field = (id: string, hint = '') => '<label for="' + id + '">Name</label>' + (hint ? '<p style="margin:0">' + hint + '</p>' : '') + '<input id="' + id + '" style="display:block;width:100%;height:44px">'
+  assert.deepEqual((await read(row(field('a', 'A hint'), field('b')), 'field-row-align')).map((i) => i.selector), ['#second'])
+  assert.deepEqual(await read(row(field('c', 'A hint'), field('d', 'A hint')), 'field-row-align'), [])
+  assert.deepEqual(await read(field('e', 'One') + field('f'), 'field-row-align'), [])
+})
+
+test('field-row-wide: a text area or a drop area is not beside another field, short fields may be', async () => {
+  const row = (a: string, b: string) => '<div style="display:flex;gap:16px"><div id="first" style="width:200px">' + a + '</div><div style="width:200px">' + b + '</div></div>'
+  const input = (id: string) => '<label for="' + id + '">Field</label><input id="' + id + '" style="display:block;width:100%;height:44px">'
+  const area = (id: string) => '<label for="' + id + '">Notes</label><textarea id="' + id + '" style="display:block;width:100%;height:80px"></textarea>'
+  const file = (id: string) => '<label for="' + id + '">File</label><input type="file" id="' + id + '" style="position:absolute;width:1px;height:1px;opacity:0"><label for="' + id + '" style="display:block;height:120px;border:1px dashed">Click to upload</label>'
+  assert.deepEqual((await read(row(area('g'), input('h')), 'field-row-wide')).map((i) => i.selector), ['#first'])
+  assert.equal((await read(row(input('i'), file('j')), 'field-row-wide')).length, 1)
+  assert.deepEqual(await read(row(input('k'), input('l')), 'field-row-wide'), [])
+})
+
+

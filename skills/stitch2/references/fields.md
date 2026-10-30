@@ -44,6 +44,17 @@ component carries it once. A rule that a check measures names the check; the res
 - **An error takes the hint's place** next to the field and is a message, not a hint (Material, Apple); the hint comes back when it is fixed.
 - **Floating labels** are better than a placeholder used as a label, and worse than a label above the field if there is room.
 - **Mark the exception.** When almost every field is required, write "(optional)" on the few that are not, rather than a star on all.
+- **A value with a form of its own gets the control of that form, not a text box that says the form in its hint.** A color is a swatch that opens the system picker beside the hex, with a clear button where empty means "let the product decide" (Material and Atlassian pair a swatch with a hex field; the native picker is known and accessible), and named chips where the choice is between a few. A date is a date control. A map of words is rows of two fields with a way to add one, never JSON and never lines of `key = value` (the application's own renderer says in a comment that it should be rows, if people ask). A number with a range has its bounds. The hint then does not say the format ("As #RRGGBB"): it says what the value is for. Check the hex when the person leaves the field, say what is valid in the hint's place, and keep what was typed.
+
+## Fields in a row
+
+- **A form is one column.** Baymard's checkout studies and NN/g both find that a second column makes some people skip a field or fill one that is not for them, since the eye is led
+  down, and then sideways. Two or three short fields share a line only when they are one thing (a ratio and a length, a city and a postcode) and the rest of the form is one column.
+- **A text area and a drop area have the row to themselves** **(check: field-row-wide)**: they are the biggest thing in a form, and a drop area of 190px has no room for its own words.
+- **A row has one top** **(check: field-row-align)**. The fields in it have the same parts above their controls: a label and a hint on all of them, or on none. One field with a hint and
+  one without start their controls on two lines, and the row looks crooked; the fix is the parts, not a margin.
+- **The pane decides, not the window.** A form that sits in a pane of 392px beside a viewer cannot hold two areas because the window is wide: a `sm:` breakpoint measures the window.
+  Use the width of the form's own container (a container query, or `auto-fit` with a minimum), so the same form stacks in a narrow pane and sits in two columns in a wide one.
 
 ## Errors and validation
 
