@@ -372,6 +372,18 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
       const edgeRatio = sides && edge ? ratio(over(edge, base), base) : 0
       const fillRatio = fill && fill.a > 0 ? ratio(over(fill, base), base) : 0
       if (edgeRatio >= 3 || fillRatio >= 3) continue
+      // A field with no edge and no fill of its own sits in a frame that draws it (the composer of a chat): the frame's edge or fill is the one that shows where it is.
+      if (!sides && !(fill && fill.a > 0)) {
+        let framed = false
+        for (let up = el.parentElement, n = 0; up && up !== document.body && n < 3 && !framed; up = up.parentElement, n++) {
+          const ucs = getComputedStyle(up), ub = behind(up)
+          if (!ub) break
+          const ubase = flat(ub), uedge = parse(ucs.borderTopColor), ufill = parse(ucs.backgroundColor)
+          const uSides = [ucs.borderTopWidth, ucs.borderBottomWidth, ucs.borderLeftWidth, ucs.borderRightWidth].every((w) => parseFloat(w) >= 1)
+          if ((uSides && uedge && ratio(over(uedge, ubase), ubase) >= 3) || (ufill && ufill.a > 0 && ratio(over(ufill, ubase), ubase) >= 3)) framed = true
+        }
+        if (framed) continue
+      }
       const key = cs.borderTopColor + '|' + cs.backgroundColor + '|' + back.r.toFixed(0)
       if (reported.has(key)) continue
       reported.add(key)
