@@ -9,7 +9,9 @@ import type { Issue } from './typecheck.ts'
 /** Types that depend on the theme's colours: check runs them again in every theme, as it does contrast. */
 export const COLOUR_TYPES = ['contrast', 'focus-contrast', 'field-edge']
 
-export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
+export async function standards(opts: { full?: boolean; prefix?: string }): Promise<Issue[]> {
+  // The prefix of the project's own components (config "prefix": <prefix>-select, <prefix>-badge, data-<prefix>); without one no element is taken for a component of the system.
+  const ours = opts.prefix ? ({ select: '.' + opts.prefix + '-select', component: '[data-' + opts.prefix + '], [class*="' + opts.prefix + '-"]' }) : undefined
   const W = document.documentElement.clientWidth
   const out: Issue[] = []
   const sel = (el: Element) => {
@@ -138,7 +140,7 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
     if (!(el instanceof HTMLInputElement) || el.matches('[type=hidden], [type=checkbox], [type=radio], [type=submit], [type=button], [type=range], [type=file], [type=search], [type=number], [type=date]') || el.closest('[role=search], search')) continue
     const hay = (el.name + ' ' + el.id + ' ' + (el.getAttribute('aria-label') ?? '') + ' ' + el.placeholder).toLowerCase()
     const purpose = el.type === 'email' || /e-?mail/.test(hay) ? 'email' : el.type === 'password' ? 'password' : el.type === 'tel' || /phone|mobile/.test(hay) ? 'tel'
-      : /first.?name|given/.test(hay) ? 'given-name' : /last.?name|family|surname/.test(hay) ? 'family-name' : /(^|[^a-z])name([^a-z]|$)/.test(hay) && !/user|file|pipeline|model|project/.test(hay) ? 'name'
+      : /first.?name|given/.test(hay) ? 'given-name' : /last.?name|family|surname/.test(hay) ? 'family-name' : /(^|[^a-z])name([^a-z]|$)/.test(hay) && !/user|file|model|project/.test(hay) ? 'name'
       : /postal|zip/.test(hay) ? 'postal-code' : /street|address/.test(hay) ? 'street-address' : /card.?num|cc-?num/.test(hay) ? 'cc-number' : ''
     if (purpose && (!el.autocomplete || el.autocomplete === 'off')) push('warning', 'autocomplete', el, 'A field for ' + purpose + ' with no autocomplete="' + purpose + '" (WCAG 1.3.5): the browser cannot fill it in')
   }
@@ -221,7 +223,7 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
   for (const el of shown) {
     if (el instanceof HTMLSelectElement && !el.multiple && el.size <= 1) {
       const cs = getComputedStyle(el)
-      const parent = el.closest('.p2-select')?.parentElement ?? el.parentElement
+      const parent = (ours && el.closest(ours.select))?.parentElement ?? el.parentElement
       const drawn = [...(parent?.children ?? [])].filter((n) => n.tagName.toLowerCase() === 'svg' && getComputedStyle(n).position === 'absolute').length
       const own = cs.appearance === 'none' && cs.backgroundImage !== 'none' ? 1 : 0
       const native = cs.appearance !== 'none' ? 1 : 0
@@ -311,8 +313,8 @@ export async function standards(opts: { full?: boolean }): Promise<Issue[]> {
       // The padding of a field or a button above and below its line is what is left of its target height (44px less the line less the borders): it is a result, not a step.
       const target = (el.matches('input, textarea, select, button, summary, [role=button], [role=combobox]') || parseFloat(cs.minHeight) >= 40) && el.getBoundingClientRect().height >= 40
       const computed = (el as unknown as { computedStyleMap?: () => { get: (name: string) => { value?: unknown; unit?: string } | undefined } }).computedStyleMap?.()
-      // The element is itself a component of the system (a p2-* class, or the data-p2 mark): inside a component a half step is an optical correction, which the rule allows.
-      const component = el.matches('[data-p2], [class*="p2-"]')
+      // The element is itself a component of the system (a <prefix>-* class, or the data-<prefix> mark): inside a component a half step is an optical correction, which the rule allows.
+      const component = !!ours && el.matches(ours.component)
       for (const p of props) {
         const v = parseFloat(cs[p]!)
         if (!(v >= 3) || v > 200 || done.has(Math.round(v * 100)) || Math.abs(v / 4 - Math.round(v / 4)) < 0.01) continue

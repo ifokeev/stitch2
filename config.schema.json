@@ -62,6 +62,18 @@
       "description": "Tap targets smaller than this (px) get a warning.",
       "default": 32
     },
+    "rules": {
+      "type": "object",
+      "description": "The numbers some checks hold a screen to, when a project's own rules differ from the defaults (each default comes from a published source named in the check's skill).",
+      "additionalProperties": false,
+      "properties": {
+        "hintCharacters": { "type": "number", "description": "hint-length: the longest hint under a label, in characters.", "default": 90 },
+        "hintLines": { "type": "number", "description": "hint-length: the most lines a hint may take.", "default": 2 },
+        "menuItemHeight": { "type": "number", "description": "menu-item-size: the shortest menu item, in px (Apple 44, Material and Carbon 48).", "default": 44 },
+        "menuItemText": { "type": "number", "description": "menu-item-size: the smallest text in a menu item, in px.", "default": 14 },
+        "measureLongest": { "type": "number", "description": "measure: the longest line of prose, in characters, before a warning (the target is 45–75; the rest is the slack of a font).", "default": 80 }
+      }
+    },
     "widths": {
       "type": "object",
       "description": "The window widths each variant covers, [narrowest, widest] in px, by device (mobile, tablet, desktop). check renders every variant at both ends; the canvas shows them. Defaults: mobile 360–599, tablet 600–1023, desktop 1024–1920.",

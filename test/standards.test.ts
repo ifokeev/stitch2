@@ -6,13 +6,13 @@ import { typeIssues, type TextItem } from '../src/typecheck.ts'
 
 // Checks that come from published standards (WCAG 2.2, ARIA authoring practices, MDN) and from the rules of DESIGN.md that a page breaks by drawing.
 const base = 'html{background:#111}*{box-sizing:border-box}body{margin:0;font:16px/24px sans-serif;background:#111;color:#eee}button,input,textarea,select{font:inherit;color:inherit}'
-const found = async (html: string, type: string, options: { full?: boolean; width?: number; css?: string; raw?: boolean } = {}) => {
+const found = async (html: string, type: string, options: { full?: boolean; width?: number; css?: string; raw?: boolean; prefix?: string } = {}) => {
   const browser = await chromium.launch()
   try {
     const page = await browser.newPage({ viewport: { width: options.width ?? 900, height: 700 } })
     await page.setContent(options.raw ? html : '<style>' + base + (options.css ?? '') + '</style>' + html)
     await page.evaluate(() => document.fonts.ready)
-    return (await page.evaluate(standards, { full: options.full ?? false })).filter((i) => i.type === type)
+    return (await page.evaluate(standards, { full: options.full ?? false, prefix: options.prefix })).filter((i) => i.type === type)
   } finally { await browser.close() }
 }
 
@@ -168,10 +168,19 @@ test('spacing-grid: the padding of a field is what is left of its target height,
   assert.equal((await found('<div style="display:flex;flex-direction:column;height:98px"><div style="height:20px;margin-top:auto">M</div></div>', 'spacing-grid', { css })).length, 0, 'an auto margin that resolves to a whole number of pixels')
   assert.equal((await found('<div style="display:flex;flex-direction:column;height:98px"><div style="height:20px;margin-top:78px">M</div></div>', 'spacing-grid', { css })).length, 1, 'the same margin written as a number is a step')
   assert.equal((await found('<a href="#" style="display:inline-flex;min-height:44px;align-items:center;padding:10px 16px">Link</a>', 'spacing-grid', { css })).length, 0, 'a link as tall as a target')
-  assert.equal((await found('<span class="p2-badge" style="padding:0 6px">6</span>', 'spacing-grid', { css })).length, 0, 'a half step inside a component of the system is an optical correction')
-  assert.equal((await found('<span class="card" style="padding:0 6px">6</span>', 'spacing-grid', { css })).length, 1, 'the same half step in a page is not')
-  assert.equal((await found('<span class="p2-badge" style="padding:0 5px">5</span>', 'spacing-grid', { css })).length, 1, 'an odd value is not a half step')
+  assert.equal((await found('<span class="ds-badge" style="padding:0 6px">6</span>', 'spacing-grid', { css, prefix: 'ds' })).length, 0, 'a half step inside a component of the project (its prefix, from the config) is an optical correction')
+  assert.equal((await found('<span data-ds style="padding:0 6px">6</span>', 'spacing-grid', { css, prefix: 'ds' })).length, 0, 'and so is one with the project\'s marker')
+  assert.equal((await found('<span class="card" style="padding:0 6px">6</span>', 'spacing-grid', { css, prefix: 'ds' })).length, 1, 'the same half step in a page is not')
+  assert.equal((await found('<span class="ds-badge" style="padding:0 6px">6</span>', 'spacing-grid', { css })).length, 1, 'with no prefix in the config no element is taken for a component')
+  assert.equal((await found('<span class="ds-badge" style="padding:0 6px">6</span>', 'spacing-grid', { css, prefix: 'xx' })).length, 1, 'and another project\'s prefix does not count')
+  assert.equal((await found('<span class="ds-badge" style="padding:0 5px">5</span>', 'spacing-grid', { css, prefix: 'ds' })).length, 1, 'an odd value is not a half step')
   assert.equal((await found('<div style="padding:11px">P</div>', 'spacing-grid', { css })).length, 1, 'a box that is not a field')
+})
+
+test('select-two-arrows: a select in the project\'s own wrapper (its prefix, from the config) is read with the arrow its wrapper holds beside it', async () => {
+  const html = '<div style="position:relative;width:200px"><div class="ds-select"><select aria-label="Plan"><option>One</option></select></div><svg width="16" height="16" style="position:absolute;right:8px;top:8px"><path d="M0 0h16"/></svg></div>'
+  assert.equal((await found(html, 'select-two-arrows', { prefix: 'ds' })).length, 1, 'the wrapper is the project\'s: the arrow beside it is a second one')
+  assert.equal((await found(html, 'select-two-arrows')).length, 0, 'with no prefix the wrapper is just a box, and the arrow is not looked for beside it')
 })
 
 test('link-as-button leaves pagination alone: it changes a list in place', async () => {

@@ -32,7 +32,7 @@ import { chromium } from '@playwright/test'
 import { fingerprintPaths } from './cache.ts'
 import { openScreen } from './settle.ts'
 import { colourIssues } from './colours.ts'
-import { CONFIG_FILE, checkWidths, config, modes } from './config.ts'
+import { CONFIG_FILE, checkWidths, config, modes, ruleLimits } from './config.ts'
 import {
   type Components,
   collectComponents,
@@ -71,6 +71,7 @@ const collect = collectOptions()
 /** What the layout audit needs: the comfortable tap size, DESIGN.md's motion durations and its secondary text colour (text-muted, for text-tier). */
 const auditOpts = {
   comfortable: config.comfortableTarget,
+  limits: ruleLimits(),
   durations: (() => { try { return motionDurations() } catch { return [] } })(),
   columns: (() => { try { return columnWidths() } catch { return [] } })(),
   secondary: (() => { try { return 'text-muted' in readDesign().colors ? 'var(--' + config.prefix + '-text-muted)' : undefined } catch { return undefined } })(),
@@ -78,7 +79,7 @@ const auditOpts = {
 /** The layout audit and the checks that come from published standards (standards.ts). full also runs what changes the page or moves its focus. */
 const everything = async (page: import('@playwright/test').Page, full = false): Promise<Issue[]> => [
   ...(await page.evaluate(audit, auditOpts)),
-  ...(await page.evaluate(standards, { full })),
+  ...(await page.evaluate(standards, { full, prefix: config.prefix })),
 ]
 /** WCAG 1.4.10: the narrowest window a screen has to read in without scrolling sideways, in CSS px. */
 const REFLOW = 320

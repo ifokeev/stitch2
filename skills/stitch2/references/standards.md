@@ -32,6 +32,27 @@ a person decides, and a screen that has a reason says so in its notes.
 | spacing-grid | DESIGN.md (Four-Pixel Rhythm Rule) | A padding, margin or gap off the 4px grid, once for each value. The padding above and below the line of a field or a button (what is left of its target height), an auto or fractional margin and a half step on a component of the system (a p2-* element) are not reported. | The nearest step; a half step only inside a component, as an optical correction. |
 | type-family, type-fraction | DESIGN.md (Whole-Pixel Rule, type levels) | Text in a family DESIGN.md does not name (a control that fell back to the browser's), or a size or line height with a fraction. | Inherit the font on controls; whole pixels. |
 
+## What a project can change
+
+A check holds a screen to a number from a published source, and a project whose own rules differ says so in `stitch2.config.json`, so the check reports against
+its numbers and not stitch2's. Nothing in stitch2 is named for one product.
+
+```json
+{
+  "prefix": "ds",
+  "rules": { "hintCharacters": 120, "menuItemHeight": 48 }
+}
+```
+
+| Setting | Check | Default | Source of the default |
+|---|---|---|---|
+| `prefix` | spacing-grid, select-two-arrows | `s2` | The one prefix of the project's components (`<prefix>-select`, `<prefix>-badge`, `data-<prefix>`). A half step inside one of them is an optical correction; without a prefix no element is taken for a component. |
+| `rules.hintCharacters`, `rules.hintLines` | hint-length | 90, 2 | GOV.UK and Carbon: a hint is one short sentence. |
+| `rules.menuItemHeight`, `rules.menuItemText` | menu-item-size | 44px, 14px | Apple HIG's 44; Material and Carbon use 48; WCAG 2.5.8 asks 24. |
+| `rules.measureLongest` | measure | 80 | 45–75 characters a line (web.dev, Android), with the slack of a font. |
+| `comfortableTarget` | tap-target | 32px | WCAG 2.5.8's 24px, with room. |
+| DESIGN.md tokens (the page columns, the motion durations, `text-muted`) | column-width, motion-token, text-tier | read from DESIGN.md | The project's own tokens, not stitch2's. |
+
 ## What check cannot see
 
 These are in the standards and are for the agent to look at, because a static page does not show them:

@@ -29,7 +29,7 @@ const freePort = () =>
 const fixture = `<!doctype html>
 <html><head>
   <meta charset="utf-8">
-  <meta name="s2-screen" content="video-generator">
+  <meta name="s2-screen" content="checkout">
   <meta name="s2-version" content="v1">
   <meta name="s2-status" content="approved">
   <meta name="s2-device" content="desktop">
@@ -49,12 +49,12 @@ const fixture = `<!doctype html>
 
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'stitch2-canvas-'))
-  mkdirSync(join(dir, 'design/screens/video-generator'), { recursive: true })
+  mkdirSync(join(dir, 'design/screens/checkout'), { recursive: true })
   writeFileSync(
     join(dir, 'stitch2.config.json'),
     JSON.stringify({ name: 'canvas fixture', designDir: 'design', screenDirs: ['screens'], prefix: 's2', skills: [] }),
   )
-  writeFileSync(join(dir, 'design/screens/video-generator/desktop-v1.html'), fixture)
+  writeFileSync(join(dir, 'design/screens/checkout/desktop-v1.html'), fixture)
   port = await freePort()
   server = spawn(process.execPath, [cli, 'canvas'], {
     cwd: dir,
@@ -80,7 +80,7 @@ test('canvas keeps a full-height desktop screen bounded and visible through zoom
   const page = await browser.newPage({ viewport: { width: 1800, height: 900 } })
   // Seed every cache generation so stale local state cannot hide the regression.
   await page.addInitScript(() => {
-    const stale = JSON.stringify({ 'screens/video-generator/desktop-v1.html@1280': 20_000 })
+    const stale = JSON.stringify({ 'screens/checkout/desktop-v1.html@1280': 20_000 })
     localStorage.setItem('stitch2-heights', stale)
     localStorage.setItem('stitch2-heights-v2', stale)
     localStorage.setItem('stitch2-heights-v3', stale)
@@ -151,7 +151,7 @@ test('canvas keeps a full-height desktop screen bounded and visible through zoom
     })
 
     const shot = await page.evaluate(async () => {
-      const path = '/api/shot?path=screens/video-generator/desktop-v1.html&width=1280'
+      const path = '/api/shot?path=screens/checkout/desktop-v1.html&width=1280'
       const response = await fetch(path)
       const bytes = new Uint8Array(await response.arrayBuffer())
       const image = new Image()

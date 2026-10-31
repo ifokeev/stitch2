@@ -2,13 +2,16 @@
  * The layout audit, shared by check (the design screens) and compare (the live app), and exported as
  * stitch2/audit for projects' own tests. Runs inside the page.
  */
+import type { RuleLimits } from './config.ts'
 import type { Issue } from './typecheck.ts'
 
 /** Layout errors that mean the same bug wherever they appear; compare reports these for the app too. */
 export const LAYOUT_ERRORS = ['overflow', 'nav-overflow', 'fixed-overlap', 'control-overlap', 'text-overlap']
 
 /** Runs inside the page. Plain JS on purpose: Playwright sends its source to the browser. */
-export async function audit(opts: { comfortable: number; durations?: number[]; secondary?: string; columns?: number[] }): Promise<Issue[]> {
+export async function audit(opts: { comfortable: number; durations?: number[]; secondary?: string; columns?: number[]; limits?: Partial<RuleLimits> }): Promise<Issue[]> {
+  // The numbers some checks use (config "rules"): the defaults are repeated here because this runs in the page, where nothing can be imported.
+  const limits: RuleLimits = { hintCharacters: 90, hintLines: 2, menuItemHeight: 44, menuItemText: 14, measureLongest: 80, ...opts.limits }
   const W = document.documentElement.clientWidth
   const out: Issue[] = []
   const sel = (el: Element) => {
@@ -738,7 +741,7 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
     }
     if (lineChars.length < 2) continue
     const longest = Math.max(...lineChars.sort((a, b) => a.top - b.top).slice(0, -1).map((l) => l.n))
-    if (longest > 80)
+    if (longest > limits.measureLongest)
       push('warning', 'measure', el, 'Lines of up to ' + longest + ' characters: keep prose to 45–75 (a max width of about 32em)')
   }
 
@@ -1003,8 +1006,8 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
       const style = getComputedStyle(hint)
       const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4
       const lines = Math.round(hint.getBoundingClientRect().height / line)
-      if (sentences > 1 || words.length > 90 || lines > 2)
-        push('warning', 'hint-length', hint, 'A hint is one short sentence of up to 90 characters and two lines (this one: ' + words.length + ' characters, ' + sentences + ' sentence' + (sentences === 1 ? '' : 's') + ', ' + lines + ' line' + (lines === 1 ? '' : 's') + '): a screen reader reads all of it each time the field takes focus, so put anything longer above the field as text (GOV.UK, Carbon)')
+      if (sentences > 1 || words.length > limits.hintCharacters || lines > limits.hintLines)
+        push('warning', 'hint-length', hint, 'A hint is one short sentence of up to ' + limits.hintCharacters + ' characters and ' + limits.hintLines + ' line' + (limits.hintLines === 1 ? '' : 's') + ' (this one: ' + words.length + ' characters, ' + sentences + ' sentence' + (sentences === 1 ? '' : 's') + ', ' + lines + ' line' + (lines === 1 ? '' : 's') + '): a screen reader reads all of it each time the field takes focus, so put anything longer above the field as text (GOV.UK, Carbon)')
       if (hint.querySelector('a[href]'))
         push('warning', 'hint-link', hint, 'A link in a hint is read out as plain text: take it out of the hint, or put it in the text above the field (GOV.UK)')
     }
@@ -1240,9 +1243,9 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
       if (!items.length) continue
       for (const item of items) {
         const box = item.getBoundingClientRect(), style = getComputedStyle(item)
-        // The floor is 44px (a touch target: Apple, WCAG 2.5.8 asks 24 and Material 48); a row of text under 14px is a dense desktop menu that people also touch.
-        if (box.height < 43.5 || parseFloat(style.fontSize) < 14) {
-          push('warning', 'menu-item-size', item, 'A menu item ' + Math.round(box.width) + '×' + Math.round(box.height) + 'px with ' + style.fontSize + ' text: a menu is touched as well as pointed at, so a row is 44px at least (Material and Carbon use 48) and its text is 14px at least')
+        // The floor is 44px by default (a touch target: Apple, WCAG 2.5.8 asks 24 and Material 48); a row of text under 14px is a dense desktop menu that people also touch.
+        if (box.height < limits.menuItemHeight - 0.5 || parseFloat(style.fontSize) < limits.menuItemText) {
+          push('warning', 'menu-item-size', item, 'A menu item ' + Math.round(box.width) + '×' + Math.round(box.height) + 'px with ' + style.fontSize + ' text: a menu is touched as well as pointed at, so a row is ' + limits.menuItemHeight + 'px at least (Material and Carbon use 48) and its text is ' + limits.menuItemText + 'px at least')
           break
         }
       }

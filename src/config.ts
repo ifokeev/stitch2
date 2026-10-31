@@ -42,6 +42,8 @@ export interface LabConfig {
   order: string[]
   /** Tap targets smaller than this (px) get a warning; under WCAG's 24px they are errors when crowded. */
   comfortableTarget: number
+  /** The numbers behind hint-length, menu-item-size and measure (see RuleLimits); the ones left out keep their defaults. */
+  rules?: Partial<RuleLimits>
   /**
    * The themes every screen must work in, by their data-theme value. Defaults to DESIGN.md's: "dark" (the plain
    * colours) and "light" when it has light-* colours. The canvas switches between them; check runs in each.
@@ -91,6 +93,26 @@ export interface LabConfig {
   }[]
 }
 
+/**
+ * The numbers some checks hold a screen to. Each default comes from a published source (named by the check in its skill), and a project whose own
+ * rules differ says so in stitch2.config.json under "rules"; the checks report against its numbers, not ours.
+ */
+export interface RuleLimits {
+  /** hint-length: the longest hint under a label, in characters (GOV.UK and Carbon keep it to a short sentence). */
+  hintCharacters: number
+  /** hint-length: the most lines a hint may take. */
+  hintLines: number
+  /** menu-item-size: the shortest menu item, in px (Apple's 44; Material and Carbon use 48; WCAG 2.5.8 asks 24). */
+  menuItemHeight: number
+  /** menu-item-size: the smallest text in a menu item, in px. */
+  menuItemText: number
+  /** measure: the longest line of prose, in characters, before a warning (45–75 is the target; the extra is the slack of a font). */
+  measureLongest: number
+}
+
+/** What the checks use when the config names no "rules". audit repeats these in the page (it runs there, with no imports); a test holds the two together. */
+export const RULE_DEFAULTS: RuleLimits = { hintCharacters: 90, hintLines: 2, menuItemHeight: 44, menuItemText: 14, measureLongest: 80 }
+
 export interface I18nConfig {
   /** Locales with translations, besides the source language. */
   locales?: string[]
@@ -137,6 +159,8 @@ export const config: LabConfig = {
 /** The widths a variant covers: [narrowest, widest] for its device, from the config or the defaults. */
 export const WIDTH_DEFAULTS: Record<string, [number, number]> = { mobile: [360, 599], tablet: [600, 1023], desktop: [1024, 1920] }
 export const widthRanges = (): Record<string, [number, number]> => ({ ...WIDTH_DEFAULTS, ...config.widths })
+/** The numbers the checks use: the defaults with the project's own on top. */
+export const ruleLimits = (): RuleLimits => ({ ...RULE_DEFAULTS, ...config.rules })
 export const widthRange = (device: string): [number, number] | undefined => widthRanges()[device]
 export const BREAKPOINT_DEFAULTS: Record<string, number> = { sm: 640, md: 768, lg: 1024, xl: 1280, '2xl': 1536 }
 export const breakpoints = (): Record<string, number> => config.breakpoints ?? BREAKPOINT_DEFAULTS
