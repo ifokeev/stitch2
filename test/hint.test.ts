@@ -63,4 +63,11 @@ test('field-row-wide: a text area or a drop area is not beside another field, sh
   assert.deepEqual(await read(row(input('k'), input('l')), 'field-row-wide'), [])
 })
 
+test('field-row: the columns of a page (a sidebar with one select, a main column with one text area) are not fields in a row', async () => {
+  const page = '<div style="display:flex"><aside style="width:240px"><label for="lang">Language</label><select id="lang" style="display:block;height:44px"><option>English</option></select></aside>' +
+    '<main style="width:300px"><p style="margin:0">Notes</p><textarea id="notes" aria-label="Notes" style="display:block;width:100%;height:80px"></textarea></main></div>'
+  assert.deepEqual(await read(page, 'field-row-wide'), [])
+  assert.deepEqual(await read(page, 'field-row-align'), [])
+})
+
 

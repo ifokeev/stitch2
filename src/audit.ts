@@ -1026,7 +1026,9 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
   const aligned = new Set<Element>()
   const crowded = new Set<Element>()
   for (const parent of all) {
-    const groups = [...parent.children].filter((k) => shown(k)).map((k) => ({ k, controls: fieldControls(k) })).filter((g) => g.controls.length === 1)
+    // The columns of the page (a sidebar with its language menu, the main column with its one text area) are not the fields of a form: only what holds no landmark is a field in a row.
+    const chrome = 'nav, main, aside, header, footer, [role=navigation], [role=main], [role=complementary], [role=banner], [role=contentinfo]'
+    const groups = [...parent.children].filter((k) => shown(k) && !k.matches(chrome) && !k.querySelector(chrome)).map((k) => ({ k, controls: fieldControls(k) })).filter((g) => g.controls.length === 1)
     for (let i = 0; i < groups.length; i++)
       for (let j = i + 1; j < groups.length; j++) {
         const a = groups[i]!, b = groups[j]!, ra = a.k.getBoundingClientRect(), rb = b.k.getBoundingClientRect()

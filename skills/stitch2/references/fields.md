@@ -57,6 +57,7 @@ component carries it once. A rule that a check measures names the check; the res
 - **A text area and a drop area have the row to themselves** **(check: field-row-wide)**: they are the biggest thing in a form, and a drop area of 190px has no room for its own words.
 - **A row has one top** **(check: field-row-align)**. The fields in it have the same parts above their controls: a label and a hint on all of them, or on none. One field with a hint and
   one without start their controls on two lines, and the row looks crooked; the fix is the parts, not a margin.
+- **Only fields count.** The columns of the page (a sidebar, the main column, an aside) are not a row of fields, even when each holds one control: the checks skip anything that is or holds a landmark.
 - **The pane decides, not the window.** A form that sits in a pane of 392px beside a viewer cannot hold two areas because the window is wide: a `sm:` breakpoint measures the window.
   Use the width of the form's own container (a container query, or `auto-fit` with a minimum), so the same form stacks in a narrow pane and sits in two columns in a wide one.
 
