@@ -32,7 +32,8 @@ space around the control is not there.
   52px high, a heading row of 44px sort buttons is 52px, and a hover fill never touches the navigation's edge, a card's edge or a
   table frame. The exceptions are content: a control that fills a surface on three sides (a picture that opens), a square row that
   spans its card, a link that is only its words, and a shape that paints inside its own box (a round or glass icon, measured by what
-  it paints) **(check: edge-flush)**.
+  it paints). A dialog or a popover is a layer of its own: a control under it is no neighbour of a surface in it, however their
+  edges line up **(check: edge-flush)**.
 - **One ring.** A row that draws the ring (a choice: its box and its words) is the ring, and the box inside it draws none. Two rings
   at once read as a glitch, and one of them is usually the one that is cut **(check: ring-double)**.
 

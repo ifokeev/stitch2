@@ -64,6 +64,13 @@ test('edge-flush: a bar pinned to the bottom of the window is no neighbour of wh
   assert.equal((await issues(backdrop + '<div style="display:flex;min-height:44px;padding:0 24px"><button>Under the picture</button></div>', 'edge-flush')).length, 0, 'a decoration that is hidden from a reader')
 })
 
+test('edge-flush: a dialog is a layer of its own, so a control under it is no neighbour of a surface in it', async () => {
+  const page = '<div style="padding:40px 24px"><button>Under the sheet</button></div>'
+  const panel = (role: string) => '<div ' + role + ' style="position:fixed;top:85px;left:0;width:390px"><div style="height:120px;background:#222;border-top:1px solid #444"></div></div>'
+  assert.equal((await issues(page + panel(''), 'edge-flush')).length, 1, 'a surface on the page that starts 1px under the control is its neighbour')
+  assert.equal((await issues(page + panel('role="dialog" aria-modal="true"'), 'edge-flush')).length, 0, 'the same surface in a dialog is not')
+})
+
 test('edge-flush: a control that fills its surface on three sides is its content, and a shape that paints inside its own box is measured elsewhere', async () => {
   assert.equal((await issues('<div class="panel" style="height:100px"><button style="width:100%;height:100px;border-radius:12px">Open</button></div>', 'edge-flush')).length, 0, 'a picture that opens')
   assert.equal((await issues('<div class="panel" style="padding:0"><button style="width:44px;height:44px;padding:4px;border-radius:9999px;background-clip:content-box;background-color:#444"></button></div>', 'edge-flush')).length, 0, 'a round icon that paints inside its box')

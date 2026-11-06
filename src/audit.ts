@@ -1191,11 +1191,13 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
       return null
     }
     const controls = 'button, a[href], select, summary, [role=button], input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file])'
+    // A dialog or a popover is a layer of its own: a control under it is no neighbour of a surface in it, however their edges line up.
+    const layerOf = (e: Element) => e.closest('dialog, [role=dialog], [role=alertdialog], [aria-modal="true"], [popover]')
     const blocks = all
       // A bar pinned to the bottom of the window (a sticky submit bar) is next to whatever is under the window's edge at this scroll, not next to the page's content.
       // A backdrop that is only decoration (hidden from a reader, takes no pointer) is no neighbour either.
       .filter((e) => !e.matches(controls) && !e.querySelector(controls) && painted(e) && !e.closest('[aria-hidden="true"]') && !(/sticky|fixed/.test(getComputedStyle(e).position) && getComputedStyle(e).top === 'auto' && getComputedStyle(e).bottom !== 'auto'))
-      .map((e) => ({ e, r: e.getBoundingClientRect() }))
+      .map((e) => ({ e, r: e.getBoundingClientRect(), layer: layerOf(e) }))
       .filter((b) => b.r.width >= 200 && b.r.height >= 8)
     for (const el of all) {
       if (!el.matches(controls) || opacity(el) < 0.05) continue
@@ -1217,8 +1219,9 @@ export async function audit(opts: { comfortable: number; durations?: number[]; s
         const near = gaps.filter(([side, gap]) => gap > -1 && gap < ROOM - 1 && edgeDrawn(surface, side) && !(wordsOnly && (side === 'left' || side === 'right')))
         if (near.length && near.length < 3 && gaps.every(([, gap]) => gap > -1)) for (const [side] of near) touching.push({ side, by: surface })
       }
+      const layer = layerOf(el)
       for (const b of blocks) {
-        if (b.e.contains(el) || el.contains(b.e) || surface?.contains(b.e)) continue
+        if (b.layer !== layer || b.e.contains(el) || el.contains(b.e) || surface?.contains(b.e)) continue
         const across = Math.min(r.right, b.r.right) - Math.max(r.left, b.r.left)
         const along = Math.min(r.bottom, b.r.bottom) - Math.max(r.top, b.r.top)
         const above = r.top - b.r.bottom, below = b.r.top - r.bottom
